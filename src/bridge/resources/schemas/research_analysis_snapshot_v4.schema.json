@@ -1,0 +1,102 @@
+{
+  "$id": "bridge://schemas/research-analysis-snapshot/v0.4",
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/audience"
+    },
+    "context_renderer_id": {
+      "const": "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.4",
+      "default": "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.4",
+      "title": "Context Renderer Id",
+      "type": "string"
+    },
+    "context_sections_json": {
+      "title": "Context Sections Json",
+      "type": "string"
+    },
+    "domain_score": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/domain_score"
+    },
+    "evidence_requirement_set_json": {
+      "title": "Evidence Requirement Set Json",
+      "type": "string"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_manifest_json": {
+      "title": "Graph Manifest Json",
+      "type": "string"
+    },
+    "graph_manifest_sha256": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/graph_manifest_sha256"
+    },
+    "graph_version": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/graph_version"
+    },
+    "input_revision": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/input_revision"
+    },
+    "object_version": {
+      "const": "0.4.0",
+      "default": "0.4.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "reconciliation_record_set_json": {
+      "title": "Reconciliation Record Set Json",
+      "type": "string"
+    },
+    "release_contract_sha256": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/release_contract_sha256"
+    },
+    "renderer_id": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/renderer_id"
+    },
+    "report_content_hash": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/report_content_hash"
+    },
+    "report_context_json": {
+      "title": "Report Context Json",
+      "type": "string"
+    },
+    "report_context_sha256": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/report_context_sha256"
+    },
+    "report_draft_json": {
+      "title": "Report Draft Json",
+      "type": "string"
+    },
+    "scientific_validation": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/scientific_validation"
+    },
+    "snapshot_sha256": {
+      "$ref": "bridge://schemas/research-analysis-snapshot/v0.3#/properties/snapshot_sha256"
+    },
+    "source_evidence_record_set_json": {
+      "title": "Source Evidence Record Set Json",
+      "type": "string"
+    }
+  },
+  "required": [
+    "release_contract_sha256",
+    "input_revision",
+    "graph_id",
+    "graph_version",
+    "graph_manifest_sha256",
+    "report_content_hash",
+    "graph_manifest_json",
+    "source_evidence_record_set_json",
+    "evidence_requirement_set_json",
+    "reconciliation_record_set_json",
+    "report_draft_json",
+    "snapshot_sha256",
+    "report_context_json",
+    "context_sections_json",
+    "report_context_sha256"
+  ],
+  "title": "ResearchAnalysisSnapshotV04",
+  "type": "object"
+}

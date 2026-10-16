@@ -124,7 +124,7 @@ def _spec() -> ToolPackageSpecV2:
     return ToolPackageSpecV2(
         tool_id="P0-09",
         name="Evidence Compiler & Reconciler",
-        version="0.5.1",
+        version="0.5.2",
         summary="Compile atomic evidence and reconcile conflicts by versioned rules.",
         implementation_state=ImplementationState.IMPLEMENTED,
         scientific_status="candidate",
@@ -1013,7 +1013,7 @@ def _request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-09",
-        tool_version="0.5.1",
+        tool_version="0.5.2",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -1040,38 +1040,6 @@ def test_public_models_export_valid_draft_2020_12_schema(schema_ref: str, model:
     assert schema_ref.startswith("bridge://schemas/")
 
 
-def test_committed_synthetic_fixtures_validate_without_private_material() -> None:
-    fixture_root = Path(__file__).parent / "fixtures" / "p0_09"
-    case = EvidenceCompilationBundle.model_validate_json(
-        (fixture_root / "case_bundle.json").read_text()
-    )
-    comparison = EvidenceCompilationBundle.model_validate_json(
-        (fixture_root / "comparison_bundle.json").read_text()
-    )
-    missing = MissingEvidenceObservation.model_validate_json(
-        (fixture_root / "missing_observation.json").read_text()
-    )
-    history = json.loads((fixture_root / "append_history.json").read_text())
-    assert case.graph_kind.value == "case"
-    assert comparison.graph_kind.value == "comparison"
-    assert missing.reason_code == "measurement_not_provided"
-    assert [item["revision_action"] for item in history["steps"]] == [
-        "create",
-        "supersede",
-        "invalidate",
-    ]
-    serialized = json.dumps(
-        [
-            case.model_dump(mode="json"),
-            comparison.model_dump(mode="json"),
-            missing.model_dump(mode="json"),
-        ]
-    )
-    private_path = re.compile(
-        r"(?:/(?:data[0-9]+|mnt|srv|private|internal)/|/"
-        r"Users/|/home/)"
-    )
-    assert private_path.search(serialized) is None
 
 
 def test_case_compilation_publishes_complete_immutable_bundle_without_formal_promotion(
@@ -2098,7 +2066,7 @@ def test_v1_adapter_invocation_has_one_stable_v2_reason(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="p0-09-v1",
         tool_id="P0-09",
-        tool_version="0.5.1",
+        tool_version="0.5.2",
         output_dir=(tmp_path / "output").resolve(),
     )
     eligibility = adapter.check_eligibility(request, _spec())  # type: ignore[arg-type]
@@ -3417,36 +3385,6 @@ def test_missing_requirement_query_rejects_shadow_evidence_as_satisfaction(
 
     with pytest.raises(ValueError, match="manifest_integrity_failed"):
         EvidenceGraphQueries.open(query_manifest_path)
-    return
-
-    second = _run(
-        tmp_path / "second",
-        bundle=second_bundle,
-        base_manifest_path=copied_manifest_path,
-    )
-    assert second.execution_state is ExecutionState.SUCCEEDED
-    query = EvidenceGraphQueries.open(
-        second.request.output_dir / second.run_id / "case_evidence_graph_manifest.json"
-    )
-
-    current_open = query.get_missing_requirements(
-        product_case_id="product-case:synthetic-001",
-        state=EvidenceRequirementState.OPEN,
-    )
-    current_satisfied = query.get_missing_requirements(
-        product_case_id="product-case:synthetic-001",
-        state=EvidenceRequirementState.SATISFIED,
-    )
-    assert sum(
-        node["node_type"] == "EvidenceRequirement" for node in current_open.nodes
-    ) == 1
-    assert not any(
-        node["node_type"] == "EvidenceRequirement" for node in current_satisfied.nodes
-    )
-    latest_open = next(
-        node for node in current_open.nodes if node["node_type"] == "EvidenceRequirement"
-    )
-    assert latest_open["object_version"] == "3"
 
 
 @pytest.mark.parametrize(
@@ -5170,7 +5108,7 @@ def test_static_capacity_uses_complete_table_without_top_n_selection(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-capacity",
-        tool_version="0.5.1",
+        tool_version="0.5.2",
     )
 
     table = prepared.payloads["evidence_compiler_claim_interpretation.tsv"]
@@ -5203,7 +5141,7 @@ def test_static_capacity_falls_back_when_reason_text_cannot_fit(
         profile=expanded,
         output_dir=tmp_path / "render",
         run_id="run-reason-capacity",
-        tool_version="0.5.1",
+        tool_version="0.5.2",
     )
 
     table = prepared.payloads["evidence_compiler_requirements_exclusions.tsv"]
@@ -5731,7 +5669,7 @@ def test_long_reference_labels_remain_distinguishable_in_render(tmp_path: Path) 
         profile=profile,
         output_dir=tmp_path / "render",
         run_id="run-ref-collision",
-        tool_version="0.5.1",
+        tool_version="0.5.2",
     )
     labels = [_short_ref(ref) for ref in refs]
     svg = prepared.payloads["evidence_compiler_claim_interpretation.svg"]

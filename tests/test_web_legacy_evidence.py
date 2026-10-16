@@ -6,7 +6,7 @@ import pytest
 
 from bridge.toolkit.contracts import InputAsset
 from bridge.web.evidence import build_result_context
-from test_web_service import client, declare_counts
+from web_support import client, declare_counts
 from test_web_intake import uploaded
 from test_web_evidence import register
 

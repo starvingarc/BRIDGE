@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from bridge.web.inputs import Inputs, Selection, strict_json
-from bridge.web.app import write_file
-from test_web_service import (
+from bridge.web.sessions import write_file
+from web_support import (
     client,
     confirm_change,
     declare_source,
@@ -64,7 +64,7 @@ def test_optional_column_mappings_are_confirmed_and_bound_to_requests(client, tm
 
 
 def choice(tool, mode, objects=(), assets=()):
-    return dict(tool_id=tool, mode_id=mode, asset_ids=list(assets), object_inputs=list(objects), measurement_spec_ref=None)
+    return dict(tool_id=tool, mode_id=mode, asset_ids=list(assets), object_inputs=list(objects), measurement_spec_ref=None, expression_analysis=None)
 
 
 def upload_request(client, sid, request, mode):
@@ -165,7 +165,7 @@ def test_selected_p002_panel_declaration_uses_read_only_qc_enrichment(
     )
     service = client.app.state.service
     state = service.load(sid)
-    original = service.qc_asset(state, aid, register=False)
+    original = service.qc.asset(state, aid, register=False, enrich=False)
     before = json.loads(json.dumps({
         "asset": state["_asset_declarations"],
         "qc": state["_qc_declarations"],
@@ -191,7 +191,7 @@ def test_selected_p002_panel_declaration_uses_read_only_qc_enrichment(
     assert effective.metadata["sample_id"] == "panel-sample"
     assert effective.metadata["source_family_id"] == "source-family:selected-input"
     assert effective.metadata["parent_asset_sha256"] == effective.checksum
-    assert service.qc_asset(current, aid, register=False) == original
+    assert service.qc.asset(current, aid, register=False, enrich=False) == original
     assert current["_asset_declarations"] == before["asset"]
     assert current["_qc_declarations"] == before["qc"]
     assert current["_uploads"] == before["uploads"]
@@ -209,7 +209,7 @@ def test_scientific_assets_use_real_filtered_qc_not_original_upload(client, tmp_
     from bridge.domain.models import CaseInputAsset, CaseInputBundle
     from bridge.toolkit.contracts import ToolRequest
     from test_cell_state import GENES
-    from test_web_service import new_session, declare_source, confirm_change
+    from web_support import new_session, declare_source, confirm_change
     genes = GENES + ["MT-ND1"] + [f"EXTRA-{index}" for index in range(279)]
     counts = np.random.default_rng(7301).poisson(3, size=(256, len(genes)))
     counts[[0, 255], :] = 0
@@ -400,7 +400,7 @@ def test_selected_p002_binds_explicit_earlier_upload_and_requires_committed_sour
         "stale-declaration-source"
     )
     state["_uploads"][aid].pop("source_family_id")
-    service.save(state)
+    service.sessions.save(state)
     no_source = next(
         item for item in client.get(url).json()["capabilities"]
         if item["tool_id"] == "P0-02"
@@ -444,7 +444,7 @@ def test_selected_p002_readiness_rejects_changed_qc_proof_without_catalog_write(
         write_file(path, path.read_bytes() + b" ")
     else:
         state["_uploads"][aid]["declaration_start"] += 1
-        service.save(state)
+        service.sessions.save(state)
 
     capability = next(
         item for item in client.get(url).json()["capabilities"]
@@ -486,7 +486,7 @@ def test_catalog_and_incomplete_selections_are_private(client, tmp_path):
     service = client.app.state.service
     service.settings = replace(service.settings, cell_state_measurement_spec_ref=str(tmp_path / "private-spec.json"))
     catalog = client.get(url + "/analysis-inputs").json()
-    assert catalog["measurement_specs"] == []
+    assert [item["id"] for item in catalog["measurement_specs"]] == ["EXPRESSION-exploration-v0.1"]
     assert str(tmp_path) not in json.dumps(catalog)
 
 
@@ -530,8 +530,15 @@ def test_real_fixture_request_plan_approval_execution(client, tmp_path, tool, mo
     prepared = client.post(url + "/prepare-analysis", json={"tool_id": tool}).json()
     if tool in {"P0-07", "P0-12"}:
         # Unconfirmed legacy inputs cannot bypass the conditional entry.
+        user_message = "这项分析还需要先确认条件输入；确认后才能生成计划。"
         assert prepared["status"] == "idle"
-        assert prepared["error"] == "conditional_selection_not_confirmed"
+        assert prepared["error"] == user_message
+        assert prepared["presentation"]["issue"] == {
+            "error_version": 1,
+            "error_id": "confirmation_required",
+            "user_message": user_message,
+            "results_state": "not_available",
+        }
         assert prepared["plan"] is None
         assert client.app.state.service.load(sid)["_tool_runs"] == []
         return
@@ -641,7 +648,7 @@ def test_source_bound_p006_accepts_only_one_p002_canonical_receipt(
     wrong_producer = _register_source_receipt(
         service, state, request, "wrong-producer", tool_id="P0-05"
     )
-    service.save(state)
+    service.sessions.save(state)
 
     process_ref = next(
         item for item in request.object_inputs if item.role == "process_method_input"
@@ -816,6 +823,9 @@ def test_source_bound_p006_accepts_only_one_p002_canonical_receipt(
     current = service.load(sid)
     record = current["_input_objects"][process_id]
     assert len(record["dependencies"]) == 2
+    # Warm the complete producer check; later operations must recheck both
+    # source artifacts and their receipt after any bytes change.
+    service.inputs.verify(current, record)
     for dependency in record["dependencies"]:
         path = Path(dependency["path"])
         original_bytes = path.read_bytes()
@@ -981,7 +991,7 @@ def test_real_expression_graft_opaque_h5ad_binding(client, tmp_path):
     pending = h.propose(state, selection, state["_input_revision"])
     assert pending["execution_available"], pending
     decision(h, state, pending)
-    service.save(state)
+    service.sessions.save(state)
     proposal = client.post(url + "/prepare-analysis", json={"tool_id": "P0-12"}).json()
     assert proposal["status"] == "awaiting_approval", proposal
     result = approve(client, sid, proposal["plan"])
@@ -1090,7 +1100,7 @@ def test_canonical_graph_to_claim_verifier_and_cross_session_fence(client, tmp_p
 
 def test_size_and_registration_limits_and_symlink_binding(client, tmp_path):
     from test_p0_12_graft_assessment import _objects
-    from bridge.web.inputs import OBJECT_LIMIT
+    from bridge.web.inputs import OBJECT_LIMIT, SESSION_OBJECT_LIMIT
     with pytest.raises(ValueError, match="size"):
         strict_json(b" " * (OBJECT_LIMIT + 1))
     sid, aid = context_upload(client, tmp_path)
@@ -1098,7 +1108,7 @@ def test_size_and_registration_limits_and_symlink_binding(client, tmp_path):
     state = service.load(sid)
     service.inputs.package_options(state)
     record = next(iter(state["_input_objects"].values()))
-    state["_input_objects"].update({f"{index:032x}": record for index in range(128)})
+    state["_input_objects"].update({f"{index:032x}": record for index in range(SESSION_OBJECT_LIMIT)})
     with pytest.raises(ValueError, match="count"):
         service.inputs.add_object(state, tool_id="P0-12", mode_id="graft_assessment", role="graft_case",
             schema_ref="bridge://schemas/graft-case/v0.1", object_version="0.1.0", data=json.dumps(_objects()[0]).encode())
@@ -1168,8 +1178,8 @@ def test_real_canonical_sufficiency_to_compiler_v2_and_append(client, tmp_path):
     assert approve(client, sid, plan)["plan"]["status"] == "completed"
     catalog = client.get(url + "/analysis-inputs").json()
     output8 = next(item for item in catalog["objects"] if item["source"] == "tool_output" and
-        item["schema_ref"] == "bridge://schemas/evidence-sufficiency-run-result/v0.2")
-    assert output8["object_version"] == "0.2.0"
+        item["schema_ref"] == "bridge://schemas/evidence-sufficiency-run-result/v0.3")
+    assert output8["object_version"] == "0.3.0"
     assert any(item["source"] == "tool_output" and item["schema_ref"] ==
         "bridge://schemas/evidence-sufficiency-profile/v0.2" and item["object_version"] == "0.2.0"
         for item in catalog["objects"])
@@ -1202,7 +1212,7 @@ def test_real_canonical_sufficiency_to_compiler_v2_and_append(client, tmp_path):
         changed = client.post(url + "/analysis-inputs", json=choice("P0-09", mode, selected))
         assert changed.status_code == 200
         if changed.json()["pending_input_change"]:
-            from test_web_service import confirm_change
+            from web_support import confirm_change
             confirm_change(client, sid, changed.json())
         proposed = client.post(url + "/prepare-analysis", json={"tool_id": "P0-09"}).json()
         assert proposed["plan"]["steps"][0]["status"] == "pending", service.load(sid)["_plan"]["steps"][0]["reason_codes"]
@@ -1246,3 +1256,38 @@ def test_real_canonical_sufficiency_to_compiler_v2_and_append(client, tmp_path):
     write_file(sibling, sibling.read_bytes() + b" ")
     with pytest.raises(ValueError, match="integrity"):
         service.inputs.verify(service.load(sid), records["base_graph_manifest"])
+
+
+def test_expression_parameters_validate_without_loading_analysis():
+    """Saving analysis intent must not import expression execution modules."""
+    import subprocess
+    import sys
+    program = """
+import importlib.abc
+import sys
+
+class NoExpressionExecution(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.endswith(('.expression', '.expression_runtime', '._expression_data')):
+            raise ImportError('expression execution must not be needed: ' + fullname)
+
+sys.meta_path.insert(0, NoExpressionExecution())
+from bridge.web.inputs import Selection
+from pydantic import ValidationError
+
+selection = Selection(tool_id='P0-02', mode_id=None, asset_ids=[], object_inputs=[],
+    measurement_spec_ref='EXPRESSION-exploration-v0.1',
+    expression_analysis={'exploration': {'group_key': 'type'}})
+assert selection.expression_analysis.exploration.group_key == 'type'
+assert selection.expression_analysis.exploration.max_points == 5000
+try:
+    Selection(tool_id='P0-02', mode_id=None, asset_ids=[], object_inputs=[],
+        measurement_spec_ref='EXPRESSION-exploration-v0.1',
+        expression_analysis={'exploration': {'max_points': 0}})
+except ValidationError as exc:
+    assert exc.errors()[0]['loc'] == ('expression_analysis', 'exploration', 'max_points')
+else:
+    raise AssertionError('invalid display bounds accepted')
+"""
+    completed = subprocess.run([sys.executable, '-c', program], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr

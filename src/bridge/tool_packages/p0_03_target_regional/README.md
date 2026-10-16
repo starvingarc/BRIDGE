@@ -4,6 +4,9 @@ This directory contains the target and regional evidence package.
 
 ## Interface at a glance
 
+- **Saved whole-product roles:** checked saved hierarchy plus optional explicit
+  reviewed role map/definition → full-denominator role records; unresolved mass
+  keeps target fraction null. No matrix execution or regional/stage inference.
 - **Aggregation mode:** eleven checksummed JSON objects → three
   denominator-explicit ratios.
 - **Expression mode:** the same objects plus one H5AD and one

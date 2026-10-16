@@ -1,0 +1,2144 @@
+{
+  "title": "人源中脑多巴胺神经元 · 小分子素材库",
+  "version": "2026-10-08.1",
+  "scope": "human iPSC / hESC; 2D, neurosphere and 3D midbrain organoid routes",
+  "coverage_statement": "32 个条目，基于已核查方法；不是全部相关文献的穷尽清单。",
+  "search_hits": 596,
+  "search_hits_screened_completely": false,
+  "date": "2026-10-08",
+  "rdkit_version": "2026.03.6",
+  "compounds": [
+    {
+      "id": "sb431542",
+      "name": "SB431542",
+      "query": "SB431542",
+      "category": "神经诱导",
+      "mechanism": "ALK4/5/7 抑制；TGFβ / Activin / Nodal",
+      "aliases": [
+        "SB-431542",
+        "SB"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "T2012",
+          "reported_concentration": "10 μM",
+          "reported_window": "d0–d5 换液前",
+          "locator": "Procedure 11–26",
+          "flag": ""
+        },
+        {
+          "source_id": "N2023",
+          "reported_concentration": "10 μM",
+          "reported_window": "d0–6",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "N2017",
+          "reported_concentration": "10 μM",
+          "reported_window": "d0–9",
+          "locator": "Procedure 3–23B",
+          "flag": ""
+        },
+        {
+          "source_id": "Na2023",
+          "reported_concentration": "3 μM",
+          "reported_window": "CTraS 预处理 5 d",
+          "locator": "In vitro neuronal induction",
+          "flag": ""
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "10 μM",
+          "reported_window": "d0–9",
+          "locator": "Media tables",
+          "flag": ""
+        },
+        {
+          "source_id": "A2025",
+          "reported_concentration": "0.5 μM（原文）",
+          "reported_window": "成球后 24 h 起",
+          "locator": "Organoid differentiation",
+          "flag": "SB / LDN 浓度与常见配方反常；未自行调换"
+        }
+      ],
+      "pubchem": {
+        "CID": 4521392,
+        "MolecularFormula": "C22H16N4O3",
+        "MolecularWeight": "384.4",
+        "SMILES": "C1OC2=C(O1)C=C(C=C2)C3=C(NC(=N3)C4=CC=C(C=C4)C(=O)N)C5=CC=CC=N5",
+        "ConnectivitySMILES": "C1OC2=C(O1)C=C(C=C2)C3=C(NC(=N3)C4=CC=C(C=C4)C(=O)N)C5=CC=CC=N5",
+        "InChIKey": "FHYUGAJXYORMHI-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/4521392",
+      "drawing_smiles": "C1OC2=C(O1)C=C(C=C2)C3=C(NC(=N3)C4=CC=C(C=C4)C(=O)N)C5=CC=CC=N5",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "T2012",
+        "N2023",
+        "N2017",
+        "Na2023",
+        "M2023",
+        "A2025"
+      ],
+      "drawing_formula": "C22H16N4O3",
+      "drawing_inchikey": "FHYUGAJXYORMHI-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/sb431542.svg",
+        "compact_png": "assets/compact/sb431542.png",
+        "full_svg": "assets/full/sb431542.svg",
+        "full_png": "assets/full/sb431542.png",
+        "transparent_svg": "assets/transparent/sb431542.svg",
+        "transparent_png": "assets/transparent/sb431542.png"
+      }
+    },
+    {
+      "id": "ldn193189",
+      "name": "LDN193189",
+      "query": "LDN193189",
+      "category": "神经诱导",
+      "mechanism": "BMP I 型受体抑制",
+      "aliases": [
+        "LDN-193189",
+        "LDN"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "T2012",
+          "reported_concentration": "100 nM",
+          "reported_window": "d0–d11 换液前",
+          "locator": "Procedure 11–26",
+          "flag": ""
+        },
+        {
+          "source_id": "N2023",
+          "reported_concentration": "200 nM",
+          "reported_window": "d0–10",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "100 nM",
+          "reported_window": "诱导初期；终点未明确",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": ""
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "100 nM",
+          "reported_window": "d0–9",
+          "locator": "Media tables",
+          "flag": ""
+        },
+        {
+          "source_id": "A2025",
+          "reported_concentration": "10 μM（原文）",
+          "reported_window": "成球后 24 h 起",
+          "locator": "Organoid differentiation",
+          "flag": "SB / LDN 浓度与常见配方反常；未自行调换"
+        }
+      ],
+      "pubchem": {
+        "CID": 25195294,
+        "MolecularFormula": "C25H22N6",
+        "MolecularWeight": "406.5",
+        "SMILES": "C1CN(CCN1)C2=CC=C(C=C2)C3=CN4C(=C(C=N4)C5=CC=NC6=CC=CC=C56)N=C3",
+        "ConnectivitySMILES": "C1CN(CCN1)C2=CC=C(C=C2)C3=CN4C(=C(C=N4)C5=CC=NC6=CC=CC=C56)N=C3",
+        "InChIKey": "CDOVNWNANFFLFJ-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/25195294",
+      "drawing_smiles": "C1CN(CCN1)C2=CC=C(C=C2)C3=CN4C(=C(C=N4)C5=CC=NC6=CC=CC=C56)N=C3",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "T2012",
+        "N2023",
+        "Ki2017",
+        "M2023",
+        "A2025"
+      ],
+      "drawing_formula": "C25H22N6",
+      "drawing_inchikey": "CDOVNWNANFFLFJ-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/ldn193189.svg",
+        "compact_png": "assets/compact/ldn193189.png",
+        "full_svg": "assets/full/ldn193189.svg",
+        "full_png": "assets/full/ldn193189.png",
+        "transparent_svg": "assets/transparent/ldn193189.svg",
+        "transparent_png": "assets/transparent/ldn193189.png"
+      }
+    },
+    {
+      "id": "a83-01",
+      "name": "A83-01",
+      "query": "A83-01",
+      "category": "神经诱导",
+      "mechanism": "ALK4/5/7 抑制",
+      "aliases": [
+        "A-83-01"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "500 nM",
+          "reported_window": "诱导初期；终点未明确",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": ""
+        },
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "2 μM",
+          "reported_window": "DIV1–3",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 16218924,
+        "MolecularFormula": "C25H19N5S",
+        "MolecularWeight": "421.5",
+        "SMILES": "CC1=NC(=CC=C1)C2=NN(C=C2C3=CC=NC4=CC=CC=C34)C(=S)NC5=CC=CC=C5",
+        "ConnectivitySMILES": "CC1=NC(=CC=C1)C2=NN(C=C2C3=CC=NC4=CC=CC=C34)C(=S)NC5=CC=CC=C5",
+        "InChIKey": "HIJMSZGHKQPPJS-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/16218924",
+      "drawing_smiles": "CC1=NC(=CC=C1)C2=NN(C=C2C3=CC=NC4=CC=CC=C34)C(=S)NC5=CC=CC=C5",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "Ki2017",
+        "Y2023"
+      ],
+      "drawing_formula": "C25H19N5S",
+      "drawing_inchikey": "HIJMSZGHKQPPJS-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/a83-01.svg",
+        "compact_png": "assets/compact/a83-01.png",
+        "full_svg": "assets/full/a83-01.svg",
+        "full_png": "assets/full/a83-01.png",
+        "transparent_svg": "assets/transparent/a83-01.svg",
+        "transparent_png": "assets/transparent/a83-01.png"
+      }
+    },
+    {
+      "id": "chir99021",
+      "name": "CHIR99021",
+      "query": "CHIR99021",
+      "category": "区域化",
+      "mechanism": "GSK3 抑制；WNT 通路激活",
+      "aliases": [
+        "CHIR",
+        "CT99021",
+        "CHIR-99021"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "T2012",
+          "reported_concentration": "3 μM",
+          "reported_window": "d3–d13 换液前",
+          "locator": "Procedure 11–26",
+          "flag": ""
+        },
+        {
+          "source_id": "N2023",
+          "reported_concentration": "1.5 μM → 7.5 μM",
+          "reported_window": "d3–10 → d11–15",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "3 μM",
+          "reported_window": "d3–12",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": ""
+        },
+        {
+          "source_id": "N2017",
+          "reported_concentration": "0.6–1.0 μM",
+          "reported_window": "d0–9；依细胞系",
+          "locator": "Procedure 3–23B",
+          "flag": ""
+        },
+        {
+          "source_id": "Na2023",
+          "reported_concentration": "3 μM",
+          "reported_window": "CTraS 预处理 5 d",
+          "locator": "In vitro neuronal induction",
+          "flag": ""
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "0.6 μM（H9）",
+          "reported_window": "d0–9",
+          "locator": "Media tables",
+          "flag": ""
+        },
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "3 μM",
+          "reported_window": "DIV1–3",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 9956119,
+        "MolecularFormula": "C22H18Cl2N8",
+        "MolecularWeight": "465.3",
+        "SMILES": "CC1=CN=C(N1)C2=CN=C(N=C2C3=C(C=C(C=C3)Cl)Cl)NCCNC4=NC=C(C=C4)C#N",
+        "ConnectivitySMILES": "CC1=CN=C(N1)C2=CN=C(N=C2C3=C(C=C(C=C3)Cl)Cl)NCCNC4=NC=C(C=C4)C#N",
+        "InChIKey": "AQGNHMOJWBZFQQ-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/9956119",
+      "drawing_smiles": "CC1=CN=C(N1)C2=CN=C(N=C2C3=C(C=C(C=C3)Cl)Cl)NCCNC4=NC=C(C=C4)C#N",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "T2012",
+        "N2023",
+        "Ki2017",
+        "N2017",
+        "Na2023",
+        "M2023",
+        "Y2023"
+      ],
+      "drawing_formula": "C22H18Cl2N8",
+      "drawing_inchikey": "AQGNHMOJWBZFQQ-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/chir99021.svg",
+        "compact_png": "assets/compact/chir99021.png",
+        "full_svg": "assets/full/chir99021.svg",
+        "full_png": "assets/full/chir99021.png",
+        "transparent_svg": "assets/transparent/chir99021.svg",
+        "transparent_png": "assets/transparent/chir99021.png"
+      }
+    },
+    {
+      "id": "purmorphamine",
+      "name": "Purmorphamine",
+      "query": "Purmorphamine",
+      "category": "区域化",
+      "mechanism": "SMO 激动；SHH 通路",
+      "aliases": [
+        "Pur",
+        "PMA"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "T2012",
+          "reported_concentration": "2 μM",
+          "reported_window": "d1–d7 换液前",
+          "locator": "Procedure 11–26",
+          "flag": ""
+        },
+        {
+          "source_id": "N2023",
+          "reported_concentration": "2 μM",
+          "reported_window": "d1–15",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "2 μM",
+          "reported_window": "d1–7",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 5284329,
+        "MolecularFormula": "C31H32N6O2",
+        "MolecularWeight": "520.6",
+        "SMILES": "C1CCC(CC1)N2C=NC3=C(N=C(N=C32)OC4=CC=CC5=CC=CC=C54)NC6=CC=C(C=C6)N7CCOCC7",
+        "ConnectivitySMILES": "C1CCC(CC1)N2C=NC3=C(N=C(N=C32)OC4=CC=CC5=CC=CC=C54)NC6=CC=C(C=C6)N7CCOCC7",
+        "InChIKey": "FYBHCRQFSFYWPY-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/5284329",
+      "drawing_smiles": "C1CCC(CC1)N2C=NC3=C(N=C(N=C32)OC4=CC=CC5=CC=CC=C54)NC6=CC=C(C=C6)N7CCOCC7",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / neurosphere"
+      ],
+      "source_ids": [
+        "T2012",
+        "N2023",
+        "Ki2017"
+      ],
+      "drawing_formula": "C31H32N6O2",
+      "drawing_inchikey": "FYBHCRQFSFYWPY-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/purmorphamine.svg",
+        "compact_png": "assets/compact/purmorphamine.png",
+        "full_svg": "assets/full/purmorphamine.svg",
+        "full_png": "assets/full/purmorphamine.png",
+        "transparent_svg": "assets/transparent/purmorphamine.svg",
+        "transparent_png": "assets/transparent/purmorphamine.png"
+      }
+    },
+    {
+      "id": "sag",
+      "name": "SAG",
+      "query": "SAG",
+      "category": "区域化",
+      "mechanism": "SMO 激动；SHH 通路",
+      "aliases": [
+        "Smoothened agonist"
+      ],
+      "tier": "定向分化",
+      "note": "与 SAG21k 是不同化合物。",
+      "evidence": [
+        {
+          "source_id": "Z2014",
+          "reported_concentration": "0.25 μM",
+          "reported_window": "d1–6",
+          "locator": "Protocol 2",
+          "flag": ""
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "400 nM",
+          "reported_window": "d0–9",
+          "locator": "Media tables",
+          "flag": ""
+        },
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "2 μM",
+          "reported_window": "DIV4 起",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 5284330,
+        "MolecularFormula": "C28H28ClN3OS",
+        "MolecularWeight": "490.1",
+        "SMILES": "CNC1CCC(CC1)N(CC2=CC(=CC=C2)C3=CC=NC=C3)C(=O)C4=C(C5=CC=CC=C5S4)Cl",
+        "ConnectivitySMILES": "CNC1CCC(CC1)N(CC2=CC(=CC=C2)C3=CC=NC=C3)C(=O)C4=C(C5=CC=CC=C5S4)Cl",
+        "InChIKey": "VFSUUTYAEQOIMW-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/5284330",
+      "drawing_smiles": "CNC1CCC(CC1)N(CC2=CC(=CC=C2)C3=CC=NC=C3)C(=O)C4=C(C5=CC=CC=C5S4)Cl",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "3D"
+      ],
+      "source_ids": [
+        "Z2014",
+        "M2023",
+        "Y2023"
+      ],
+      "drawing_formula": "C28H28ClN3OS",
+      "drawing_inchikey": "VFSUUTYAEQOIMW-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/sag.svg",
+        "compact_png": "assets/compact/sag.png",
+        "full_svg": "assets/full/sag.svg",
+        "full_png": "assets/full/sag.png",
+        "transparent_svg": "assets/transparent/sag.svg",
+        "transparent_png": "assets/transparent/sag.png"
+      }
+    },
+    {
+      "id": "dapt",
+      "name": "DAPT",
+      "query": "DAPT",
+      "category": "神经成熟",
+      "mechanism": "γ-secretase / Notch 抑制",
+      "aliases": [],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "T2012",
+          "reported_concentration": "10 μM",
+          "reported_window": "d11 起",
+          "locator": "Procedure 11–26",
+          "flag": ""
+        },
+        {
+          "source_id": "N2023",
+          "reported_concentration": "10 μM",
+          "reported_window": "d16 起",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "N2017",
+          "reported_concentration": "1 μM",
+          "reported_window": "终末重铺后",
+          "locator": "Procedure 3–23B",
+          "flag": ""
+        },
+        {
+          "source_id": "K2013",
+          "reported_concentration": "1 μM",
+          "reported_window": "d14 起",
+          "locator": "Differentiation procedure",
+          "flag": "用于移植时该方法不加 DAPT"
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "1 μM",
+          "reported_window": "d16 起",
+          "locator": "Media tables",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 5311272,
+        "MolecularFormula": "C23H26F2N2O4",
+        "MolecularWeight": "432.5",
+        "SMILES": "C[C@@H](C(=O)N[C@@H](C1=CC=CC=C1)C(=O)OC(C)(C)C)NC(=O)CC2=CC(=CC(=C2)F)F",
+        "ConnectivitySMILES": "CC(C(=O)NC(C1=CC=CC=C1)C(=O)OC(C)(C)C)NC(=O)CC2=CC(=CC(=C2)F)F",
+        "InChIKey": "DWJXYEABWRJFSP-XOBRGWDASA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/5311272",
+      "drawing_smiles": "C[C@@H](C(=O)N[C@@H](C1=CC=CC=C1)C(=O)OC(C)(C)C)NC(=O)CC2=CC(=CC(=C2)F)F",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / EB",
+        "3D"
+      ],
+      "source_ids": [
+        "T2012",
+        "N2023",
+        "N2017",
+        "K2013",
+        "M2023"
+      ],
+      "drawing_formula": "C23H26F2N2O4",
+      "drawing_inchikey": "DWJXYEABWRJFSP-XOBRGWDASA-N",
+      "assets": {
+        "compact_svg": "assets/compact/dapt.svg",
+        "compact_png": "assets/compact/dapt.png",
+        "full_svg": "assets/full/dapt.svg",
+        "full_png": "assets/full/dapt.png",
+        "transparent_svg": "assets/transparent/dapt.svg",
+        "transparent_png": "assets/transparent/dapt.png"
+      }
+    },
+    {
+      "id": "db-camp",
+      "name": "db-cAMP",
+      "query": "Bucladesine",
+      "category": "神经成熟",
+      "mechanism": "cAMP 类似物",
+      "aliases": [
+        "dbcAMP",
+        "Dibutyryl cAMP",
+        "Bucladesine"
+      ],
+      "tier": "定向分化",
+      "note": "仅将明确 db-cAMP 或产品 D0627 的记录合并；单写 cAMP 且无产品身份的记录保留待确认。",
+      "evidence": [
+        {
+          "source_id": "N2023",
+          "reported_concentration": "500 μM",
+          "reported_window": "d21 起",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "400 μM",
+          "reported_window": "d12 分选后",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": ""
+        },
+        {
+          "source_id": "N2017",
+          "reported_concentration": "500 μM",
+          "reported_window": "终末重铺后",
+          "locator": "Procedure 3–23B",
+          "flag": ""
+        },
+        {
+          "source_id": "K2013",
+          "reported_concentration": "500 μM",
+          "reported_window": "d14 起",
+          "locator": "Differentiation procedure",
+          "flag": ""
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "500 μM",
+          "reported_window": "d16 起",
+          "locator": "Media tables",
+          "flag": "cAMP 产品 D0627，按 db-cAMP 身份归并"
+        }
+      ],
+      "pubchem": {
+        "CID": 9687,
+        "MolecularFormula": "C18H24N5O8P",
+        "MolecularWeight": "469.4",
+        "SMILES": "CCCC(=O)NC1=C2C(=NC=N1)N(C=N2)[C@H]3[C@@H]([C@H]4[C@H](O3)COP(=O)(O4)O)OC(=O)CCC",
+        "ConnectivitySMILES": "CCCC(=O)NC1=C2C(=NC=N1)N(C=N2)C3C(C4C(O3)COP(=O)(O4)O)OC(=O)CCC",
+        "InChIKey": "CJGYSWNGNKCJSB-YVLZZHOMSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/9687",
+      "drawing_smiles": "CCCC(=O)NC1=C2C(=NC=N1)N(C=N2)[C@H]3[C@@H]([C@H]4[C@H](O3)COP(=O)(O4)O)OC(=O)CCC",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / EB",
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "N2023",
+        "Ki2017",
+        "N2017",
+        "K2013",
+        "M2023"
+      ],
+      "drawing_formula": "C18H24N5O8P",
+      "drawing_inchikey": "CJGYSWNGNKCJSB-YVLZZHOMSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/db-camp.svg",
+        "compact_png": "assets/compact/db-camp.png",
+        "full_svg": "assets/full/db-camp.svg",
+        "full_png": "assets/full/db-camp.png",
+        "transparent_svg": "assets/transparent/db-camp.svg",
+        "transparent_png": "assets/transparent/db-camp.png"
+      }
+    },
+    {
+      "id": "l-ascorbic-acid",
+      "name": "L-Ascorbic acid",
+      "query": "L-ascorbic acid",
+      "category": "神经成熟",
+      "mechanism": "抗氧化 / 成熟支持",
+      "aliases": [
+        "AA",
+        "Vitamin C",
+        "抗坏血酸"
+      ],
+      "tier": "定向分化",
+      "note": "不与 ascorbate-2-phosphate 自动合并。Kyoto 文献 200 mM、部分方法 200 nM 存单位疑点。",
+      "evidence": [
+        {
+          "source_id": "N2023",
+          "reported_concentration": "200 μM",
+          "reported_window": "d16 起",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "200 mM（原文）",
+          "reported_window": "d12 分选后",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": "疑似单位误植；不作为可执行剂量"
+        },
+        {
+          "source_id": "N2017",
+          "reported_concentration": "0.2 mM",
+          "reported_window": "扩增 / 成熟",
+          "locator": "Procedure 3–23B",
+          "flag": ""
+        },
+        {
+          "source_id": "K2013",
+          "reported_concentration": "0.2 mM",
+          "reported_window": "d14 起",
+          "locator": "Differentiation procedure",
+          "flag": ""
+        },
+        {
+          "source_id": "M2023",
+          "reported_concentration": "200 μM",
+          "reported_window": "d11 起",
+          "locator": "Media tables",
+          "flag": ""
+        },
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "200 μM",
+          "reported_window": "BMM 成熟培养基",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 54670067,
+        "MolecularFormula": "C6H8O6",
+        "MolecularWeight": "176.12",
+        "SMILES": "C([C@@H]([C@@H]1C(=C(C(=O)O1)O)O)O)O",
+        "ConnectivitySMILES": "C(C(C1C(=C(C(=O)O1)O)O)O)O",
+        "InChIKey": "CIWBSHSKHKDKBQ-JLAZNSOCSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/54670067",
+      "drawing_smiles": "C([C@@H]([C@@H]1C(=C(C(=O)O1)O)O)O)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / EB",
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "N2023",
+        "Ki2017",
+        "N2017",
+        "K2013",
+        "M2023",
+        "Y2023"
+      ],
+      "drawing_formula": "C6H8O6",
+      "drawing_inchikey": "CIWBSHSKHKDKBQ-JLAZNSOCSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/l-ascorbic-acid.svg",
+        "compact_png": "assets/compact/l-ascorbic-acid.png",
+        "full_svg": "assets/full/l-ascorbic-acid.svg",
+        "full_png": "assets/full/l-ascorbic-acid.png",
+        "transparent_svg": "assets/transparent/l-ascorbic-acid.svg",
+        "transparent_png": "assets/transparent/l-ascorbic-acid.png"
+      }
+    },
+    {
+      "id": "y-27632",
+      "name": "Y-27632",
+      "query": "Y-27632",
+      "category": "存活支持",
+      "mechanism": "ROCK 抑制",
+      "aliases": [
+        "Y27632",
+        "ROCK inhibitor"
+      ],
+      "tier": "培养辅助",
+      "note": "用于解离、重铺或成球存活；不是区域命运因子。",
+      "evidence": [
+        {
+          "source_id": "T2012",
+          "reported_concentration": "10 μM",
+          "reported_window": "分化前解离接种",
+          "locator": "Procedure 11–26",
+          "flag": ""
+        },
+        {
+          "source_id": "N2023",
+          "reported_concentration": "10 μM",
+          "reported_window": "d11、d16、可选 d21 重铺",
+          "locator": "Steps 5–17",
+          "flag": ""
+        },
+        {
+          "source_id": "Ki2017",
+          "reported_concentration": "30 μM",
+          "reported_window": "d12 分选后首次重铺",
+          "locator": "Induction of dopaminergic progenitors",
+          "flag": ""
+        },
+        {
+          "source_id": "N2017",
+          "reported_concentration": "10 μM",
+          "reported_window": "接种 / 重铺",
+          "locator": "Procedure 3–23B",
+          "flag": ""
+        },
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "100 μM（原文）",
+          "reported_window": "初始成球培养基",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 448042,
+        "MolecularFormula": "C14H21N3O",
+        "MolecularWeight": "247.34",
+        "SMILES": "C[C@H](C1CCC(CC1)C(=O)NC2=CC=NC=C2)N",
+        "ConnectivitySMILES": "CC(C1CCC(CC1)C(=O)NC2=CC=NC=C2)N",
+        "InChIKey": "IYOZTVGMEWJPKR-VOMCLLRMSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/448042",
+      "drawing_smiles": "C[C@H](C1CCC(CC1)C(=O)NC2=CC=NC=C2)N",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "T2012",
+        "N2023",
+        "Ki2017",
+        "N2017",
+        "Y2023"
+      ],
+      "drawing_formula": "C14H21N3O",
+      "drawing_inchikey": "IYOZTVGMEWJPKR-VOMCLLRMSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/y-27632.svg",
+        "compact_png": "assets/compact/y-27632.png",
+        "full_svg": "assets/full/y-27632.svg",
+        "full_png": "assets/full/y-27632.png",
+        "transparent_svg": "assets/transparent/y-27632.svg",
+        "transparent_png": "assets/transparent/y-27632.png"
+      }
+    },
+    {
+      "id": "gw3965",
+      "name": "GW3965",
+      "query": "GW3965",
+      "category": "神经成熟",
+      "mechanism": "LXR 激动",
+      "aliases": [
+        "GW-3965"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "N2023",
+          "reported_concentration": "10 μM",
+          "reported_window": "d16–20",
+          "locator": "Steps 5–17",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 447905,
+        "MolecularFormula": "C33H31ClF3NO3",
+        "MolecularWeight": "582.0",
+        "SMILES": "C1=CC=C(C=C1)C(CN(CCCOC2=CC=CC(=C2)CC(=O)O)CC3=C(C(=CC=C3)C(F)(F)F)Cl)C4=CC=CC=C4",
+        "ConnectivitySMILES": "C1=CC=C(C=C1)C(CN(CCCOC2=CC=CC(=C2)CC(=O)O)CC3=C(C(=CC=C3)C(F)(F)F)Cl)C4=CC=CC=C4",
+        "InChIKey": "NAXSRXHZFIBFMI-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/447905",
+      "drawing_smiles": "C1=CC=C(C=C1)C(CN(CCCOC2=CC=CC(=C2)CC(=O)O)CC3=C(C(=CC=C3)C(F)(F)F)Cl)C4=CC=CC=C4",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "N2023"
+      ],
+      "drawing_formula": "C33H31ClF3NO3",
+      "drawing_inchikey": "NAXSRXHZFIBFMI-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/gw3965.svg",
+        "compact_png": "assets/compact/gw3965.png",
+        "full_svg": "assets/full/gw3965.svg",
+        "full_png": "assets/full/gw3965.png",
+        "transparent_svg": "assets/transparent/gw3965.svg",
+        "transparent_png": "assets/transparent/gw3965.png"
+      }
+    },
+    {
+      "id": "pd0325901",
+      "name": "PD0325901",
+      "query": "PD0325901",
+      "category": "神经成熟",
+      "mechanism": "MEK 抑制",
+      "aliases": [
+        "PD-0325901",
+        "Mirdametinib"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "N2023",
+          "reported_concentration": "1 μM",
+          "reported_window": "d21–27",
+          "locator": "Steps 15–17",
+          "flag": "d21 首次添加位于可选重铺分支；不自行补全另一分支"
+        }
+      ],
+      "pubchem": {
+        "CID": 9826528,
+        "MolecularFormula": "C16H14F3IN2O4",
+        "MolecularWeight": "482.19",
+        "SMILES": "C1=CC(=C(C=C1I)F)NC2=C(C=CC(=C2F)F)C(=O)NOC[C@@H](CO)O",
+        "ConnectivitySMILES": "C1=CC(=C(C=C1I)F)NC2=C(C=CC(=C2F)F)C(=O)NOCC(CO)O",
+        "InChIKey": "SUDAHWBOROXANE-SECBINFHSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/9826528",
+      "drawing_smiles": "C1=CC(=C(C=C1I)F)NC2=C(C=CC(=C2F)F)C(=O)NOC[C@@H](CO)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "N2023"
+      ],
+      "drawing_formula": "C16H14F3IN2O4",
+      "drawing_inchikey": "SUDAHWBOROXANE-SECBINFHSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/pd0325901.svg",
+        "compact_png": "assets/compact/pd0325901.png",
+        "full_svg": "assets/full/pd0325901.svg",
+        "full_png": "assets/full/pd0325901.png",
+        "transparent_svg": "assets/transparent/pd0325901.svg",
+        "transparent_png": "assets/transparent/pd0325901.png"
+      }
+    },
+    {
+      "id": "su5402",
+      "name": "SU5402",
+      "query": "SU5402",
+      "category": "神经成熟",
+      "mechanism": "FGFR 抑制",
+      "aliases": [
+        "SU-5402"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "N2023",
+          "reported_concentration": "5 μM",
+          "reported_window": "d21–27",
+          "locator": "Steps 15–17",
+          "flag": "d21 首次添加位于可选重铺分支；不自行补全另一分支"
+        }
+      ],
+      "pubchem": {
+        "CID": 5289418,
+        "MolecularFormula": "C17H16N2O3",
+        "MolecularWeight": "296.32",
+        "SMILES": "CC1=CNC(=C1CCC(=O)O)/C=C\\2/C3=CC=CC=C3NC2=O",
+        "ConnectivitySMILES": "CC1=CNC(=C1CCC(=O)O)C=C2C3=CC=CC=C3NC2=O",
+        "InChIKey": "JNDVEAXZWJIOKB-JYRVWZFOSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/5289418",
+      "drawing_smiles": "CC1=CNC(=C1CCC(=O)O)/C=C\\2/C3=CC=CC=C3NC2=O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "N2023"
+      ],
+      "drawing_formula": "C17H16N2O3",
+      "drawing_inchikey": "JNDVEAXZWJIOKB-JYRVWZFOSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/su5402.svg",
+        "compact_png": "assets/compact/su5402.png",
+        "full_svg": "assets/full/su5402.svg",
+        "full_png": "assets/full/su5402.png",
+        "transparent_svg": "assets/transparent/su5402.svg",
+        "transparent_png": "assets/transparent/su5402.png"
+      }
+    },
+    {
+      "id": "quercetin",
+      "name": "Quercetin",
+      "query": "Quercetin",
+      "category": "细胞筛选",
+      "mechanism": "清除残余未分化 hPSC",
+      "aliases": [
+        "槲皮素"
+      ],
+      "tier": "培养辅助",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "Km2022",
+          "reported_concentration": "40 μM",
+          "reported_window": "d9，≤20 h；d10 去除",
+          "locator": "Reagent setup / Step 20",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 5280343,
+        "MolecularFormula": "C15H10O7",
+        "MolecularWeight": "302.23",
+        "SMILES": "C1=CC(=C(C=C1C2=C(C(=O)C3=C(C=C(C=C3O2)O)O)O)O)O",
+        "ConnectivitySMILES": "C1=CC(=C(C=C1C2=C(C(=O)C3=C(C=C(C=C3O2)O)O)O)O)O",
+        "InChIKey": "REFJWTPEDVJJIY-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/5280343",
+      "drawing_smiles": "C1=CC(=C(C=C1C2=C(C(=O)C3=C(C=C(C=C3O2)O)O)O)O)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "Km2022"
+      ],
+      "drawing_formula": "C15H10O7",
+      "drawing_inchikey": "REFJWTPEDVJJIY-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/quercetin.svg",
+        "compact_png": "assets/compact/quercetin.png",
+        "full_svg": "assets/full/quercetin.svg",
+        "full_png": "assets/full/quercetin.png",
+        "transparent_svg": "assets/transparent/quercetin.svg",
+        "transparent_png": "assets/transparent/quercetin.png"
+      }
+    },
+    {
+      "id": "dorsomorphin",
+      "name": "Dorsomorphin",
+      "query": "Dorsomorphin",
+      "category": "神经诱导",
+      "mechanism": "BMP 信号抑制；亦有其他靶点",
+      "aliases": [
+        "Compound C"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "Na2023",
+          "reported_concentration": "3 μM",
+          "reported_window": "CTraS 预处理 5 d",
+          "locator": "In vitro neuronal induction",
+          "flag": ""
+        },
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "2 μM",
+          "reported_window": "DIV1–3",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 11524144,
+        "MolecularFormula": "C24H25N5O",
+        "MolecularWeight": "399.5",
+        "SMILES": "C1CCN(CC1)CCOC2=CC=C(C=C2)C3=CN4C(=C(C=N4)C5=CC=NC=C5)N=C3",
+        "ConnectivitySMILES": "C1CCN(CC1)CCOC2=CC=C(C=C2)C3=CN4C(=C(C=N4)C5=CC=NC=C5)N=C3",
+        "InChIKey": "XHBVYDAKJHETMP-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/11524144",
+      "drawing_smiles": "C1CCN(CC1)CCOC2=CC=C(C=C2)C3=CN4C(=C(C=N4)C5=CC=NC=C5)N=C3",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D / neurosphere",
+        "3D"
+      ],
+      "source_ids": [
+        "Na2023",
+        "Y2023"
+      ],
+      "drawing_formula": "C24H25N5O",
+      "drawing_inchikey": "XHBVYDAKJHETMP-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/dorsomorphin.svg",
+        "compact_png": "assets/compact/dorsomorphin.png",
+        "full_svg": "assets/full/dorsomorphin.svg",
+        "full_png": "assets/full/dorsomorphin.png",
+        "transparent_svg": "assets/transparent/dorsomorphin.svg",
+        "transparent_png": "assets/transparent/dorsomorphin.png"
+      }
+    },
+    {
+      "id": "all-trans-retinoic-acid",
+      "name": "all-trans Retinoic acid",
+      "query": "Tretinoin",
+      "category": "区域化",
+      "mechanism": "RAR 激动 / 历史区域化",
+      "aliases": [
+        "RA",
+        "ATRA",
+        "Tretinoin"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "仅支持指定历史路线；不可直接替换现代 floor-plate 配方。",
+      "evidence": [
+        {
+          "source_id": "C2010",
+          "reported_concentration": "10 nM",
+          "reported_window": "早期神经外胚层；精确日表未核实",
+          "locator": "Results / Experimental Methods",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 444795,
+        "MolecularFormula": "C20H28O2",
+        "MolecularWeight": "300.4",
+        "SMILES": "CC1=C(C(CCC1)(C)C)/C=C/C(=C/C=C/C(=C/C(=O)O)/C)/C",
+        "ConnectivitySMILES": "CC1=C(C(CCC1)(C)C)C=CC(=CC=CC(=CC(=O)O)C)C",
+        "InChIKey": "SHGAZHPCJJPHSC-YCNIQYBTSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/444795",
+      "drawing_smiles": "CC1=C(C(CCC1)(C)C)/C=C/C(=C/C=C/C(=C/C(=O)O)/C)/C",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "C2010"
+      ],
+      "drawing_formula": "C20H28O2",
+      "drawing_inchikey": "SHGAZHPCJJPHSC-YCNIQYBTSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/all-trans-retinoic-acid.svg",
+        "compact_png": "assets/compact/all-trans-retinoic-acid.png",
+        "full_svg": "assets/full/all-trans-retinoic-acid.svg",
+        "full_png": "assets/full/all-trans-retinoic-acid.png",
+        "transparent_svg": "assets/transparent/all-trans-retinoic-acid.svg",
+        "transparent_png": "assets/transparent/all-trans-retinoic-acid.png"
+      }
+    },
+    {
+      "id": "bio",
+      "name": "BIO",
+      "query": "6-bromoindirubin-3-oxime",
+      "category": "区域化",
+      "mechanism": "GSK3 抑制",
+      "aliases": [
+        "6-BIO",
+        "6-bromoindirubin-3′-oxime"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "证据来自混合中脑神经元路线。PubChem 自动标准化为另一互变异构形式；图采用 Sigma B1686 明确的 oxime 结构。",
+      "evidence": [
+        {
+          "source_id": "Km2018",
+          "reported_concentration": "1 μM",
+          "reported_window": "hPSC-NPC 处理 1 周",
+          "locator": "Human PSC culture and differentiation",
+          "flag": "混合中脑神经元"
+        }
+      ],
+      "pubchem": {
+        "CID": 448949,
+        "MolecularFormula": "C16H10BrN3O2",
+        "MolecularWeight": "356.17",
+        "SMILES": "C1=CC=C2C(=C1)C(=C(N2)C3=C(NC4=C3C=CC(=C4)Br)O)N=O",
+        "ConnectivitySMILES": "C1=CC=C2C(=C1)C(=C(N2)C3=C(NC4=C3C=CC(=C4)Br)O)N=O",
+        "InChIKey": "SAQUSDSPQYQNBG-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://www.sigmaaldrich.com/CX/en/product/sigma/b1686",
+      "drawing_smiles": "O\\N=C1\\C(Nc2ccccc12)=C3\\C(=O)Nc4cc(Br)ccc34",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "Km2018"
+      ],
+      "drawing_formula": "C16H10BrN3O2",
+      "drawing_inchikey": "DDLZLOKCJHBUHD-WAVHTBQISA-N",
+      "assets": {
+        "compact_svg": "assets/compact/bio.svg",
+        "compact_png": "assets/compact/bio.png",
+        "full_svg": "assets/full/bio.svg",
+        "full_png": "assets/full/bio.png",
+        "transparent_svg": "assets/transparent/bio.svg",
+        "transparent_png": "assets/transparent/bio.png"
+      }
+    },
+    {
+      "id": "forskolin",
+      "name": "Forskolin",
+      "query": "Forskolin",
+      "category": "神经成熟",
+      "mechanism": "腺苷酸环化酶激活",
+      "aliases": [
+        "FSK"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "Km2018",
+          "reported_concentration": "5 μM",
+          "reported_window": "后续神经元成熟",
+          "locator": "Human PSC culture and differentiation",
+          "flag": ""
+        },
+        {
+          "source_id": "F2026",
+          "reported_concentration": "4 μM（NB）；10 μM（NBA）",
+          "reported_window": "各自成熟培养基",
+          "locator": "Media composition",
+          "flag": "不同培养基分支；不可合并为剂量范围"
+        }
+      ],
+      "pubchem": {
+        "CID": 47936,
+        "MolecularFormula": "C22H34O7",
+        "MolecularWeight": "410.5",
+        "SMILES": "CC(=O)O[C@H]1[C@H]([C@@H]2[C@]([C@H](CCC2(C)C)O)([C@@]3([C@@]1(O[C@@](CC3=O)(C)C=C)C)O)C)O",
+        "ConnectivitySMILES": "CC(=O)OC1C(C2C(CCC(C2(C3(C1(OC(CC3=O)(C)C=C)C)O)C)O)(C)C)O",
+        "InChIKey": "OHCQJHSOBUTRHG-KGGHGJDLSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/47936",
+      "drawing_smiles": "CC(=O)O[C@H]1[C@H]([C@@H]2[C@]([C@H](CCC2(C)C)O)([C@@]3([C@@]1(O[C@@](CC3=O)(C)C=C)C)O)C)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "Km2018",
+        "F2026"
+      ],
+      "drawing_formula": "C22H34O7",
+      "drawing_inchikey": "OHCQJHSOBUTRHG-KGGHGJDLSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/forskolin.svg",
+        "compact_png": "assets/compact/forskolin.png",
+        "full_svg": "assets/full/forskolin.svg",
+        "full_png": "assets/full/forskolin.png",
+        "transparent_svg": "assets/transparent/forskolin.svg",
+        "transparent_png": "assets/transparent/forskolin.png"
+      }
+    },
+    {
+      "id": "lm22a4",
+      "name": "LM22A4",
+      "query": "LM22A4",
+      "category": "神经成熟",
+      "mechanism": "文献中作为神经营养小分子使用",
+      "aliases": [
+        "LM22A-4"
+      ],
+      "tier": "定向分化",
+      "note": "配方用途的纳入不构成对直接 TrkB 作用机制的独立验证。",
+      "evidence": [
+        {
+          "source_id": "M2023",
+          "reported_concentration": "2 μM",
+          "reported_window": "d11 起",
+          "locator": "Media tables",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 2054170,
+        "MolecularFormula": "C15H21N3O6",
+        "MolecularWeight": "339.34",
+        "SMILES": "C1=C(C=C(C=C1C(=O)NCCO)C(=O)NCCO)C(=O)NCCO",
+        "ConnectivitySMILES": "C1=C(C=C(C=C1C(=O)NCCO)C(=O)NCCO)C(=O)NCCO",
+        "InChIKey": "RGWJKANXFYJKHN-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/2054170",
+      "drawing_smiles": "C1=C(C=C(C=C1C(=O)NCCO)C(=O)NCCO)C(=O)NCCO",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "3D"
+      ],
+      "source_ids": [
+        "M2023"
+      ],
+      "drawing_formula": "C15H21N3O6",
+      "drawing_inchikey": "RGWJKANXFYJKHN-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/lm22a4.svg",
+        "compact_png": "assets/compact/lm22a4.png",
+        "full_svg": "assets/full/lm22a4.svg",
+        "full_png": "assets/full/lm22a4.png",
+        "transparent_svg": "assets/transparent/lm22a4.svg",
+        "transparent_png": "assets/transparent/lm22a4.png"
+      }
+    },
+    {
+      "id": "compound-e",
+      "name": "Compound E",
+      "query": "Compound E",
+      "category": "神经成熟",
+      "mechanism": "γ-secretase 抑制",
+      "aliases": [],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "A2025",
+          "reported_concentration": "1 μM",
+          "reported_window": "d8 起",
+          "locator": "Organoid differentiation",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 11306390,
+        "MolecularFormula": "C27H24F2N4O3",
+        "MolecularWeight": "490.5",
+        "SMILES": "C[C@@H](C(=O)N[C@@H]1C(=O)N(C2=CC=CC=C2C(=N1)C3=CC=CC=C3)C)NC(=O)CC4=CC(=CC(=C4)F)F",
+        "ConnectivitySMILES": "CC(C(=O)NC1C(=O)N(C2=CC=CC=C2C(=N1)C3=CC=CC=C3)C)NC(=O)CC4=CC(=CC(=C4)F)F",
+        "InChIKey": "JNGZXGGOCLZBFB-IVCQMTBJSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/11306390",
+      "drawing_smiles": "C[C@@H](C(=O)N[C@@H]1C(=O)N(C2=CC=CC=C2C(=N1)C3=CC=CC=C3)C)NC(=O)CC4=CC(=CC(=C4)F)F",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "3D"
+      ],
+      "source_ids": [
+        "A2025"
+      ],
+      "drawing_formula": "C27H24F2N4O3",
+      "drawing_inchikey": "JNGZXGGOCLZBFB-IVCQMTBJSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/compound-e.svg",
+        "compact_png": "assets/compact/compound-e.png",
+        "full_svg": "assets/full/compound-e.svg",
+        "full_png": "assets/full/compound-e.png",
+        "transparent_svg": "assets/transparent/compound-e.svg",
+        "transparent_png": "assets/transparent/compound-e.png"
+      }
+    },
+    {
+      "id": "iwp-2",
+      "name": "IWP-2",
+      "query": "IWP-2",
+      "category": "区域化",
+      "mechanism": "抑制 WNT 配体生成 / 分泌",
+      "aliases": [
+        "IWP2"
+      ],
+      "tier": "定向分化",
+      "note": "与 CHIR 的作用方向不同；阶段和组合依赖原路线。",
+      "evidence": [
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "1 μM",
+          "reported_window": "DIV1–3",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 2155128,
+        "MolecularFormula": "C22H18N4O2S3",
+        "MolecularWeight": "466.6",
+        "SMILES": "CC1=CC2=C(C=C1)N=C(S2)NC(=O)CSC3=NC4=C(C(=O)N3C5=CC=CC=C5)SCC4",
+        "ConnectivitySMILES": "CC1=CC2=C(C=C1)N=C(S2)NC(=O)CSC3=NC4=C(C(=O)N3C5=CC=CC=C5)SCC4",
+        "InChIKey": "WRKPZSMRWPJJDH-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/2155128",
+      "drawing_smiles": "CC1=CC2=C(C=C1)N=C(S2)NC(=O)CSC3=NC4=C(C(=O)N3C5=CC=CC=C5)SCC4",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "3D"
+      ],
+      "source_ids": [
+        "Y2023"
+      ],
+      "drawing_formula": "C22H18N4O2S3",
+      "drawing_inchikey": "WRKPZSMRWPJJDH-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/iwp-2.svg",
+        "compact_png": "assets/compact/iwp-2.png",
+        "full_svg": "assets/full/iwp-2.svg",
+        "full_png": "assets/full/iwp-2.png",
+        "transparent_svg": "assets/transparent/iwp-2.svg",
+        "transparent_png": "assets/transparent/iwp-2.png"
+      }
+    },
+    {
+      "id": "thiazovivin",
+      "name": "Thiazovivin",
+      "query": "Thiazovivin",
+      "category": "存活支持",
+      "mechanism": "ROCK 抑制",
+      "aliases": [
+        "TZV"
+      ],
+      "tier": "培养辅助",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "P2023",
+          "reported_concentration": "10 μM",
+          "reported_window": "初始约 2 d",
+          "locator": "Table 1 / procedure 2A",
+          "flag": "表写 Days 0–2；正文写 Days 0–1，端点不一致"
+        }
+      ],
+      "pubchem": {
+        "CID": 46209426,
+        "MolecularFormula": "C15H13N5OS",
+        "MolecularWeight": "311.4",
+        "SMILES": "C1=CC=C(C=C1)CNC(=O)C2=CSC(=N2)NC3=NC=NC=C3",
+        "ConnectivitySMILES": "C1=CC=C(C=C1)CNC(=O)C2=CSC(=N2)NC3=NC=NC=C3",
+        "InChIKey": "DOBKQCZBPPCLEG-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/46209426",
+      "drawing_smiles": "C1=CC=C(C=C1)CNC(=O)C2=CSC(=N2)NC3=NC=NC=C3",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D / EB"
+      ],
+      "source_ids": [
+        "P2023"
+      ],
+      "drawing_formula": "C15H13N5OS",
+      "drawing_inchikey": "DOBKQCZBPPCLEG-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/thiazovivin.svg",
+        "compact_png": "assets/compact/thiazovivin.png",
+        "full_svg": "assets/full/thiazovivin.svg",
+        "full_png": "assets/full/thiazovivin.png",
+        "transparent_svg": "assets/transparent/thiazovivin.svg",
+        "transparent_png": "assets/transparent/thiazovivin.png"
+      }
+    },
+    {
+      "id": "dmh1",
+      "name": "DMH1",
+      "query": "DMH1",
+      "category": "神经诱导",
+      "mechanism": "BMP I 型受体抑制",
+      "aliases": [
+        "DMH-1"
+      ],
+      "tier": "定向分化",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "G2013",
+          "reported_concentration": "1 μM",
+          "reported_window": "NSC 诱导 7 d",
+          "locator": "Derivation and growth of hPSC-NSCs",
+          "flag": ""
+        },
+        {
+          "source_id": "DM2025",
+          "reported_concentration": "2 μM",
+          "reported_window": "神经诱导培养基",
+          "locator": "Media table",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 50997747,
+        "MolecularFormula": "C24H20N4O",
+        "MolecularWeight": "380.4",
+        "SMILES": "CC(C)OC1=CC=C(C=C1)C2=CN3C(=C(C=N3)C4=CC=NC5=CC=CC=C45)N=C2",
+        "ConnectivitySMILES": "CC(C)OC1=CC=C(C=C1)C2=CN3C(=C(C=N3)C4=CC=NC5=CC=CC=C45)N=C2",
+        "InChIKey": "JMIFGARJSWXZSH-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/50997747",
+      "drawing_smiles": "CC(C)OC1=CC=C(C=C1)C2=CN3C(=C(C=N3)C4=CC=NC5=CC=CC=C45)N=C2",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D",
+        "3D"
+      ],
+      "source_ids": [
+        "G2013",
+        "DM2025"
+      ],
+      "drawing_formula": "C24H20N4O",
+      "drawing_inchikey": "JMIFGARJSWXZSH-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/dmh1.svg",
+        "compact_png": "assets/compact/dmh1.png",
+        "full_svg": "assets/full/dmh1.svg",
+        "full_png": "assets/full/dmh1.png",
+        "transparent_svg": "assets/transparent/dmh1.svg",
+        "transparent_png": "assets/transparent/dmh1.png"
+      }
+    },
+    {
+      "id": "sb218078",
+      "name": "SB218078",
+      "query": "SB218078",
+      "category": "神经诱导",
+      "mechanism": "CHK1 抑制剂；该路线用于 NSC 诱导",
+      "aliases": [
+        "SB-218078"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "G2013",
+          "reported_concentration": "5 μM",
+          "reported_window": "NSC 诱导 7 d",
+          "locator": "Derivation and growth of hPSC-NSCs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 3387354,
+        "MolecularFormula": "C24H15N3O3",
+        "MolecularWeight": "393.4",
+        "SMILES": "C1CC2N3C4=CC=CC=C4C5=C6C(=C7C8=CC=CC=C8N(C1O2)C7=C53)C(=O)NC6=O",
+        "ConnectivitySMILES": "C1CC2N3C4=CC=CC=C4C5=C6C(=C7C8=CC=CC=C8N(C1O2)C7=C53)C(=O)NC6=O",
+        "InChIKey": "OTPNDVKVEAIXTI-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/3387354",
+      "drawing_smiles": "C1CC2N3C4=CC=CC=C4C5=C6C(=C7C8=CC=CC=C8N(C1O2)C7=C53)C(=O)NC6=O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "G2013"
+      ],
+      "drawing_formula": "C24H15N3O3",
+      "drawing_inchikey": "OTPNDVKVEAIXTI-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/sb218078.svg",
+        "compact_png": "assets/compact/sb218078.png",
+        "full_svg": "assets/full/sb218078.svg",
+        "full_png": "assets/full/sb218078.png",
+        "transparent_svg": "assets/transparent/sb218078.svg",
+        "transparent_png": "assets/transparent/sb218078.png"
+      }
+    },
+    {
+      "id": "guggulsterone",
+      "name": "Guggulsterone",
+      "query": "Guggulsterone",
+      "category": "神经成熟",
+      "mechanism": "历史 NSC-to-DA 化学分化",
+      "aliases": [
+        "GS"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "主文仅写 guggulsterone；E/Z 身份未确认。图保留甾体骨架，外侧双键 E/Z 未指定。",
+      "evidence": [
+        {
+          "source_id": "G2013",
+          "reported_concentration": "2.5 μM（筛选阶段）",
+          "reported_window": "DA 前体终末分化；延长培养另见原文",
+          "locator": "Screening / Results",
+          "flag": "未核实 E/Z；长期培养浓度未独立确认"
+        }
+      ],
+      "pubchem": {
+        "CID": 6450278,
+        "MolecularFormula": "C21H28O2",
+        "MolecularWeight": "312.4",
+        "SMILES": "C/C=C/1\\C(=O)C[C@@H]2[C@@]1(CC[C@H]3[C@H]2CCC4=CC(=O)CC[C@]34C)C",
+        "ConnectivitySMILES": "CC=C1C(=O)CC2C1(CCC3C2CCC4=CC(=O)CCC34C)C",
+        "InChIKey": "WDXRGPWQVHZTQJ-OSJVMJFVSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/6450278",
+      "drawing_smiles": "CC=C1C(=O)C[C@@H]2[C@@]1(CC[C@H]3[C@H]2CCC4=CC(=O)CC[C@]34C)C",
+      "depiction_note": "PubChem 母体骨架；主动去除外侧双键 E/Z 指定，不能用于识别试剂异构体。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "G2013"
+      ],
+      "drawing_formula": "C21H28O2",
+      "drawing_inchikey": "WDXRGPWQVHZTQJ-NRJJLHBYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/guggulsterone.svg",
+        "compact_png": "assets/compact/guggulsterone.png",
+        "full_svg": "assets/full/guggulsterone.svg",
+        "full_png": "assets/full/guggulsterone.png",
+        "transparent_svg": "assets/transparent/guggulsterone.svg",
+        "transparent_png": "assets/transparent/guggulsterone.png"
+      }
+    },
+    {
+      "id": "mevastatin",
+      "name": "Mevastatin",
+      "query": "Mevastatin",
+      "category": "神经成熟",
+      "mechanism": "HMG-CoA reductase 抑制；hPSC 分支促 DA 表型",
+      "aliases": [
+        "Compactin"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "S2015",
+          "reported_concentration": "未独立核实 hPSC 图中浓度",
+          "reported_window": "从 hPSC-NPC 区域化开始",
+          "locator": "Compound effects on human PSCs / Fig. 7",
+          "flag": "不可挪用胎源 ReNCell 的剂量"
+        }
+      ],
+      "pubchem": {
+        "CID": 64715,
+        "MolecularFormula": "C23H34O5",
+        "MolecularWeight": "390.5",
+        "SMILES": "CC[C@H](C)C(=O)O[C@H]1CCC=C2[C@H]1[C@H]([C@H](C=C2)C)CC[C@@H]3C[C@H](CC(=O)O3)O",
+        "ConnectivitySMILES": "CCC(C)C(=O)OC1CCC=C2C1C(C(C=C2)C)CCC3CC(CC(=O)O3)O",
+        "InChIKey": "AJLFOPYRIVGYMJ-INTXDZFKSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/64715",
+      "drawing_smiles": "CC[C@H](C)C(=O)O[C@H]1CCC=C2[C@H]1[C@H]([C@H](C=C2)C)CC[C@@H]3C[C@H](CC(=O)O3)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "S2015"
+      ],
+      "drawing_formula": "C23H34O5",
+      "drawing_inchikey": "AJLFOPYRIVGYMJ-INTXDZFKSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/mevastatin.svg",
+        "compact_png": "assets/compact/mevastatin.png",
+        "full_svg": "assets/full/mevastatin.svg",
+        "full_png": "assets/full/mevastatin.png",
+        "transparent_svg": "assets/transparent/mevastatin.svg",
+        "transparent_png": "assets/transparent/mevastatin.png"
+      }
+    },
+    {
+      "id": "ly364947",
+      "name": "LY364947",
+      "query": "LY364947",
+      "category": "神经成熟",
+      "mechanism": "TGFβ receptor I 抑制",
+      "aliases": [
+        "LY-364947"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "S2015",
+          "reported_concentration": "未独立核实 hPSC 图中浓度",
+          "reported_window": "从 hPSC-NPC 区域化开始",
+          "locator": "Compound effects on human PSCs / Fig. 7",
+          "flag": "不可挪用胎源 ReNCell 的剂量"
+        }
+      ],
+      "pubchem": {
+        "CID": 447966,
+        "MolecularFormula": "C17H12N4",
+        "MolecularWeight": "272.30",
+        "SMILES": "C1=CC=C2C(=C1)C(=CC=N2)C3=C(NN=C3)C4=CC=CC=N4",
+        "ConnectivitySMILES": "C1=CC=C2C(=C1)C(=CC=N2)C3=C(NN=C3)C4=CC=CC=N4",
+        "InChIKey": "IBCXZJCWDGCXQT-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/447966",
+      "drawing_smiles": "C1=CC=C2C(=C1)C(=CC=N2)C3=C(NN=C3)C4=CC=CC=N4",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "S2015"
+      ],
+      "drawing_formula": "C17H12N4",
+      "drawing_inchikey": "IBCXZJCWDGCXQT-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/ly364947.svg",
+        "compact_png": "assets/compact/ly364947.png",
+        "full_svg": "assets/full/ly364947.svg",
+        "full_png": "assets/full/ly364947.png",
+        "transparent_svg": "assets/transparent/ly364947.svg",
+        "transparent_png": "assets/transparent/ly364947.png"
+      }
+    },
+    {
+      "id": "doxycycline",
+      "name": "Doxycycline",
+      "query": "Doxycycline",
+      "category": "转基因辅助",
+      "mechanism": "Tet 系统诱导 NGN2 表达",
+      "aliases": [
+        "Dox"
+      ],
+      "tier": "转基因辅助",
+      "note": "仅在带相应构建体的细胞中承担诱导作用。",
+      "evidence": [
+        {
+          "source_id": "Sh2023",
+          "reported_concentration": "2 μg/mL",
+          "reported_window": "d0 起，按培养阶段",
+          "locator": "D0/1、D2 tables / Step 21",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 54671203,
+        "MolecularFormula": "C22H24N2O8",
+        "MolecularWeight": "444.4",
+        "SMILES": "C[C@@H]1[C@H]2[C@@H]([C@H]3[C@@H](C(=O)C(=C([C@]3(C(=O)C2=C(C4=C1C=CC=C4O)O)O)O)C(=O)N)N(C)C)O",
+        "ConnectivitySMILES": "CC1C2C(C3C(C(=O)C(=C(C3(C(=O)C2=C(C4=C1C=CC=C4O)O)O)O)C(=O)N)N(C)C)O",
+        "InChIKey": "SGKRLCUYIXIAHR-AKNGSSGZSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/54671203",
+      "drawing_smiles": "C[C@@H]1[C@H]2[C@@H]([C@H]3[C@@H](C(=O)C(=C([C@]3(C(=O)C2=C(C4=C1C=CC=C4O)O)O)O)C(=O)N)N(C)C)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D / TF-assisted"
+      ],
+      "source_ids": [
+        "Sh2023"
+      ],
+      "drawing_formula": "C22H24N2O8",
+      "drawing_inchikey": "SGKRLCUYIXIAHR-AKNGSSGZSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/doxycycline.svg",
+        "compact_png": "assets/compact/doxycycline.png",
+        "full_svg": "assets/full/doxycycline.svg",
+        "full_png": "assets/full/doxycycline.png",
+        "transparent_svg": "assets/transparent/doxycycline.svg",
+        "transparent_png": "assets/transparent/doxycycline.png"
+      }
+    },
+    {
+      "id": "puromycin",
+      "name": "Puromycin",
+      "query": "Puromycin",
+      "category": "细胞筛选",
+      "mechanism": "抗性基因配套筛选",
+      "aliases": [
+        "Puro"
+      ],
+      "tier": "转基因辅助",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "Sh2023",
+          "reported_concentration": "1–10 μg/mL（测试范围）",
+          "reported_window": "d0–1",
+          "locator": "Steps 12–15",
+          "flag": "依细胞系优化，不是单一推荐剂量"
+        }
+      ],
+      "pubchem": {
+        "CID": 439530,
+        "MolecularFormula": "C22H29N7O5",
+        "MolecularWeight": "471.5",
+        "SMILES": "CN(C)C1=NC=NC2=C1N=CN2[C@H]3[C@@H]([C@@H]([C@H](O3)CO)NC(=O)[C@H](CC4=CC=C(C=C4)OC)N)O",
+        "ConnectivitySMILES": "CN(C)C1=NC=NC2=C1N=CN2C3C(C(C(O3)CO)NC(=O)C(CC4=CC=C(C=C4)OC)N)O",
+        "InChIKey": "RXWNCPJZOCPEPQ-NVWDDTSBSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/439530",
+      "drawing_smiles": "CN(C)C1=NC=NC2=C1N=CN2[C@H]3[C@@H]([C@@H]([C@H](O3)CO)NC(=O)[C@H](CC4=CC=C(C=C4)OC)N)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D / TF-assisted"
+      ],
+      "source_ids": [
+        "Sh2023"
+      ],
+      "drawing_formula": "C22H29N7O5",
+      "drawing_inchikey": "RXWNCPJZOCPEPQ-NVWDDTSBSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/puromycin.svg",
+        "compact_png": "assets/compact/puromycin.png",
+        "full_svg": "assets/full/puromycin.svg",
+        "full_png": "assets/full/puromycin.png",
+        "transparent_svg": "assets/transparent/puromycin.svg",
+        "transparent_png": "assets/transparent/puromycin.png"
+      }
+    },
+    {
+      "id": "ara-c",
+      "name": "Ara-C",
+      "query": "Cytarabine",
+      "category": "细胞筛选",
+      "mechanism": "抗有丝分裂；去除增殖细胞",
+      "aliases": [
+        "Cytarabine",
+        "Cytosine arabinoside"
+      ],
+      "tier": "转基因辅助",
+      "note": "原文 d2 步骤写 2 μM，troubleshooting 写 1 μM，冲突保留。图为母体，原试剂 C6645 为盐酸盐。",
+      "evidence": [
+        {
+          "source_id": "Sh2023",
+          "reported_concentration": "d2 2 μM；d3 1 μM",
+          "reported_window": "d2–3",
+          "locator": "Steps 19,21 / troubleshooting",
+          "flag": "troubleshooting 又写 d2 1 μM，与步骤冲突"
+        }
+      ],
+      "pubchem": {
+        "CID": 6253,
+        "MolecularFormula": "C9H13N3O5",
+        "MolecularWeight": "243.22",
+        "SMILES": "C1=CN(C(=O)N=C1N)[C@H]2[C@H]([C@@H]([C@H](O2)CO)O)O",
+        "ConnectivitySMILES": "C1=CN(C(=O)N=C1N)C2C(C(C(O2)CO)O)O",
+        "InChIKey": "UHDGCWIWMRVCDJ-CCXZUQQUSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/6253",
+      "drawing_smiles": "C1=CN(C(=O)N=C1N)[C@H]2[C@H]([C@@H]([C@H](O2)CO)O)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "2D / TF-assisted"
+      ],
+      "source_ids": [
+        "Sh2023"
+      ],
+      "drawing_formula": "C9H13N3O5",
+      "drawing_inchikey": "UHDGCWIWMRVCDJ-CCXZUQQUSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/ara-c.svg",
+        "compact_png": "assets/compact/ara-c.png",
+        "full_svg": "assets/full/ara-c.svg",
+        "full_png": "assets/full/ara-c.png",
+        "transparent_svg": "assets/transparent/ara-c.svg",
+        "transparent_png": "assets/transparent/ara-c.png"
+      }
+    },
+    {
+      "id": "mercaptoethanol",
+      "name": "β-Mercaptoethanol",
+      "query": "2-Mercaptoethanol",
+      "category": "培养基支持",
+      "mechanism": "还原性培养基添加物",
+      "aliases": [
+        "2-Mercaptoethanol",
+        "βME",
+        "BME"
+      ],
+      "tier": "培养辅助",
+      "note": "",
+      "evidence": [
+        {
+          "source_id": "Y2023",
+          "reported_concentration": "55 μM",
+          "reported_window": "成球 / 分化 / 成熟培养基",
+          "locator": "Generation of µMOs",
+          "flag": ""
+        }
+      ],
+      "pubchem": {
+        "CID": 1567,
+        "MolecularFormula": "C2H6OS",
+        "MolecularWeight": "78.14",
+        "SMILES": "C(CS)O",
+        "ConnectivitySMILES": "C(CS)O",
+        "InChIKey": "DGVVWUTYPXICAM-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://pubchem.ncbi.nlm.nih.gov/compound/1567",
+      "drawing_smiles": "C(CS)O",
+      "depiction_note": "按注明来源绘制的母体结构；不代表商品盐型、水合物或批次分子量。",
+      "models": [
+        "3D"
+      ],
+      "source_ids": [
+        "Y2023"
+      ],
+      "drawing_formula": "C2H6OS",
+      "drawing_inchikey": "DGVVWUTYPXICAM-UHFFFAOYSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/mercaptoethanol.svg",
+        "compact_png": "assets/compact/mercaptoethanol.png",
+        "full_svg": "assets/full/mercaptoethanol.svg",
+        "full_png": "assets/full/mercaptoethanol.png",
+        "transparent_svg": "assets/transparent/mercaptoethanol.svg",
+        "transparent_png": "assets/transparent/mercaptoethanol.png"
+      }
+    },
+    {
+      "id": "sag21k",
+      "name": "SAG21k",
+      "query": "SAG21k",
+      "category": "区域化",
+      "mechanism": "SMO / Hedgehog 激动",
+      "aliases": [
+        "SAG 21k"
+      ],
+      "tier": "历史或扩展路线",
+      "note": "独立于 SAG；人 iPSC 中脑神经元方法已确认，具体 mDA 终点与浓度仍需核实。",
+      "evidence": [
+        {
+          "source_id": "SAG2025",
+          "reported_concentration": null,
+          "reported_window": "STEMdiff 中脑分化，替代 SHH",
+          "locator": "iPSC-derived neuronal methods",
+          "flag": "使用已确认；本文 mDA 特异性及剂量未核实"
+        }
+      ],
+      "pubchem": {
+        "CID": 16678532,
+        "MolecularFormula": "C29H28ClF2N3O2S",
+        "MolecularWeight": "556.1",
+        "SMILES": "CNC1CCC(CC1)N(CC2=C(C=CC(=C2)C3=CC=NC=C3)OC)C(=O)C4=C(C5=C(C=CC(=C5S4)F)F)Cl",
+        "ConnectivitySMILES": "CNC1CCC(CC1)N(CC2=C(C=CC(=C2)C3=CC=NC=C3)OC)C(=O)C4=C(C5=C(C=CC(=C5S4)F)F)Cl",
+        "InChIKey": "YVIFQUJDZSAFKG-UHFFFAOYSA-N"
+      },
+      "structure_source": "https://www.rndsystems.com/products/sag-21k_5282",
+      "drawing_smiles": "COC1=C(CN([C@@H]2CC[C@@H](NC)CC2)C(C3=C(Cl)C4=C(C(F)=CC=C4F)S3)=O)C=C(C5=CC=NC=C5)C=C1",
+      "depiction_note": "采用 Tocris 5282 SMILES 的 trans 结构表示；PubChem 记录未指定这一相对构型。",
+      "models": [
+        "2D"
+      ],
+      "source_ids": [
+        "SAG2025"
+      ],
+      "drawing_formula": "C29H28ClF2N3O2S",
+      "drawing_inchikey": "YVIFQUJDZSAFKG-MEMLXQNLSA-N",
+      "assets": {
+        "compact_svg": "assets/compact/sag21k.svg",
+        "compact_png": "assets/compact/sag21k.png",
+        "full_svg": "assets/full/sag21k.svg",
+        "full_png": "assets/full/sag21k.png",
+        "transparent_svg": "assets/transparent/sag21k.svg",
+        "transparent_png": "assets/transparent/sag21k.png"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "T2012",
+      "title": "Tomishima 2012 · Kriks 路线逐日方法",
+      "doi": "10.3824/stembook.1.70.1",
+      "url": "https://doi.org/10.3824/stembook.1.70.1",
+      "model": "2D",
+      "pmc": null,
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "K2011",
+      "title": "Kriks 2011 · floor-plate dopamine neurons",
+      "doi": "10.1038/nature10648",
+      "url": "https://doi.org/10.1038/nature10648",
+      "model": "2D",
+      "pmc": "PMC3245796",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "具体逐日配方引用 Tomishima 2012"
+    },
+    {
+      "id": "K2013",
+      "title": "Kirkeby 2013 · regional specification",
+      "doi": "10.3389/fncel.2012.00064",
+      "url": "https://doi.org/10.3389/fncel.2012.00064",
+      "model": "2D / EB",
+      "pmc": null,
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "N2017",
+      "title": "Nolbrant 2017 · ventral midbrain progenitors",
+      "doi": "10.1038/nprot.2017.078",
+      "url": "https://doi.org/10.1038/nprot.2017.078",
+      "model": "2D",
+      "pmc": null,
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Z2014",
+      "title": "Zhang 2014 · JoVE midbrain DA protocol",
+      "doi": "10.3791/51737",
+      "url": "https://doi.org/10.3791/51737",
+      "model": "2D",
+      "pmc": "PMC4383321",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "D2014",
+      "title": "Doi 2014 · CORIN selection",
+      "doi": "10.1016/j.stemcr.2014.01.013",
+      "url": "https://doi.org/10.1016/j.stemcr.2014.01.013",
+      "model": "2D / neurosphere",
+      "pmc": "PMC3964289",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Ki2017",
+      "title": "Kikuchi 2017 · human iPSC DA progenitors",
+      "doi": "10.1038/nature23664",
+      "url": "https://doi.org/10.1038/nature23664",
+      "model": "2D / neurosphere",
+      "pmc": null,
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "N2023",
+      "title": "Nishimura 2023 · mDA differentiation protocol",
+      "doi": "10.1016/j.xpro.2023.102355",
+      "url": "https://doi.org/10.1016/j.xpro.2023.102355",
+      "model": "2D",
+      "pmc": "PMC10511858",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Km2022",
+      "title": "Kim 2022 · spotting differentiation",
+      "doi": "10.1038/s41596-021-00673-4",
+      "url": "https://doi.org/10.1038/s41596-021-00673-4",
+      "model": "2D",
+      "pmc": "PMC9511827",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Na2023",
+      "title": "Nakamura 2023 · CTraS route",
+      "doi": "10.3389/fnins.2023.1202027",
+      "url": "https://doi.org/10.3389/fnins.2023.1202027",
+      "model": "2D / neurosphere",
+      "pmc": "PMC10368972",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "C2010",
+      "title": "Cooper 2010 · historical RA patterning",
+      "doi": "10.1016/j.mcn.2010.06.017",
+      "url": "https://doi.org/10.1016/j.mcn.2010.06.017",
+      "model": "2D",
+      "pmc": "PMC2945816",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Km2018",
+      "title": "Kim 2018 · hPSC-NPC midbrain regionalization",
+      "doi": "10.1038/s12276-018-0044-y",
+      "url": "https://doi.org/10.1038/s12276-018-0044-y",
+      "model": "2D",
+      "pmc": "PMC5938028",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "混合中脑神经元，不能等同高纯 mDA"
+    },
+    {
+      "id": "M2023",
+      "title": "MiCO 2023 · controlled midbrain organoids",
+      "doi": "10.1016/j.xpro.2023.102451",
+      "url": "https://doi.org/10.1016/j.xpro.2023.102451",
+      "model": "3D",
+      "pmc": "PMC10382973",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Y2023",
+      "title": "2023 · highly uniform micro midbrain organoids",
+      "doi": "10.1155/2023/3320211",
+      "url": "https://doi.org/10.1155/2023/3320211",
+      "model": "3D",
+      "pmc": "PMC10558263",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "A2025",
+      "title": "2025 · air–liquid interface midbrain organoids",
+      "doi": "10.3390/cells14151211",
+      "url": "https://doi.org/10.3390/cells14151211",
+      "model": "3D",
+      "pmc": "PMC12346388",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "SB/LDN 原文浓度次序异常，保留待核查"
+    },
+    {
+      "id": "G2013",
+      "title": "Gonzalez 2013 · chemical NSC-to-DA route",
+      "doi": "10.1038/srep01463",
+      "url": "https://doi.org/10.1038/srep01463",
+      "model": "2D",
+      "pmc": "PMC3597995",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "hESC 及人孤雌生殖干细胞；hESC 分支满足纳入范围"
+    },
+    {
+      "id": "S2015",
+      "title": "2015 · high-content compound screen / hPSC validation",
+      "doi": "10.1038/srep16237",
+      "url": "https://doi.org/10.1038/srep16237",
+      "model": "2D",
+      "pmc": "PMC4635364",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "主体为胎源 NPC；仅纳入人 hESC/iPSC 分支实际验证的化合物"
+    },
+    {
+      "id": "P2023",
+      "title": "Papandreou 2023 · automated mDA progenitor imaging",
+      "doi": "10.1016/j.slasd.2022.12.002",
+      "url": "https://doi.org/10.1016/j.slasd.2022.12.002",
+      "model": "2D / EB",
+      "pmc": "PMC10602900",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "Sh2023",
+      "title": "Sheta 2023 · NGN2-assisted iDA protocol",
+      "doi": "10.1016/j.xpro.2023.102486",
+      "url": "https://doi.org/10.1016/j.xpro.2023.102486",
+      "model": "2D / TF-assisted",
+      "pmc": "PMC10400954",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "转录因子辅助；与经典 floor-plate 方法分层"
+    },
+    {
+      "id": "DM2025",
+      "title": "2025 · midbrain organoids for microinjection",
+      "doi": "10.1016/j.xpro.2025.103983",
+      "url": "https://doi.org/10.1016/j.xpro.2025.103983",
+      "model": "3D",
+      "pmc": "PMC12318278",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "F2026",
+      "title": "2026 · Life Science Alliance DA differentiation",
+      "doi": "10.26508/lsa.202503551",
+      "url": "https://doi.org/10.26508/lsa.202503551",
+      "model": "2D",
+      "pmc": "PMC13109591",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "VM2021",
+      "title": "2021 · VM organoid single-cell transcriptomics",
+      "doi": "10.1038/s41467-021-27464-5",
+      "url": "https://doi.org/10.1038/s41467-021-27464-5",
+      "model": "3D",
+      "pmc": "PMC8674361",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "R2021",
+      "title": "Kim 2021 · reporter midbrain organoids",
+      "doi": "10.1016/j.xpro.2021.100463",
+      "url": "https://doi.org/10.1016/j.xpro.2021.100463",
+      "model": "3D",
+      "pmc": "PMC8086141",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": ""
+    },
+    {
+      "id": "SAG2025",
+      "title": "2025 · MFSD6 study, iPSC midbrain neuron methods",
+      "doi": "10.1038/s41586-025-08908-0",
+      "url": "https://doi.org/10.1038/s41586-025-08908-0",
+      "model": "2D",
+      "pmc": "PMC12333957",
+      "extraction": "原始方法已核查；抽取覆盖本库条目，不代表全文所有实验",
+      "note": "支持 SAG21k 用于人 iPSC 中脑神经元培养；本文未独立确认高纯 mDA 终点"
+    }
+  ]
+}

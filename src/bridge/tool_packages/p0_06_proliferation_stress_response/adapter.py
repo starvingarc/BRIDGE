@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import hashlib
 
+from .candidate_programs import (
+    INPUT_SCHEMA as PROGRAM_INPUT_SCHEMA, RESULT_SCHEMA as PROGRAM_RESULT_SCHEMA,
+    ExploratoryProgramInput, load_program_resource, measure_candidate_programs,
+    DirectedProgramInput, DIRECTED_INPUT_SCHEMA, DIRECTED_RESULT_SCHEMA,
+)
+
 from bridge.tool_packages.p0_06_proliferation_stress_response.exploratory import (
     exploratory_binding_reasons, measure_exploratory_process,
 )
@@ -97,6 +103,7 @@ from bridge.toolkit.contracts import (
     InputLevel,
     MeasurementResultV2,
     MeasurementSpecV2,
+    MeasurementSpecV3,
     ScoreState,
     StructuredInputRef,
     ToolPackageSpecV2,
@@ -199,6 +206,12 @@ SOURCE_BOUND_METHOD_ROLE_MODELS: dict[
 EXPLORATORY_ROLE_MODELS = {
     "exploratory_process_input": (EXPLORATORY_INPUT_SCHEMA, "0.1.0", ExploratoryProcessInput),
 }
+PROGRAM_ROLE_MODELS = {
+    "exploratory_program_input": (PROGRAM_INPUT_SCHEMA, "0.2.0", ExploratoryProgramInput),
+}
+DIRECTED_ROLE_MODELS = {
+    "directed_program_input": (DIRECTED_INPUT_SCHEMA, "0.3.0", DirectedProgramInput),
+}
 
 OPTIONAL_ROLE_MODELS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "measurement_spec": (
@@ -214,6 +227,8 @@ ROLE_MODELS = {
     **METHOD_ROLE_MODELS,
     **SOURCE_BOUND_METHOD_ROLE_MODELS,
     **EXPLORATORY_ROLE_MODELS,
+    **PROGRAM_ROLE_MODELS,
+    **DIRECTED_ROLE_MODELS,
     **OPTIONAL_ROLE_MODELS,
 }
 METHOD_MODES = {"method_runtime", "method_runtime_source_bound"}
@@ -257,7 +272,7 @@ class ProliferationStressResponseAdapter:
         if loaded is None or reasons:
             return _failed_run(request, spec, reasons)
 
-        if mode == "exploratory_process":
+        if mode in {"exploratory_process", "exploratory_programs", "directed_programs"}:
             return _run_exploratory(request, spec, loaded)
 
         input_hash = _input_hash(request, spec)
@@ -548,6 +563,10 @@ adapter = ProliferationStressResponseAdapter()
 
 
 def _request_mode(request: ToolRequestV2) -> str:
+    if any(ref.role == "directed_program_input" for ref in request.object_inputs):
+        return "directed_programs"
+    if any(ref.role == "exploratory_program_input" for ref in request.object_inputs):
+        return "exploratory_programs"
     if any(ref.role == "exploratory_process_input" for ref in request.object_inputs):
         return "exploratory_process"
     method_only_roles = set(METHOD_ROLE_MODELS).difference(COMMON_ROLE_MODELS)
@@ -570,6 +589,10 @@ def _request_mode(request: ToolRequestV2) -> str:
 def _role_models_for_mode(
     mode: str,
 ) -> dict[str, tuple[str, str, type[FrozenModel]]]:
+    if mode == "directed_programs":
+        return DIRECTED_ROLE_MODELS
+    if mode == "exploratory_programs":
+        return PROGRAM_ROLE_MODELS
     if mode == "exploratory_process":
         return EXPLORATORY_ROLE_MODELS
     if mode == "method_runtime_source_bound":
@@ -592,7 +615,7 @@ def _envelope_reasons(
     if request.parameters:
         reasons.append("p0_06_parameters_forbidden")
     required_role_models = _role_models_for_mode(mode)
-    role_models = {**required_role_models, **({} if mode == "exploratory_process" else OPTIONAL_ROLE_MODELS)}
+    role_models = {**required_role_models, **({} if mode in {"exploratory_process", "exploratory_programs", "directed_programs"} else OPTIONAL_ROLE_MODELS)}
     roles = [ref.role for ref in request.object_inputs]
     for role in required_role_models:
         if roles.count(role) != 1:
@@ -603,8 +626,10 @@ def _envelope_reasons(
         reasons.append("at_most_one_measurement_spec_allowed")
     if mode in METHOD_MODES and "program_evidence_bundle" in roles:
         reasons.append("program_evidence_bundle_forbidden_in_method_runtime")
-    if (spec.result_schema_ref not in {PROFILE_V3_SCHEMA_REF, P006_RESULT_SCHEMA}
-            or (mode == "exploratory_process" and spec.result_schema_ref != P006_RESULT_SCHEMA)):
+    if (spec.result_schema_ref not in {PROFILE_V3_SCHEMA_REF, P006_RESULT_SCHEMA, PROGRAM_RESULT_SCHEMA, DIRECTED_RESULT_SCHEMA}
+            or (mode == "exploratory_process" and spec.result_schema_ref not in {P006_RESULT_SCHEMA, PROGRAM_RESULT_SCHEMA, DIRECTED_RESULT_SCHEMA})
+            or (mode == "exploratory_programs" and spec.result_schema_ref not in {PROGRAM_RESULT_SCHEMA, DIRECTED_RESULT_SCHEMA})
+            or (mode == "directed_programs" and spec.result_schema_ref != DIRECTED_RESULT_SCHEMA)):
         reasons.append("p0_06_result_schema_required")
     if any(role not in role_models for role in roles):
         reasons.append("unsupported_object_input_role")
@@ -679,50 +704,83 @@ def _validate_object_version(
         raise StructuredInputError("object_input_version_mismatch")
 
 
+def _program_resource_unchanged(source):
+    try:
+        load_program_resource(source)
+    except ProcessMethodError:
+        return False
+    return True
+
+
 def _run_exploratory(request, spec, loaded):
     input_hash = _input_hash(request, spec)
-    run_id = f"run-{input_hash[:16]}"
-    source = single_object(request, loaded, "exploratory_process_input", ExploratoryProcessInput)
+    # The input fingerprint identifies the scientific calculation. A separate
+    # request identifies an execution attempt, whose availability can differ.
+    execution_hash = hashlib.sha256(canonical_json_bytes({
+        "input_hash": input_hash, "request_id": request.request_id})).hexdigest()
+    run_id = f"run-{execution_hash[:24]}"
+    directed = _request_mode(request) == "directed_programs"
+    candidate = directed or _request_mode(request) == "exploratory_programs"
+    role = "directed_program_input" if directed else "exploratory_program_input" if candidate else "exploratory_process_input"
+    source = single_object(request, loaded, role, DirectedProgramInput if directed else ExploratoryProgramInput if candidate else ExploratoryProcessInput)
     asset = request.assets[0]
     try:
-        result, observation_bytes = measure_exploratory_process(
+        result, observation_bytes = (measure_candidate_programs if candidate else measure_exploratory_process)(
             source=source, asset=asset, tool_version=spec.version,
-            input_sha256=_input_sha(request, "exploratory_process_input"),
+            input_sha256=_input_sha(request, role),
             run_id=run_id, random_seed=request.random_seed,
         )
     except ProcessMethodError as exc:
         return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
     warnings = sorted({r for execution in result.executions for r in execution.reason_codes})
     execution_state = ExecutionState.PARTIAL if warnings else ExecutionState.SUCCEEDED
-    native_spec = MeasurementSpecV2(
-        measurement_spec_id="PROCESS-native-cycle-" + source.resource_sha256[:24],
-        version="0.1.0", scientific_question="What relative RNA cell-cycle outputs were observed?",
+    resource_sha = source.resource.sha256 if candidate else source.resource_sha256
+    resource_ref = source.resource.resource_ref if candidate else source.resource_ref
+    native_spec = MeasurementSpecV3(
+        measurement_spec_id=("PROCESS-native-programs-" + input_hash[:24] if candidate else
+                             "PROCESS-native-cycle-" + resource_sha[:12] + "-"
+                             + hashlib.sha256(canonical_json_bytes(source.data_view.model_dump(mode="json"))).hexdigest()[:12]),
+        version="0.2.0", scientific_question=("What source-defined relative RNA program scores were observed?" if candidate else "What relative RNA cell-cycle outputs were observed?"),
         assay=asset.assay, status="descriptive_only",
-        input_contract={"resource_ref": source.resource_ref, "resource_sha256": source.resource_sha256},
-        analysis_unit="selected_data_view", analysis_unit_kind="capture",
-        independence_group_kind="sample", observation_unit_kind="cell",
+        input_contract=({"resource": source.resource.model_dump(mode="json", exclude={"path"}),
+                         "input_sha256": result.input_sha256, "gene_coverage_policy": source.gene_coverage_policy,
+                         "method_parameters": result.method_parameters.model_dump(mode="json")}
+                        if candidate else {"resource_ref": resource_ref, "resource_sha256": resource_sha}),
+        data_view=source.data_view,
+        observation_unit_kind="nucleus" if asset.assay == "snRNA-seq" else "cell",
         applicable_contexts=["native_method_observation"],
-        raw_metric_definition={"phase": "Scanpy S/G2M labels; not a proliferation rate",
-                               "program_mean": "Native method score mean over all selected observations"},
+        raw_metric_definition=({"program_mean": "Native method score mean over selected observations; no activation threshold",
+                                "programs": [p.model_dump(mode="json") for p in result.program_summaries]}
+                               if candidate else {"phase": "Scanpy S/G2M labels; not a proliferation rate",
+                                                  "program_mean": "Native method score mean over all selected observations"}),
         denominator="All observations in the selected view",
         uncertainty_method="Descriptive only; biological independence unknown",
         missing_behavior="Unavailable outputs remain null", tool_refs=["P0-06"],
-        reference_refs=[source.resource_ref],
+        reference_refs=[resource_ref],
     )
+    if candidate:
+        # This native definition includes observed program coverage/availability.
+        # Bind its identity to that content, not only the unchanged input file.
+        definition_hash = hashlib.sha256(canonical_json_bytes(
+            native_spec.model_dump(mode="json", exclude={"measurement_spec_id"}))).hexdigest()
+        native_spec = native_spec.model_copy(update={
+            "measurement_spec_id": "PROCESS-native-programs-" + definition_hash[:24]})
     common = dict(measurement_spec_id=native_spec.measurement_spec_id,
                   measurement_spec_version=native_spec.version,
                   source_run_ref=f"tool-run:{run_id}@{spec.version}",
                   source_execution_state=execution_state, score_state=ScoreState.UNAVAILABLE,
                   provenance_refs=[result.profile_id])
-    cycle = result.cell_cycle
-    measured = cycle.assessment_state == "available"
-    measurements = [MeasurementResultV2(
+    measurements = []
+    if not candidate:
+        cycle = result.cell_cycle
+        measured = cycle.assessment_state == "available"
+        measurements.append(MeasurementResultV2(
         **common, measurement_id=f"measurement:{run_id}:native-s-g2m",
         metric_name="native_s_g2m_fraction", raw_value=cycle.s_g2m_fraction, unit="fraction",
         numerator=(cycle.phase_counts["S"] + cycle.phase_counts["G2M"]) if measured else None,
         denominator=cycle.n_observations if measured else None,
         evidence_state=EvidenceState.INFERRED if measured else EvidenceState.UNAVAILABLE,
-    )]
+        ))
     for program in result.program_summaries:
         key = program.method_id.lower().replace("-", "_") + "_" + program.program_id.lower()
         measurements.append(MeasurementResultV2(
@@ -746,6 +804,7 @@ def _run_exploratory(request, spec, loaded):
             request=request, run_id=run_id, payloads=payloads,
             inputs_are_unchanged=lambda refs: (
                 inputs_unchanged(refs) and _expression_asset_unchanged(request.assets, asset.checksum)
+                and (not candidate or _program_resource_unchanged(source))
             ),
         )
     except PublicationError as exc:
@@ -777,6 +836,16 @@ def _binding_reasons(
     spec: ToolPackageSpecV2,
     mode: str,
 ) -> list[str]:
+    if mode in {"exploratory_programs", "directed_programs"}:
+        directed = mode == "directed_programs"
+        source = single_object(request, loaded, "directed_program_input" if directed else "exploratory_program_input",
+                               DirectedProgramInput if directed else ExploratoryProgramInput)
+        reasons = exploratory_binding_reasons(source, request.assets[0], spec)
+        try:
+            load_program_resource(source)
+        except ProcessMethodError as exc:
+            reasons.append(exc.reason_code)
+        return reasons
     if mode == "exploratory_process":
         return exploratory_binding_reasons(
             single_object(request, loaded, "exploratory_process_input", ExploratoryProcessInput),

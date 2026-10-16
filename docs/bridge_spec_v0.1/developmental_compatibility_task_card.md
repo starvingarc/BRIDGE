@@ -3,19 +3,16 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-DEVELOPMENT-v0.1` |
-| Task document version | `0.5` |
-| 日期 | 2026-09-02 |
-| Package version | `P0-04 0.5.1` |
-
-ProductCase 与 P0-02 profile 保留 cell-state source MeasurementSpec；P0-04
-使用独立的域 MeasurementSpec 来声明发育指标、assay、工具授权和生物学单位。
+| Task document version | `0.6` |
+| 日期 | 2026-10-08 |
+| Package version | `P0-04 0.6.0` |
 | Runtime / scientific state | `implemented` / `candidate shadow` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| Current input | checksummed `ProductCase`、`ProductDefinitionCard`、`DevelopmentWindowSpec`、`DevelopmentStateMap`、`MeasurementSpecV2`、`CellStateEvidenceProfileV3`；可选 timepoint series、H5AD 与 `DevelopmentMethodSpec` |
-| Current result | `bridge://schemas/developmental-compatibility-result/v0.3` |
+| Current input | `default` 产品绑定聚合/表达路径；或 `saved_cell_state_context` 保存原生上下文路径，输入分别见下文与 Tool Card |
+| Current result | `bridge://schemas/developmental-compatibility-result/v0.4`，容纳原有 `DevelopmentalCompatibilityResultV3` 与 `NativeCellStateContextProfile` |
 | Detailed runtime contract | [P0-04 Tool Card](../../src/bridge/tool_packages/cards/P0-04.md) |
 
-> Package v0.5 keeps stage roles and channel selection external, executes
+> The product-bound mode keeps stage roles and channel selection external, executes
 > transparent reference, program and uncertainty methods, and publishes typed
 > data plus three deterministic figures. Ordered sampling-point labels are
 > categorical: continuous-time analysis remains unavailable because the current
@@ -27,9 +24,20 @@ not a biological-age estimator. It does not convert in-vitro days to GW/PCW,
 infer future fate or calibrate OOD. Reference correlation, ordinal support,
 window composition and ordered sampling points remain separate evidence families.
 
+当前注册模式为 `default` 和 `saved_cell_state_context`。`default` 中，
+ProductCase 与 P0-02 profile 保留 cell-state source MeasurementSpec；P0-04
+使用独立的域 MeasurementSpec 声明发育指标、assay、工具授权和生物学单位。
+可选 H5AD 与 DevelopmentMethodSpec 选择表达方法路径。
+
+`saved_cell_state_context` 读取一个已保存 P0-02 候选运行，可选原始 P0-03
+相似度运行，核对来源、数据视图与产物 checksum；不读取表达或 reference 矩阵。
+它保存 reference 年龄范围、相似度和 marker 检出上下文，缺 P0-03 时保留明确缺失。
+该描述性上下文不等于窗口适配评估，expected-window/target/non-target fraction
+仍为 null；历史对象及图形保留原有版本。
+
 ## 1. 任务目标与边界
 
-本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。v0.5 已封装可调用的透明基线方法，但不制定 0-100 分数。
+本模块判断待评产品的转录组状态对研究者确认发育窗口的支持程度，并区分窗口前、窗口内、窗口后、分支偏移和未解析状态。产品绑定路径已封装可调用的透明基线方法，但不制定 0-100 分数。
 
 - 发育相容性是相对于 `ProductDefinitionCard` 的条件化证据，不寻找跨产品通用的最优阶段。
 - 人胎 reference 定义生物学状态轴；体外时间序列只用于过程校准和同条件比较。
@@ -51,7 +59,7 @@ window composition and ordered sampling points remain separate evidence families
 
 ## 3. 输入与当前资产
 
-### 3.1 必要输入
+### 3.1 产品绑定路径的必要输入
 
 - 已确认的 `ProductDefinitionCard` 和 `DevelopmentWindowSpec`。
 - `all_cells_view` 与可用时的 `eligible_cells_view`。
@@ -94,7 +102,7 @@ flowchart LR
 
 ## 5. 方法组合
 
-v0.4 的 `DevelopmentMethodSpec` 以版本化外部对象选择 reference profile、
+产品绑定路径的 `DevelopmentMethodSpec` 以版本化外部对象选择 reference profile、
 reference label 的角色/顺序、program card、采样点顺序和方法。当前直接执行
 `DEV-PSEUDOBULK-CORR`、`DEV-ORDINAL`、`DEV-PROGRAM`、
 `DEV-BOOTSTRAP`；运行结果记录软件版本、覆盖度、独立单位和 reason code。
@@ -111,13 +119,13 @@ reference label 的角色/顺序、program card、采样点顺序和方法。当
 ### 5.2 Reference-stage support
 
 - 对每个 sample/preparation 构建 pseudobulk，并分别对每个 reference source 与 modality 计算阶段支持分布。
-- source-aware ordinal classifier 作为独立阶段映射通道。v0.4 不在运行时完成
+- source-aware ordinal classifier 作为独立阶段映射通道。当前实现不在运行时完成
   校准或 held-out benchmark；只有外部、版本化、已审核且通过的
   source-group-held-out evidence receipt 精确绑定所有选定 profile 和至少两个
   source 时才执行，否则返回 typed `not_assessed`。
 - 当前输出每个分析单位、来源和 assay 的 top label、runner-up、Spearman/cosine similarity、margin 和 shared genes；不输出完整阶段支持分布或最高支持区间。
 - RAPToR 作为 `shadow` 候选，必须使用 BRIDGE 自有 reference 重新验证后才可解释。
-- v0.4 直接执行 sample/preparation pseudobulk 的 Spearman/cosine 支持，以及
+- 表达路径直接执行 sample/preparation pseudobulk 的 Spearman/cosine 支持，以及
   scikit-learn 累积二分类 logistic ordinal baseline。ordinal 输出明确标记为
   `uncalibrated_baseline` 并引用 gate receipt；两者均只输出 reference
   support，不作胎龄换算。
@@ -154,7 +162,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 字段 | 含义 |
 | --- | --- |
-| `analysis_mode` | `static_profile` / `descriptive_timecourse`；v0.4 不产生 `inferential_timecourse` |
+| `analysis_mode` | `static_profile` / `descriptive_timecourse`；当前不产生 `inferential_timecourse` |
 | `window_spec_id` | 研究者确认的窗口、版本和确认记录 |
 | `target_related_denominator` | target-related cells/weights、数量与视图 |
 | `whole_product_denominator` | 全部 eligible product cells、数量与视图 |
@@ -175,7 +183,7 @@ DPT/PAGA、Palantir、Slingshot、VIA、CellRank、moscot/WOT、tradeSeq、CellA
 
 | 环境 | 用途 | 当前状态 |
 | --- | --- | --- |
-| `ENV-DEVELOPMENT-PY-v0.2` | composition、pseudobulk、scikit-learn、decoupler、Matplotlib | `health_check_passed`；v0.4 执行环境 |
+| `ENV-DEVELOPMENT-PY-v0.2` | composition、pseudobulk、scikit-learn、decoupler、Matplotlib | `health_check_passed`；产品绑定方法执行环境 |
 | `ENV-DEVELOPMENT-CELLRANK-v0.1` | CellRank 条件性轨迹验证 | `proposed_conditional` |
 | `ENV-DEVELOPMENT-VELOCITY-v0.1` | RNA velocity 研究性验证 | `proposed_exploratory`；独立冻结稳定版本 |
 | `ENV-DEVELOPMENT-VIA-v0.1` | VIA shadow benchmark | `proposed_shadow` |

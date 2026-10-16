@@ -586,6 +586,20 @@ class DataViewBinding(FrozenModel):
         return self
 
 
+class MeasurementSpecV3(MeasurementSpecV2):
+    """Descriptive technical-view contract; never a biological replicate."""
+
+    status: Literal["descriptive_only"] = "descriptive_only"
+    analysis_unit: Literal["selected_data_view"] = "selected_data_view"
+    analysis_unit_kind: Literal["whole_view_technical_aggregate"] = (
+        "whole_view_technical_aggregate"
+    )
+    independence_group_kind: None = None
+    biological_independence: Literal["unknown"] = "unknown"
+    n_independent_biological_replicates: None = None
+    data_view: DataViewBinding
+
+
 class VisualizationArtifact(FrozenModel):
     visualization_id: str
     component_id: str

@@ -1,0 +1,42 @@
+name: 开发任务
+description: 提出一个有明确范围和验收标准的功能、重构或文档任务。
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: 先搜索已有 Issue；流程见 CONTRIBUTING.md。纯工程任务无需填写生物学发现，小型拼写修正可直接 PR。
+  - type: textarea
+    id: goal
+    attributes:
+      label: 问题与目标
+      description: 谁遇到了什么问题，完成后应有什么变化？关联 PRD 章节或工程模块。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围与非目标
+      description: 本次做什么、不做什么；相关 Issue 和依赖是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: interfaces
+    attributes:
+      label: 接口与协作影响
+      description: 受影响模块、输入输出、失败语义、兼容性或资源依赖。无变化写“不适用”，未确定写“待确认”。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完成标准
+      description: 列出可检查的行为和必要验证；需要科学验收时与工程检查分开写。
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已搜索重复任务；未包含密钥、部署配置、服务器内部路径、真实数据或私有运行材料。
+          required: true

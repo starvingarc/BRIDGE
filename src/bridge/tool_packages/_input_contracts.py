@@ -305,8 +305,9 @@ def _p009_mode(
     if canonical_run:
         sufficiency = _role(
             "evidence_sufficiency_run_result",
-            "bridge://schemas/evidence-sufficiency-run-result/v0.2",
-            V02,
+            ("bridge://schemas/evidence-sufficiency-run-result/v0.2",
+             "bridge://schemas/evidence-sufficiency-run-result/v0.3"),
+            (V02, V03),
             2 if comparison else 1,
             5 if comparison else 1,
         )
@@ -528,7 +529,25 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     0,
                     1,
                 ),
-            )
+            ),
+            _mode(
+                "saved_reference_similarity_projection",
+                _role("saved_reference_similarity_run", "bridge://schemas/tool-run/v0.2", V02, 1, 1),
+                asset_input=AssetInputContract(min_count=0, max_count=0),
+            ),
+            _mode(
+                "reference_similarity_exploratory",
+                _role("reference_similarity_input", "bridge://schemas/reference-similarity-exploratory-input/v0.1", V01, 1, 1),
+                _role("reference_manifest", "bridge://schemas/reference-manifest/v0.1", None, 1, 1),
+                asset_input=AssetInputContract(min_count=1, max_count=1, formats=["h5ad"],
+                    assays=["scRNA-seq", "snRNA-seq"], input_levels=["count_ready"],
+                    matrix_semantics=["raw_counts"], required_metadata_keys=["data_view_id"]),
+            ),
+            _mode("saved_cell_state_context",
+                _role("saved_cell_state_run", "bridge://schemas/tool-run/v0.1", V01, 1, 1),
+                _role("state_role_map", "bridge://schemas/state-role-map/v0.1", V01, 0, 1),
+                _role("product_definition_card", "bridge://schemas/product-definition-card/v0.1", V01, 0, 1),
+                asset_input=AssetInputContract(min_count=0,max_count=0)),
         ],
     ),
     "P0-04": ToolInputContract(
@@ -634,7 +653,11 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                     0,
                     1,
                 ),
-            )
+            ),
+            _mode("saved_cell_state_context",
+                _role("saved_cell_state_run", "bridge://schemas/tool-run/v0.1", V01, 1, 1),
+                _role("saved_reference_similarity_run", "bridge://schemas/tool-run/v0.2", V02, 0, 1),
+                asset_input=AssetInputContract(min_count=0,max_count=0)),
         ],
     ),
     "P0-05": ToolInputContract(
@@ -644,6 +667,9 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         parameters_allowed=False,
         random_seed_policy="any_integer",
         object_input_modes=[
+            _mode("saved_cell_state_context",
+                _role("saved_cell_state_run", "bridge://schemas/tool-run/v0.1", V01, 1, 1),
+                asset_input=AssetInputContract(min_count=0,max_count=0)),
             _mode(
                 "legacy_aggregation",
                 *_p005_context_roles(),
@@ -778,6 +804,26 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 "method_runtime_source_bound", "bridge://schemas/process-method-input/v0.2", V02
             ),
             _mode(
+                "exploratory_programs",
+                _role("exploratory_program_input", "bridge://schemas/exploratory-process-input/v0.2", V02, 1, 1),
+                asset_input=AssetInputContract(
+                    min_count=1, max_count=1, formats=["h5ad"],
+                    assays=["scRNA-seq", "snRNA-seq"],
+                    input_levels=["count_ready", "analysis_ready"],
+                    matrix_semantics=["raw_counts", "normalized_expression"],
+                ),
+            ),
+            _mode(
+                "directed_programs",
+                _role("directed_program_input", "bridge://schemas/exploratory-process-input/v0.3", ["0.3.0"], 1, 1),
+                asset_input=AssetInputContract(
+                    min_count=1, max_count=1, formats=["h5ad"],
+                    assays=["scRNA-seq", "snRNA-seq"],
+                    input_levels=["count_ready", "analysis_ready"],
+                    matrix_semantics=["raw_counts", "normalized_expression"],
+                ),
+            ),
+            _mode(
                 "exploratory_process",
                 _role("exploratory_process_input", "bridge://schemas/exploratory-process-input/v0.1", V01, 1, 1),
                 asset_input=AssetInputContract(
@@ -892,7 +938,7 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
                 ),
                 _role(
                     "measurement_spec",
-                    "bridge://schemas/measurement-spec/v0.2",
+                    ("bridge://schemas/measurement-spec/v0.2", "bridge://schemas/measurement-spec/v0.3"),
                     None,
                     0,
                     5,
@@ -1017,7 +1063,9 @@ INPUT_CONTRACTS: dict[str, ToolInputContract] = {
         object_input_modes=[
             _mode(
                 "default",
-                _role("research_report_context", "bridge://schemas/research-report-context/v0.3", "0.3.0", 0, 1),
+                _role("research_report_context", ("bridge://schemas/research-report-context/v0.3",
+                    "bridge://schemas/research-report-context/v0.4",
+                    "bridge://schemas/research-report-context/v0.5"), ("0.3.0", "0.4.0", "0.5.0"), 0, 1),
                 _role("report_draft", "bridge://schemas/report-draft/v0.1", V01, 1, 1),
                 _role(
                     "evidence_graph_manifest",

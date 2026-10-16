@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bridge.tool_packages import _saved_cell_state_context as native_context
+
 import hashlib
 import math
 import re
@@ -50,7 +52,7 @@ from bridge.tool_packages.p0_05_off_target_control.models import (
     OffTargetAssessmentSpec,
     OffTargetControlProfile,
     OffTargetEvidenceBundle,
-    OffTargetHardCountProfileV1,
+    OffTargetHardCountProfileV3,
     ProductRole,
     RareDetectionState,
     RareStateRecord,
@@ -82,7 +84,7 @@ from bridge.toolkit.contracts import (
 )
 
 RESULT_SCHEMA_REF_V2 = "bridge://schemas/off-target-control-profile/v0.2"
-RESULT_SCHEMA_REF_UNION = "bridge://schemas/off-target-control-result/v0.1"
+RESULT_SCHEMA_REF_UNION = "bridge://schemas/off-target-control-result/v0.4"
 MEASUREMENT_SPEC_ROLE = "measurement_spec"
 ROLE_CONTRACTS: dict[str, tuple[str, str | None, type[FrozenModel]]] = {
     "product_case": (
@@ -189,6 +191,8 @@ class OffTargetControlAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if any(r.role == native_context.ROLE for r in request.object_inputs):
+            return native_context.eligibility(request, spec)
         reasons = _envelope_reasons(request, spec)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -206,6 +210,8 @@ class OffTargetControlAdapter:
     ) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if any(r.role == native_context.ROLE for r in request.object_inputs):
+            return native_context.execute(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)
@@ -476,7 +482,7 @@ def _run_hard_count_accounting(
     input_sha256_by_role = {
         ref.role: ref.sha256 for ref in request.object_inputs
     }
-    result: OffTargetHardCountProfileV1 = aggregate_hard_count_profile(
+    result: OffTargetHardCountProfileV3 = aggregate_hard_count_profile(
         tool_version=spec.version,
         input_hash=input_hash,
         product_case=product_case,

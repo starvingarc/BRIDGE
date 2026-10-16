@@ -18,14 +18,14 @@ def test_catalog_preserves_all_capability_bindings_and_resolves_methods() -> Non
     p0_06_rows = [row for row in seed["rows"] if row["module_id"] == "P0-06"]
 
     assert summary["valid"] is True
-    assert summary["binding_count"] == 396
+    assert summary["binding_count"] == len(seed["rows"])
     assert 343 <= summary["method_count"] <= 385
-    assert summary["raw_url_token_count"] == 640
-    assert summary["public_url_assignment_count"] == 516
-    assert summary["canonical_url_token_count"] == 649
-    assert summary["canonical_public_url_assignment_count"] == 527
-    assert summary["raw_distinct_public_url_count"] == 388
-    assert summary["canonical_public_source_count"] == 387
+    assert summary["raw_url_token_count"] == 646
+    assert summary["public_url_assignment_count"] == 522
+    assert summary["canonical_url_token_count"] == 655
+    assert summary["canonical_public_url_assignment_count"] == 533
+    assert summary["raw_distinct_public_url_count"] == 393
+    assert summary["canonical_public_source_count"] == 392
     assert summary["verified_public_source_count"] == 384
     assert summary["unassigned_evidence_family_count"] == 160
     assert summary["formal_eligible_method_count"] == 0

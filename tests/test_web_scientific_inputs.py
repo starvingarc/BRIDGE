@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException
 
 from bridge.web.provider import parse_action
-from test_web_service import client, confirm_change, new_session, settle
+from web_support import client, confirm_change, new_session, settle
 from test_web_intake import uploaded, stage, stated_facts
 
 
@@ -35,7 +35,7 @@ def propose(service, sid, aid, value=None):
     from bridge.web.scientific_inputs import ScienceCandidate
     state = service.load(sid)
     draft = service.scientific_inputs.propose(state, aid, ScienceCandidate.model_validate(value or candidate()))
-    service.save(state)
+    service.sessions.save(state)
     return draft
 
 
@@ -107,6 +107,39 @@ def test_scientific_candidate_requires_matching_local_source(client, tmp_path, i
     assert service.load(sid) == before
 
 
+@pytest.mark.parametrize("decision", ["parent_only", "unavailable"])
+@pytest.mark.parametrize("assignment", [
+    "target", "acceptable_adjacent", "known_off_target",
+    "earlier", "within_window", "later", "branch_shift", "regional", "unresolved",
+])
+def test_limited_source_identity_cannot_gain_product_or_stage_roles(decision, assignment):
+    from bridge.web.scientific_inputs import ScienceCandidate, ScientificInputs
+
+    value = candidate()
+    value["roles"][0]["product_role"] = "role_unresolved"
+    source = {"state_id": "L1:Neuron_DA", "label_level": "L1",
+              "source_id": "state-review:L1:Neuron_DA", "decision": decision}
+    if assignment in {"target", "acceptable_adjacent", "known_off_target"}:
+        value["roles"][0]["product_role"] = assignment
+    elif assignment == "regional":
+        value["roles"].append({**value["roles"][0], "state_id": "L1:reviewed",
+            "source_ids": ["state-review:L1:reviewed"], "product_role": "target"})
+        value["regional_denominator_state_ids"] = ["L1:Neuron_DA", "L1:reviewed"]
+        value["regional_target_state_ids"] = ["L1:reviewed"]
+    else:
+        value["development"] = [{**value["roles"][0], "stage_role": assignment}]
+        value["development"][0].pop("product_role")
+    catalog = {"sources": [source, {**source, "state_id": "L1:reviewed",
+        "source_id": "state-review:L1:reviewed", "decision": "evaluate"}]}
+    proposed = ScienceCandidate.model_validate(value)
+    validator = ScientificInputs(None)
+    if assignment == "unresolved":
+        validator._validate(proposed, catalog)
+    else:
+        with pytest.raises(ValueError, match="^scientific_source_identity_unavailable$"):
+            validator._validate(proposed, catalog)
+
+
 def test_stale_and_cross_session_confirmation_do_not_publish_objects(client, tmp_path):
     service, sid, aid = science_case(client, tmp_path)
     draft = propose(service, sid, aid)
@@ -147,7 +180,7 @@ def test_draft_request_uses_separate_purpose_and_private_reply_never_leaks_to_ch
             return parse_action({"content": json.dumps({
                 "action": "propose_scientific_inputs", "upload_id": aid, "candidate": candidate()})})
         return parse_action({"content": '{"action":"reply","text":"Next steps."}'})
-    monkeypatch.setattr("bridge.web.app.converse", reply)
+    monkeypatch.setattr("bridge.web.service.converse", reply)
     assert client.post(f"/api/sessions/{sid}/scientific-inputs/draft", json={"upload_id": aid}).status_code == 200
     done = settle(client, sid)
     assert done["error"] is None and done["scientific_drafts"][-1]["status"] == "pending"
@@ -190,8 +223,17 @@ def test_actual_provider_wire_constructs_scientific_draft(client, tmp_path, monk
     assert result["scientific_drafts"][-1]["candidate"]["roles"][0]["product_role"] == "target"
 
 
-def test_supported_regional_and_development_candidates_materialize_without_review_promotion(client, tmp_path):
+@pytest.mark.parametrize("source_state,reason", [
+    ("complete", "state_role_review_required"),
+    ("pending", "scientific_source_review_pending"),
+])
+def test_supported_regional_and_development_candidates_materialize_without_review_promotion(client, tmp_path, monkeypatch, source_state, reason):
     service, sid, aid = science_case(client, tmp_path)
+    original = service.scientific_inputs._catalog
+    def reviewed(state):
+        catalog, binding, spec = original(state)
+        return {**catalog, "source_review_state": source_state}, binding, spec
+    monkeypatch.setattr(service.scientific_inputs, "_catalog", reviewed)
     value = candidate()
     value["development"] = [{"state_id": "L1:Neuron_DA", "stage_role": "within_window",
         "source_ids": ["state-review:L1:Neuron_DA"], "rationale": "Candidate neuronal window, not fetal-age equivalence."}]
@@ -208,10 +250,17 @@ def test_supported_regional_and_development_candidates_materialize_without_revie
     assert objects["development_window_spec"]["review_state"] == "candidate"
     assert objects["development_window_spec"]["confirmed_at"] is None
     assert objects["target_regional_assessment_spec"]["status"] == "candidate"
-    assert "scientific_source_review_pending" in saved["unknowns"]
+    assert reason in saved["unknowns"]
+    if source_state == "complete":
+        assert "scientific_source_review_pending" not in saved["unknowns"]
     attempted = client.post(f"/api/sessions/{sid}/prepare-analysis", json={"tool_id": "P0-03"})
     assert attempted.status_code == 200
-    assert attempted.json()["error"] == "scientific_source_review_pending"
+    issue = attempted.json()["presentation"]["issue"]
+    assert issue["error_id"] == ("input_required" if source_state == "complete" else "request_failed")
+    if source_state == "complete":
+        assert "目标与非目标细胞判断依据" in issue["user_message"]
+        assert "确认资料不会代替" in issue["user_message"]
+    assert service.load(sid)["error"] == reason
     assert state["_tool_runs"] == []
 
 
@@ -311,7 +360,9 @@ def test_draft_correction_is_bounded_and_never_registers_invalid_sources(client,
     assert state["_tool_runs"] == before["_tool_runs"]
     assert state["_input_objects"] == before["_input_objects"]
     if repeated_invalid:
-        assert done["status"] == "idle" and done["error"] == "scientific_candidate_invalid"
+        assert done["status"] == "idle"
+        assert done["presentation"]["issue"]["error_id"] == "request_failed"
+        assert state["error"] == "scientific_candidate_invalid"
         assert done["scientific_drafts"] == []
     else:
         assert done["error"] is None and done["scientific_drafts"][-1]["status"] == "pending"

@@ -1,0 +1,430 @@
+{
+  "alias_map": {
+    "Neuron_ChAT": "Neuron_ChAT",
+    "Neuron_Chat": "Neuron_ChAT"
+  },
+  "labels": [
+    {
+      "aliases": [],
+      "display_name": "Astrocyte",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Astrocyte",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Endothelial_Cell",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Endothelial_Cell",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Fibroblast",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Fibroblast",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Glioblast",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Glioblast",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Immune_Cell",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Immune_Cell",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuroblast",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuroblast",
+      "status": "candidate"
+    },
+    {
+      "aliases": [
+        "Neuron_Chat"
+      ],
+      "display_name": "Neuron_ChAT",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_ChAT",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_DA",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_DA",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_GABA",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_GABA",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_Glut",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_GABA",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_Glut_GABA",
+      "status": "unresolved"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_OMTN",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_OMTN",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Sero",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Neuron_Sero",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Oligo",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Oligo",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "OPC",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:OPC",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Pericyte",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Pericyte",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Radial_Glia",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Radial_Glia",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Smooth_Muscle",
+      "level": "L1",
+      "parent_state_ids": [],
+      "state_id": "L1:Smooth_Muscle",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_mFP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Radial_Glia"
+      ],
+      "state_id": "L2:RG_mFP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_mBMP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Radial_Glia"
+      ],
+      "state_id": "L2:RG_mBMP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_mBIP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Radial_Glia"
+      ],
+      "state_id": "L2:RG_mBIP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_dHyp",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Radial_Glia"
+      ],
+      "state_id": "L2:RG_dHyp",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_dTha",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Radial_Glia"
+      ],
+      "state_id": "L2:RG_dTha",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mFP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:Nb_mFP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mBMP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:Nb_mBMP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mBIP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:Nb_mBIP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mAP",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:Nb_mAP",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_dHyp",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:Nb_dHyp",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_dTha",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:Nb_dTha",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "IPC_m1",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:IPC_m1",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "IPC_m2",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Neuroblast"
+      ],
+      "state_id": "L2:IPC_m2",
+      "status": "candidate"
+    },
+    {
+      "aliases": [],
+      "display_name": "Pericyte",
+      "level": "L2",
+      "parent_state_ids": [
+        "L1:Pericyte"
+      ],
+      "state_id": "L2:Pericyte_conflict",
+      "status": "unresolved"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_mFP",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:RG_mFP",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_mBMP",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:RG_mBMP",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "RG_mBIP",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:RG_mBIP",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mFP",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Nb_mFP",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mBMP",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Nb_mBMP",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Nb_mBIP",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Nb_mBIP",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_DA",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_DA",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_H",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut_H",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_L",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut_L",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_N",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut_N",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_P",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut_P",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_S",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut_S",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_Glut_GABA",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_Glut_GABA",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_GABA",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_GABA",
+      "status": "shadow"
+    },
+    {
+      "aliases": [],
+      "display_name": "Neuron_GABA_O",
+      "level": "L3",
+      "parent_state_ids": [],
+      "state_id": "L3:Neuron_GABA_O",
+      "status": "shadow"
+    }
+  ],
+  "product_scope": "PD hPSC-mDA first instance",
+  "status": "freeze_required",
+  "unresolved_conflicts": [
+    "L2 contains 25 historical Radial_Glia-to-Pericyte records pending biological review.",
+    "Historical broad and refined labels disagree for 328 RG/Nb-derived profiles."
+  ],
+  "version": "0.1.0",
+  "vocabulary_id": "BRIDGE-PD-vMB-ANNOTATION-v0.1-draft"
+}

@@ -1,0 +1,31 @@
+measurement_spec_id: EXPRESSION-exploration-v0.1
+version: 0.1.0
+scientific_question: How are expression neighborhoods, within-dataset markers and within-population sample contrasts structured in the selected view?
+assay: scRNA-seq
+status: exploratory
+input_contract:
+  formats: [h5ad]
+  supported_levels: [count_ready, analysis_ready]
+  requires_qc_profile_ref: true
+  requires_typed_selected_data_view: true
+  matrix_semantics: raw_counts or explicitly declared natural-log1p normalized_expression
+analysis_unit: cell for exploration; declared independent sample for condition inference
+raw_metric_definition:
+  embedding: Scanpy HVG, PCA, neighbors and UMAP or explicit caller-selected coordinates
+  markers: Scanpy Wilcoxon group-versus-rest on log1p expression
+  contrast: PyDESeq2 on raw counts summed per declared sample within a declared population
+denominator: all observations in the selected DataView; plot sampling never changes analysis denominators
+uncertainty_method: cell-level marker ranks are exploratory; sample inference is conditional on declared independence and estimable design
+minimum_data:
+  observations: 4
+  genes: 3
+  samples_per_condition_for_inference: 3
+missing_behavior: insufficient repeats yield descriptive_only with null p-values; invalid metadata rejects the run
+tool_refs: [P0-02, P0-07]
+reference_refs: []
+prior_refs: []
+validation_ref: synthetic engineering regressions only
+exclusion_rules:
+  clinical_or_release_claims: forbidden
+  cells_as_independent_replicates: forbidden
+  paired_or_repeated_measures_design: unsupported

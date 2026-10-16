@@ -1,0 +1,50 @@
+.research-figures { display: grid; gap: 24px; }
+.research-figures section { min-width: 0; padding-block: 12px; border-bottom: 1px solid var(--border, #d8dedb); }
+.research-figures h3 { margin: 0 0 12px; font-size: 1.1rem; }
+.research-figures h4 { margin-bottom: 8px; }
+.research-figures p { line-height: 1.65; overflow-wrap: anywhere; }
+.research-figures a { display: inline-block; margin: 6px 12px 6px 0; overflow-wrap: anywhere; }
+.research-figures pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; font-size: .75rem; }
+.research-figures button, .research-figures summary, .research-figures select { min-height: 44px; cursor: pointer; }
+.research-figures select { max-width: 100%; display: block; }
+.research-figures :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.figure-context { padding: 12px; background: var(--soft); border-radius: 8px; }
+.figure-table-scroll { overflow-x: auto; }
+.research-figures table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.research-figures th, .research-figures td { padding: 10px 8px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.observation-bars th:first-child { width: 42%; }
+.observation-bars td:nth-child(2) { width: 30%; font-variant-numeric: tabular-nums; }
+.proportion-track { display: block; background: #e6ebe8; height: 7px; border-radius: 4px; margin-top: 6px; }
+.proportion-track > span { display: block; height: 100%; background: #327566; border-radius: inherit; }
+.bound-figure { padding-block: 12px 24px; }
+.bound-figure img { width: 100%; height: auto; display: block; }
+.bound-figure > a:has(img) { display: block; margin-inline: 0; }
+@media (max-width: 520px) { .research-figures th, .research-figures td { padding: 8px 4px; font-size: .78rem; } .research-figures { gap: 16px; } }
+.similarity-track { display: block; height: 9px; position: relative; background: #e6ebe8; margin: 8px 6px; }
+.similarity-track i { position: absolute; left: 50%; height: 100%; width: 1px; background: #7b8981; }
+.similarity-track b { position: absolute; top: 0; transform: translateX(-50%); width: 9px; height: 9px; border-radius: 50%; background: #327566; }
+
+/* Container-sized DOM charts keep text readable in the narrow result panel. */
+.fraction-chart, .program-chart { margin: 12px 0 20px; }
+.fraction-chart ul, .program-chart ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.fraction-chart li, .program-chart li { margin: 0; padding: 0; }
+.fraction-chart-label { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; line-height: 1.35; }
+.fraction-chart-label strong { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 550; }
+.fraction-chart-scale, .program-chart-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; margin-bottom: 10px; }
+.fraction-chart-track { height: 10px; background: #edf1ef; border-radius: 3px; margin-top: 5px; background-image: linear-gradient(to right, transparent 49.7%, #d9e2dd 49.7%, #d9e2dd 50.3%, transparent 50.3%); }
+.fraction-chart-track > span { display: block; height: 100%; background: #397f70; border-radius: 3px; }
+.fraction-chart li[data-state="unknown"] .fraction-chart-track > span { background: repeating-linear-gradient(135deg, #9ca9a2, #9ca9a2 3px, #dce3df 3px, #dce3df 6px); }
+.fraction-chart li[data-state="unavailable"] .fraction-chart-track > span { background: #8d9792; }
+.research-figures .chart-meta, .program-chart figcaption { font-size: 11px; color: var(--muted); margin: 4px 0 14px; }
+.program-chart-track { height: 16px; position: relative; margin: 5px 5px 0; border-bottom: 1px solid #e1e7e3; }
+.program-chart-zero { position: absolute; height: 100%; width: 1px; background: #9caaa2; }
+.program-chart-range { position: absolute; top: 6px; height: 5px; border-radius: 3px; background: #bbd4c9; }
+.program-chart-track b { position: absolute; top: 4px; width: 9px; height: 9px; transform: translateX(-50%); border-radius: 50%; background: #327566; }
+.cycle-result { display: grid; gap: 4px; padding: 12px 0; }
+.cycle-result span, .cycle-result small { font-size: 11px; color: var(--muted); }
+.cycle-result strong { font-size: 28px; font-weight: 500; }
+.assessment-measurement-details { margin-top: 12px; }
+
+.reference-chart { margin: 14px 0; }
+.reference-chart ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.reference-chart li { margin: 0; padding: 0; }

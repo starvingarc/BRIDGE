@@ -42,6 +42,16 @@ This directory contains the program-scoring and evidence-aggregation package.
   within a caller-supplied P0-02 bundle; it does not authenticate a fabricated
   bundle or replace deployment provenance controls.
 
+## Exploratory execution identity
+
+The input hash identifies the selected scientific inputs. Each distinct request
+has a separate execution identity because an environment repair can turn an
+unavailable output into a measured one without changing those inputs. Run,
+measurement and artifact references belong to that execution; replaying the same
+request retains its identity. Source-bound program definitions include observed
+coverage and availability, so their identifiers bind the definition content.
+Older receipts remain readable and immutable.
+
 ## Source-bound observation mode
 
 method_runtime_source_bound has the same twelve roles and expression constraints
@@ -83,6 +93,7 @@ and an all-conflict source produces no invented state-conditioned zero.
 
 ## Documentation
 
+- [Candidate program sources, licenses and applicability](resources/CANDIDATE_PROGRAM_LEDGER.md)
 - [Implementation, software, calls and current evidence](../../../../docs/tool-packages.md#p0-06)
 - [Tool Card — authoritative runtime contract](../cards/P0-06.md)
 - [Scientific task card](../../../../docs/bridge_spec_v0.1/proliferation_stress_response_task_card.md)

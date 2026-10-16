@@ -27,7 +27,7 @@ conda run --name bridge-cellstate-bioc-r46 Rscript environments/install-cellstat
 Keep Symphony in `bridge-cellstate-bioc-r46` unless a reproducible health check establishes a dependency conflict. Other scientific method-specific JAX, mixed-species and competitor environments remain conditional and require separate versioned specifications.
 
 The core and cell-state environment validation is recorded in [Server
-reproducibility validation, 2026-08-12](../docs/validation/server_reproducibility_20260812.md).
+reproducibility validation, 2026-08-12](https://github.com/starvingarc/BRIDGE/blob/d3d69363c50541fb34320f703db2995edb27105e/docs/validation/server_reproducibility_20260812.md).
 The developmental environment status is recorded with the [P0-04
 candidate](../docs/validation/p0_04_developmental_compatibility.md#record-p0-04-developmental-compatibility-v0-3).
 

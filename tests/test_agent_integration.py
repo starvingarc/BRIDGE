@@ -160,7 +160,7 @@ def test_biological_unit_attestation_routes_to_method_tools() -> None:
     assert receipt.object_version == "0.1.0"
     assert (receipt.min_count, receipt.max_count) == (1, 1)
 
-    for tool_id, version in (("P0-05", "0.6.0"), ("P0-06", "0.8.2")):
+    for tool_id, version in (("P0-05", "0.8.0"), ("P0-06", "0.11.1")):
         binding = bindings[tool_id]
         assert binding.tool_version == version
         assert {item.role: item.slot_id for item in binding.object_inputs}[
@@ -521,7 +521,7 @@ def test_materialized_request_fails_closed_when_slots_are_missing(
     request = ToolRequestV2(
         request_id="request-missing-slots",
         tool_id="P0-10",
-        tool_version="0.4.7",
+        tool_version="0.6.0",
         output_dir=tmp_path,
     )
 
@@ -735,7 +735,7 @@ def test_reference_runner_reports_an_unresolved_slot(tmp_path: Path) -> None:
             {
                 "request_id": "reference-missing-inputs",
                 "tool_id": "P0-10",
-                "tool_version": "0.4.7",
+                "tool_version": "0.6.0",
                 "output_dir": str(tmp_path / "output"),
             }
         ),
@@ -763,3 +763,67 @@ def test_reference_runner_reports_an_unresolved_slot(tmp_path: Path) -> None:
     assert run.returncode == 3
     payload = json.loads(run.stdout)
     assert payload["error"] == "unresolved_input_slot"
+
+
+@pytest.mark.parametrize("version", ["0.5.0", "9.9.0"])
+def test_report_context_profile_contract_supports_v05_and_rejects_unknown_version(version):
+    from bridge.toolkit.registry import ToolRegistry
+    registry = ToolRegistry.load_default()
+    payload = _load_profile("single-product").model_dump(mode="json")
+    # Construct a current profile independently of the published example versions.
+    for row in payload["request_bindings"]:
+        row["tool_version"] = registry.describe(row["tool_id"]).version
+    payload["resource_slots"].append({
+        "slot_id": "research-report-context", "source": "agent_constructed",
+        "resource_type": "structured_object",
+        "schema_ref": "bridge://schemas/research-report-context/v0.5",
+        "object_version": version, "min_count": 1, "max_count": 1,
+        "depends_on_slots": ["product-case"],
+    })
+    binding = next(row for row in payload["request_bindings"] if row["tool_id"] == "P0-10")
+    binding["object_inputs"].append({
+        "role": "research_report_context", "slot_id": "research-report-context"})
+    profile = AgentIntegrationProfile.model_validate(payload)
+    if version == "0.5.0":
+        assert validate_agent_integration_profile(profile) is profile
+    else:
+        with pytest.raises(ValueError, match="object role version mismatch"):
+            validate_agent_integration_profile(profile)
+
+
+def test_current_sufficiency_result_materializes_for_evidence_compiler(tmp_path):
+    from bridge.toolkit.contracts import StructuredInputRef
+    from bridge.toolkit.registry import ToolRegistry
+    registry = ToolRegistry.load_default()
+    profile = _load_profile("single-product")
+    slots = {row.slot_id: row for row in profile.resource_slots}
+    binding = next(row for row in profile.request_bindings if row.tool_id == "P0-09")
+    result_schema = registry.describe("P0-08").result_schema_ref
+    result_version = registry.resolve_schema(result_schema)["properties"]["result_version"]["const"]
+    refs = []
+    for item in binding.object_inputs:
+        slot = slots[item.slot_id]
+        refs.append(StructuredInputRef(
+            input_id=slot.slot_id, role=item.role, path=tmp_path / (slot.slot_id + ".json"),
+            sha256="a" * 64,
+            schema_ref=result_schema if slot.slot_id == "sufficiency-result" else slot.schema_ref,
+            object_version=result_version if slot.slot_id == "sufficiency-result" else slot.object_version,
+        ))
+    request = ToolRequestV2(request_id="current-sufficiency-handoff", tool_id=binding.tool_id,
+        tool_version=binding.tool_version, output_dir=tmp_path / "output", object_inputs=refs)
+    assert validate_profile_request(profile, binding.binding_id, request) is request
+
+
+@pytest.mark.parametrize("change", [
+    {"schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.2", "object_version": "0.2.0"},
+    {"schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.3", "object_version": "0.2.0"},
+    {"schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.3", "object_version": "0.3.0",
+     "producer_binding_id": "cell-state-evidence"},
+])
+def test_profile_rejects_sufficiency_producer_contract_drift(change):
+    payload = _load_profile("single-product").model_dump(mode="json")
+    slot = next(row for row in payload["resource_slots"] if row["slot_id"] == "sufficiency-result")
+    slot.update(change)
+    profile = AgentIntegrationProfile.model_validate(payload)
+    with pytest.raises(ValueError, match="sufficiency artifact .* mismatch"):
+        validate_agent_integration_profile(profile)

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from bridge.tool_packages.p0_02_cell_state.grouping import GroupingOutcome
+
+
 import math
 from typing import Any, Literal, Self
 
-import pandas as pd
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
-from bridge.tool_packages.p0_02_cell_state.grouping import GroupingOutcome
 from bridge.toolkit.contracts import (
     AnnotationVocabulary,
     EvidenceState,
@@ -353,6 +358,18 @@ class HierarchicalCellStateCompositionDataV1(FrozenModel):
     alt_text: str = Field(min_length=40, max_length=240)
     long_description: str = Field(min_length=80)
 
+    @property
+    def whole_product_records(self) -> list[HierarchicalCompositionRecord]:
+        """One non-overlapping partition, retaining each unresolved remainder."""
+        refined_parents = {
+            row.parent_state_id for row in self.composition_records
+            if row.level == "L2" and row.count is not None
+        }
+        return [
+            row for row in sorted(self.composition_records, key=lambda row: row.order)
+            if row.count is not None and row.state_id not in refined_parents
+        ]
+
     @model_validator(mode="after")
     def partitions_and_groups_are_conserved(self) -> Self:
         record_ids = [record.record_id for record in self.composition_records]
@@ -375,6 +392,41 @@ class HierarchicalCellStateCompositionDataV1(FrozenModel):
         root = partitions.get("root")
         if root is None or sum(record.count or 0 for record in root) != self.whole_product_denominator:
             raise ValueError("L1 root partition must conserve all observations")
+
+        if any(
+            record.whole_product_denominator != self.whole_product_denominator
+            for record in quantitative
+        ):
+            raise ValueError("every composition row must use the whole-view denominator")
+        identities = [
+            (record.partition_id, record.state_id or record.resolution_state)
+            for record in quantitative
+        ]
+        if len(identities) != len(set(identities)):
+            raise ValueError("states and resolution rows must be unique within each partition")
+        if any(
+            record.level == "L2"
+            or (record.state_id is not None and not record.state_id.startswith("L1:"))
+            for record in root
+        ):
+            raise ValueError("root partition must contain broad states and unresolved rows")
+        parent_counts = {
+            record.state_id: record.count
+            for record in root if record.state_id is not None
+        }
+        for partition_id, records in partitions.items():
+            if partition_id == "root":
+                continue
+            if partition_id not in parent_counts:
+                raise ValueError("refined partition requires a declared broad parent")
+            if any(
+                record.level != "L2"
+                or record.parent_state_id != partition_id
+                or record.parent_denominator != parent_counts[partition_id]
+                or (record.state_id is not None and not record.state_id.startswith("L2:"))
+                for record in records
+            ):
+                raise ValueError("refined partition must conserve its declared broad parent")
 
         group_ids = [group.group_id for group in self.groups]
         if len(group_ids) != len(set(group_ids)):
@@ -504,6 +556,8 @@ def build_hierarchical_composition(
     evidence_ids: list[str],
     source_conflict_assessed: bool,
 ) -> HierarchicalCellStateCompositionDataV1:
+    import pandas as pd
+
     denominator = len(evidence)
     labels_by_id = {label.state_id: label for label in vocabulary.labels}
     l1_labels = [label for label in vocabulary.labels if label.level == "L1"]
@@ -904,6 +958,8 @@ def _group_records(
     evidence_ids: list[str],
     source_conflict_assessed: bool,
 ) -> tuple[list[ProductGroup], list[GroupStateCorrespondenceRecord]]:
+    import pandas as pd
+
     if grouping.labels is None:
         return [], []
     aligned = grouping.labels.reindex(evidence["observation_id"].astype(str))

@@ -327,7 +327,7 @@ def _request(tmp_path: Path) -> ToolRequestV2:
     return ToolRequestV2(
         request_id="request-p0-05",
         tool_id="P0-05",
-        tool_version="0.6.0",
+        tool_version="0.8.0",
         output_dir=tmp_path / "output",
         object_inputs=refs,
     )
@@ -438,9 +438,9 @@ def test_registry_exposes_executable_p0_05() -> None:
     spec = ToolRegistry.load_default().describe("P0-05")
 
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
-    assert spec.version == "0.6.0"
+    assert spec.version == "0.8.0"
     assert spec.result_schema_ref == (
-        "bridge://schemas/off-target-control-result/v0.1"
+        "bridge://schemas/off-target-control-result/v0.4"
     )
     assert spec.method_ids == [
         "METHOD-BRIDGE-ROLE-AWARE-SOFT-COMPOSITION",
@@ -454,6 +454,9 @@ def test_registry_exposes_executable_p0_05() -> None:
     ]
     contract = ToolRegistry.load_default().describe_input("P0-05")
     for mode in contract.object_input_modes:
+        if any(item.role == "saved_cell_state_run" for item in mode.roles):
+            assert not any(item.role == "measurement_spec" for item in mode.roles)
+            continue
         role = next(item for item in mode.roles if item.role == "measurement_spec")
         assert role.schema_refs == ["bridge://schemas/measurement-spec/v0.2"]
         assert role.object_version_policy == "payload"
@@ -474,7 +477,7 @@ def test_happy_run_aggregates_external_roles_and_publishes_checksum(
 
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.measurements == []
-    assert run.result_schema_ref.endswith("off-target-control-result/v0.1")
+    assert run.result_schema_ref.endswith("off-target-control-result/v0.4")
     assert run.result["object_version"] == "0.2.0"
     assert run.result["profile_version"] == "0.2.0"
     assert run.result["measurement_projection_state"] == "not_requested"

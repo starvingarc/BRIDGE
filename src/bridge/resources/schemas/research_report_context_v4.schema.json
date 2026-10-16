@@ -1,0 +1,978 @@
+{
+  "$defs": {
+    "BiologicalContext": {
+      "additionalProperties": false,
+      "properties": {
+        "facts": {
+          "$ref": "#/$defs/BiologicalFacts"
+        },
+        "input_revision": {
+          "title": "Input Revision",
+          "type": "integer"
+        },
+        "source": {
+          "const": "confirmed_intake",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "input_revision",
+        "facts"
+      ],
+      "title": "BiologicalContext",
+      "type": "object"
+    },
+    "BiologicalFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "assay": {
+          "title": "Assay",
+          "type": "string"
+        },
+        "culture_day": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Culture Day"
+        },
+        "independent_cultures": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Independent Cultures"
+        },
+        "product_family": {
+          "title": "Product Family",
+          "type": "string"
+        },
+        "sampling_context": {
+          "title": "Sampling Context",
+          "type": "string"
+        },
+        "sequencing_method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Sequencing Method"
+        },
+        "starting_cell_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Starting Cell Type"
+        },
+        "target_cell_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target Cell Type"
+        },
+        "target_stage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target Stage"
+        }
+      },
+      "required": [
+        "product_family",
+        "starting_cell_type",
+        "culture_day",
+        "target_cell_type",
+        "target_stage",
+        "sampling_context",
+        "independent_cultures",
+        "assay",
+        "sequencing_method"
+      ],
+      "title": "BiologicalFacts",
+      "type": "object"
+    },
+    "DataViewBinding": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/$defs/DataViewBinding"
+    },
+    "LiteratureCorrection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Id"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reference"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 30,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source"
+        },
+        "type": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "source",
+        "reference",
+        "note"
+      ],
+      "title": "LiteratureCorrection",
+      "type": "object"
+    },
+    "LiteratureMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "authors": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Authors"
+        },
+        "corrections": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LiteratureCorrection"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Corrections"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Doi"
+        },
+        "journal": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Journal"
+        },
+        "pmid": {
+          "pattern": "^[0-9]{1,12}$",
+          "title": "Pmid",
+          "type": "string"
+        },
+        "provider": {
+          "const": "europe_pmc",
+          "title": "Provider",
+          "type": "string"
+        },
+        "provider_id": {
+          "pattern": "^[0-9]{1,12}$",
+          "title": "Provider Id",
+          "type": "string"
+        },
+        "publication_status": {
+          "enum": [
+            "unknown",
+            "no_flag_reported",
+            "correction_reported",
+            "retraction_or_concern_reported"
+          ],
+          "title": "Publication Status",
+          "type": "string"
+        },
+        "publication_types": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Publication Types"
+        },
+        "source_ref": {
+          "pattern": "^literature:epmc-med-[0-9]{1,12}$",
+          "title": "Source Ref",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "maxLength": 4,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Year"
+        }
+      },
+      "required": [
+        "source_ref",
+        "provider",
+        "provider_id",
+        "pmid",
+        "doi",
+        "title",
+        "year",
+        "authors",
+        "journal",
+        "url",
+        "publication_types",
+        "corrections",
+        "publication_status"
+      ],
+      "title": "LiteratureMetadata",
+      "type": "object"
+    },
+    "LiteratureRead": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "read_literature",
+          "title": "Action",
+          "type": "string"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "request_number": {
+          "minimum": 1,
+          "title": "Request Number",
+          "type": "integer"
+        },
+        "source_ref": {
+          "pattern": "^literature:epmc-med-[0-9]{1,12}$",
+          "title": "Source Ref",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "reserved",
+            "complete",
+            "partial",
+            "unavailable"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "request_number",
+        "source_ref",
+        "state"
+      ],
+      "title": "LiteratureRead",
+      "type": "object"
+    },
+    "LiteratureSearch": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "search_literature",
+          "title": "Action",
+          "type": "string"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "concept_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Concept Refs",
+          "type": "array"
+        },
+        "focus": {
+          "title": "Focus",
+          "type": "string"
+        },
+        "hit_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hit Count"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query"
+        },
+        "request_number": {
+          "minimum": 1,
+          "title": "Request Number",
+          "type": "integer"
+        },
+        "source_refs": {
+          "items": {
+            "pattern": "^literature:epmc-med-[0-9]{1,12}$",
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "reserved",
+            "complete",
+            "partial",
+            "no_results",
+            "unavailable"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "request_number",
+        "concept_refs",
+        "focus",
+        "state"
+      ],
+      "title": "LiteratureSearch",
+      "type": "object"
+    },
+    "LiteratureSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "concept_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Concept Refs",
+          "type": "array"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "max_reads": {
+          "maximum": 6,
+          "minimum": 1,
+          "title": "Max Reads",
+          "type": "integer"
+        },
+        "max_searches": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Max Searches",
+          "type": "integer"
+        },
+        "reads_used": {
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Reads Used",
+          "type": "integer"
+        },
+        "requests": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "read_literature": "#/$defs/LiteratureRead",
+                "search_literature": "#/$defs/LiteratureSearch"
+              },
+              "propertyName": "action"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/LiteratureSearch"
+              },
+              {
+                "$ref": "#/$defs/LiteratureRead"
+              }
+            ]
+          },
+          "maxItems": 9,
+          "title": "Requests",
+          "type": "array"
+        },
+        "searches_used": {
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Searches Used",
+          "type": "integer"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/LiteratureSource"
+          },
+          "maxItems": 6,
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "enabled",
+        "concept_refs",
+        "max_searches",
+        "max_reads",
+        "searches_used",
+        "reads_used",
+        "requests",
+        "sources"
+      ],
+      "title": "LiteratureSnapshot",
+      "type": "object"
+    },
+    "LiteratureSource": {
+      "additionalProperties": false,
+      "properties": {
+        "abstract": {
+          "anyOf": [
+            {
+              "maxLength": 12000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Abstract"
+        },
+        "abstract_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Abstract Sha256"
+        },
+        "content_level": {
+          "enum": [
+            "abstract",
+            "metadata_only"
+          ],
+          "title": "Content Level",
+          "type": "string"
+        },
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/LiteratureMetadata"
+        },
+        "object_version": {
+          "const": "1.0.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "retrieved_at": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_ref": {
+          "pattern": "^literature:epmc-med-[0-9]{1,12}$",
+          "title": "Source Ref",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object_version",
+        "source_ref",
+        "url",
+        "metadata",
+        "retrieved_at",
+        "content_level",
+        "abstract",
+        "abstract_sha256",
+        "content_sha256"
+      ],
+      "title": "LiteratureSource",
+      "type": "object"
+    },
+    "LiteratureUse": {
+      "additionalProperties": false,
+      "properties": {
+        "experimental_context": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Experimental Context",
+          "type": "string"
+        },
+        "lineage": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Lineage",
+          "type": "string"
+        },
+        "qualification": {
+          "const": "unverified_applicability",
+          "default": "unverified_applicability",
+          "title": "Qualification",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "source_ref": {
+          "pattern": "^literature:epmc-med-[0-9]{1,12}$",
+          "title": "Source Ref",
+          "type": "string"
+        },
+        "species": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Species",
+          "type": "string"
+        },
+        "stage": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_ref",
+        "rationale",
+        "species",
+        "lineage",
+        "stage",
+        "experimental_context"
+      ],
+      "title": "LiteratureUse",
+      "type": "object"
+    },
+    "ResearchExplanationV11": {
+      "additionalProperties": false,
+      "properties": {
+        "competing_explanation": {
+          "title": "Competing Explanation",
+          "type": "string"
+        },
+        "discriminating_check": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Discriminating Check"
+        },
+        "evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Aliases",
+          "type": "array"
+        },
+        "expected_observation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Observation"
+        },
+        "literature_support": {
+          "items": {
+            "$ref": "#/$defs/LiteratureUse"
+          },
+          "maxItems": 3,
+          "title": "Literature Support",
+          "type": "array"
+        },
+        "missing_evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Evidence Aliases",
+          "type": "array"
+        },
+        "opposing_evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Opposing Evidence Aliases",
+          "type": "array"
+        },
+        "statement": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "evidence_aliases",
+        "competing_explanation",
+        "discriminating_check"
+      ],
+      "title": "ResearchExplanationV11",
+      "type": "object"
+    },
+    "ResearchExplanationVersion": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/$defs/ResearchExplanationVersion"
+    },
+    "ResearchExplanationVersionV11": {
+      "additionalProperties": false,
+      "properties": {
+        "biological_context": {
+          "$ref": "#/$defs/BiologicalContext"
+        },
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence_snapshot_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Evidence Snapshot Sha256",
+          "type": "string"
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/ResearchExplanationV11"
+          },
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "input_revision": {
+          "minimum": 0,
+          "title": "Input Revision",
+          "type": "integer"
+        },
+        "literature": {
+          "$ref": "#/$defs/LiteratureSnapshot"
+        },
+        "object_version": {
+          "const": "1.1.0",
+          "default": "1.1.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "predecessor_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predecessor Sha256"
+        },
+        "qualification": {
+          "const": "proposed_explanation",
+          "default": "proposed_explanation",
+          "title": "Qualification",
+          "type": "string"
+        },
+        "scope_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Scope Digest",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scope_digest",
+        "input_revision",
+        "hypotheses",
+        "evidence_snapshot_sha256",
+        "version",
+        "content_sha256",
+        "created_at",
+        "biological_context",
+        "literature"
+      ],
+      "title": "ResearchExplanationVersionV11",
+      "type": "object"
+    },
+    "ResearchProductFacts": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/$defs/ResearchProductFacts"
+    },
+    "VersionedObjectRef": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/$defs/VersionedObjectRef"
+    }
+  },
+  "$id": "bridge://schemas/research-report-context/v0.4",
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/audience"
+    },
+    "candidate_development": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/candidate_development"
+    },
+    "composition_mapping": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/composition_mapping"
+    },
+    "confirmed_product_facts": {
+      "$ref": "#/$defs/ResearchProductFacts"
+    },
+    "context_id": {
+      "title": "Context Id",
+      "type": "string"
+    },
+    "context_sha256": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/context_sha256"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "data_view_source_ref": {
+      "title": "Data View Source Ref",
+      "type": "string"
+    },
+    "explanation_qualification": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/explanation_qualification"
+    },
+    "explanation_versions": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "1.0.0": "#/$defs/ResearchExplanationVersion",
+            "1.1.0": "#/$defs/ResearchExplanationVersionV11"
+          },
+          "propertyName": "object_version"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ResearchExplanationVersion"
+          },
+          {
+            "$ref": "#/$defs/ResearchExplanationVersionV11"
+          }
+        ]
+      },
+      "title": "Explanation Versions",
+      "type": "array"
+    },
+    "facts_qualification": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/facts_qualification"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_manifest_sha256": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/graph_manifest_sha256"
+    },
+    "graph_version": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/graph_version"
+    },
+    "input_revision": {
+      "title": "Input Revision",
+      "type": "string"
+    },
+    "intake_source_ref": {
+      "title": "Intake Source Ref",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.4.0",
+      "default": "0.4.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "process_means": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/process_means"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "public_export_eligibility": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/public_export_eligibility"
+    },
+    "scientific_validation": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/scientific_validation"
+    },
+    "sources": {
+      "$ref": "bridge://schemas/research-report-context/v0.3#/properties/sources"
+    }
+  },
+  "required": [
+    "context_id",
+    "input_revision",
+    "graph_id",
+    "graph_version",
+    "graph_manifest_sha256",
+    "product_case_ref",
+    "confirmed_product_facts",
+    "intake_source_ref",
+    "data_view",
+    "data_view_source_ref",
+    "sources",
+    "context_sha256"
+  ],
+  "title": "ResearchReportContextV04",
+  "type": "object"
+}

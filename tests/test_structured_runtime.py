@@ -1425,7 +1425,7 @@ def test_repository_policy_rejects_unresolvable_v2_adapter(
         _v2_spec(adapter_ref="bridge.tool_packages.missing:ADAPTER")
     )
     monkeypatch.setattr(
-        repository_policy.ToolRegistry,
+        ToolRegistry,
         "load_default",
         classmethod(lambda cls: registry),
     )
@@ -1446,7 +1446,7 @@ def test_repository_policy_rejects_unknown_v2_result_schema_without_execution(
         spec=_v2_spec(result_schema_ref="bridge://schemas/not-registered/v0.1"),
     )
     monkeypatch.setattr(
-        repository_policy.ToolRegistry,
+        ToolRegistry,
         "load_default",
         classmethod(lambda cls: registry),
     )

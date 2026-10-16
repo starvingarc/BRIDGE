@@ -506,8 +506,8 @@
       "slot_id": "sufficiency-result",
       "source": "derived_output",
       "resource_type": "structured_object",
-      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.2",
-      "object_version": "0.2.0",
+      "schema_ref": "bridge://schemas/evidence-sufficiency-run-result/v0.3",
+      "object_version": "0.3.0",
       "min_count": 1,
       "max_count": 1,
       "producer_binding_id": "evidence-sufficiency",
@@ -669,7 +669,7 @@
     {
       "binding_id": "cell-state-evidence",
       "tool_id": "P0-02",
-      "tool_version": "0.6.1",
+      "tool_version": "0.8.3",
       "request_schema_ref": "bridge://schemas/tool-request/v0.1",
       "mode_id": null,
       "asset_slot_ids": ["qc-selected-expression"],
@@ -679,7 +679,7 @@
     {
       "binding_id": "target-regional",
       "tool_id": "P0-03",
-      "tool_version": "0.4.1",
+      "tool_version": "0.6.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "default",
       "asset_slot_ids": ["qc-selected-expression"],
@@ -702,7 +702,7 @@
     {
       "binding_id": "developmental-compatibility",
       "tool_id": "P0-04",
-      "tool_version": "0.5.1",
+      "tool_version": "0.6.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "default",
       "asset_slot_ids": ["qc-selected-expression"],
@@ -725,7 +725,7 @@
     {
       "binding_id": "off-target-control",
       "tool_id": "P0-05",
-      "tool_version": "0.6.0",
+      "tool_version": "0.8.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": [],
@@ -750,7 +750,7 @@
     {
       "binding_id": "process-signals",
       "tool_id": "P0-06",
-      "tool_version": "0.8.2",
+      "tool_version": "0.11.1",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "method_runtime",
       "asset_slot_ids": ["qc-selected-expression"],
@@ -776,7 +776,7 @@
     {
       "binding_id": "evidence-sufficiency",
       "tool_id": "P0-08",
-      "tool_version": "0.5.1",
+      "tool_version": "0.6.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "default",
       "asset_slot_ids": [],
@@ -806,7 +806,7 @@
     {
       "binding_id": "evidence-compiler",
       "tool_id": "P0-09",
-      "tool_version": "0.5.1",
+      "tool_version": "0.5.2",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "case_initial_v2",
       "asset_slot_ids": [],
@@ -822,7 +822,7 @@
     {
       "binding_id": "claim-verifier",
       "tool_id": "P0-10",
-      "tool_version": "0.4.7",
+      "tool_version": "0.6.0",
       "request_schema_ref": "bridge://schemas/tool-request/v0.2",
       "mode_id": "default",
       "asset_slot_ids": [],

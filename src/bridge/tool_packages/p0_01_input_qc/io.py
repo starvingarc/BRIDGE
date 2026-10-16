@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import anndata as ad
+
 import hashlib
 import json
 import stat
@@ -7,9 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Self
 
-import anndata as ad
-import numpy as np
-import pandas as pd
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -18,8 +20,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from scipy import sparse
-from scipy.io import mmread
 
 from bridge.tool_packages._configurable_contracts import (
     BiologicalUnitAssignment,
@@ -518,6 +518,8 @@ def _sha256_regular_file(path: Path) -> str:
 
 
 def read_expression_asset(asset: InputAsset) -> ad.AnnData:
+    import anndata as ad
+
     if asset.format == "h5ad":
         adata = ad.read_h5ad(asset.path)
         if asset.matrix_location and asset.matrix_location != "X":
@@ -542,6 +544,9 @@ def read_expression_asset(asset: InputAsset) -> ad.AnnData:
 
 
 def validate_expression_object(adata: ad.AnnData, *, require_counts: bool) -> None:
+    import numpy as np
+    from scipy import sparse
+
     if adata.n_obs == 0 or adata.n_vars == 0:
         raise InputAuditError("empty_expression_object", "Expression object has zero cells or genes")
     if not adata.obs_names.is_unique:
@@ -561,6 +566,10 @@ def validate_expression_object(adata: ad.AnnData, *, require_counts: bool) -> No
 
 
 def _read_10x_mtx(asset: InputAsset) -> ad.AnnData:
+    import anndata as ad
+    import pandas as pd
+    from scipy.io import mmread
+
     matrix_path = _first_existing(asset.path, "matrix.mtx", "matrix.mtx.gz")
     feature_path = _first_existing(asset.path, "features.tsv", "features.tsv.gz", "genes.tsv", "genes.tsv.gz")
     barcode_path = _first_existing(asset.path, "barcodes.tsv", "barcodes.tsv.gz")
@@ -705,6 +714,7 @@ def build_declared_lineage(
     selected_view: DataViewBinding | None = None,
 ) -> DeclaredLineageOutput:
     """Build a declared-only lineage for the exact immutable input observation set."""
+    import pandas as pd
 
     if input_level == "droplet_ready":
         return DeclaredLineageOutput(

@@ -30,7 +30,7 @@ def test_registry_discovers_exactly_twelve_tool_packages() -> None:
     assert registry.describe("P0-11").implementation_state is ImplementationState.IMPLEMENTED
     assert registry.describe("P0-12").implementation_state is ImplementationState.IMPLEMENTED
     assert proliferation_stress_response.name == "Proliferation & Stress Response"
-    assert proliferation_stress_response.version == "0.8.2"
+    assert proliferation_stress_response.version == "0.11.1"
     assert product_comparison.version == "0.4.1"
 
 
@@ -118,8 +118,10 @@ def test_every_tool_exposes_a_resolvable_input_contract() -> None:
         if role.role == "evidence_sufficiency_run_result"
     )
     assert canonical_run.schema_refs == [
-        "bridge://schemas/evidence-sufficiency-run-result/v0.2"
+        "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+        "bridge://schemas/evidence-sufficiency-run-result/v0.3",
     ]
+    assert canonical_run.object_versions == ["0.2.0", "0.3.0"]
     assert (canonical_run.min_count, canonical_run.max_count) == (1, 1)
     for mode in (p009_modes[1], p009_modes[5]):
         base_manifest = next(
@@ -206,13 +208,18 @@ def test_input_contract_roles_match_runtime_adapters() -> None:
             for role in mode.roles
         }
         runtime_roles = set(runtime_contract)
+        if tool_id in {"P0-03", "P0-04", "P0-05"}:
+            # Saved observations have a separate checked loader, like graph queries below.
+            runtime_roles.add(module.native_context.ROLE)
+            if tool_id == "P0-04":
+                runtime_roles.add("saved_reference_similarity_run")
         if tool_id == "P0-09":
             # Compilation and read-only query dispatch have separate loaders.
             query_runtime = import_module(
                 "bridge.tool_packages.p0_09_evidence_compiler.query_runtime"
             )
             runtime_roles.update(query_runtime.QUERY_ROLES)
-        assert declared_roles == runtime_roles
+        assert declared_roles == runtime_roles, tool_id
 
 
 def test_shared_product_context_imports_remain_compatible() -> None:
@@ -244,6 +251,35 @@ def test_all_public_contract_schemas_are_packaged_and_versioned() -> None:
 
 
 
+def test_linked_schemas_remain_standalone_and_match_model_contracts():
+    from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountProfileV3
+    from bridge.tool_packages.p0_05_off_target_control.native_models import (
+        NativeWholeProductContextProfile, OffTargetControlResultV4,
+    )
+
+    def expanded(value, root):
+        if isinstance(value, list):
+            return [expanded(item, root) for item in value]
+        if not isinstance(value, dict):
+            return value
+        if "$ref" in value:
+            assert value["$ref"].startswith("#/"), "Export must work without external resolution"
+            target = root
+            for part in value["$ref"][2:].split("/"):
+                key = part.replace("~1", "/").replace("~0", "~")
+                target = target[int(key)] if isinstance(target, list) else target[key]
+            return {**expanded(target, root), **expanded({k: v for k, v in value.items() if k != "$ref"}, root)}
+        return {k: expanded(v, root) for k, v in value.items() if k not in {"$defs", "$id"}}
+
+    for ref, model in (
+        ("bridge://schemas/native-cell-state-context-profile/v0.2", NativeWholeProductContextProfile),
+        ("bridge://schemas/off-target-hard-count-profile/v0.3", OffTargetHardCountProfileV3),
+        ("bridge://schemas/off-target-control-result/v0.4", OffTargetControlResultV4),
+    ):
+        actual, expected = load_schema(ref), model.model_json_schema()
+        assert expanded(actual, actual) == expanded(expected, expected)
+
+
 def test_supported_native_history_is_read_only_and_strict(tmp_path):
     import pytest
     from bridge.toolkit.contracts import ToolRun
@@ -252,6 +288,7 @@ def test_supported_native_history_is_read_only_and_strict(tmp_path):
         ("P0-01", "0.1.5", "ENV-P0-CORE-v0.1"),
         ("P0-02", "0.5.5", "ENV-P0-CORE-v0.2"),
         ("P0-02", "0.6.0", "ENV-P0-CORE-v0.2"),
+        ("P0-02", "0.8.0", "ENV-P0-CORE-v0.2"),
     ):
         request = ToolRequest(request_id="history", tool_id=tool,
                               tool_version=version, output_dir=tmp_path)

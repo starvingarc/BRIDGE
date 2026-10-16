@@ -63,6 +63,11 @@ jobs:
           python -m pip install --force-reinstall --no-deps dist/*.whl
           python -m pip check
 
+      - name: Check documentation and generated schemas
+        run: |
+          python -S scripts/check_repository.py --static
+          python scripts/export_schemas.py --check
+
       - name: Run tests
         run: python -m pytest -q --durations=20
 

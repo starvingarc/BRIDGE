@@ -1,0 +1,40 @@
+name: 错误报告
+description: 报告可复现的运行、界面或结果错误。
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 请勿上传真实样本或原始日志。安全／隐私漏洞按 SECURITY.md 私下报告，不在 Issue 粘贴细节。
+  - type: textarea
+    id: versions
+    attributes:
+      label: 版本与环境
+      description: BRIDGE 提交或版本、系统、Python／浏览器版本；方法相关问题补充可共享的工具和资源版本，不含内部路径或配置。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现
+      description: 操作步骤或最小代码，优先合成输入。若仅在受控数据发生，说明无法共享及可安全描述的输入特征，不必上传数据。
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 预期、实际与影响
+      description: 预期什么，实际发生什么；是否阻断分析或影响科学解释？
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 可选的安全诊断摘要
+      description: 仅提供人工检查过的错误信息或逻辑错误码；删除样本身份、服务器路径、口令、模型配置和原始响应。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已搜索重复问题；内容及附件均经过隐私检查，不含真实数据、凭据或私有运行材料。
+          required: true

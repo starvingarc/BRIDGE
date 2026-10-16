@@ -14,7 +14,7 @@ from .inputs import checked_bytes, strict_json
 from fastapi import HTTPException
 
 from .inputs import AssetDeclaration, Selection
-from .intake import IntakeInput
+from .intake import IntakeFacts, IntakeInput
 
 
 class Controls:
@@ -39,7 +39,7 @@ class Controls:
                 state["_qc_declarations"][aid] = {key: asset.get(key) for key in
                     ("assay", "matrix_location", "matrix_semantics", "input_level", "metadata")}
                 try:
-                    self.service.qc_asset(state, aid, register=False)
+                    self.service.qc.asset(state, aid, register=False, enrich=False)
                 except (ValueError, OSError, KeyError):
                     state["input_review_required"] = True
                     state["_chat_input_review"] = True
@@ -51,7 +51,8 @@ class Controls:
     def fence(self, state):
         self.service.assessment.stop(state, "user_stopped")
         state["_control_epoch"] += 1
-        active = state["status"] in {"thinking", "running", "stopping"}
+        active = (state["status"] in {"thinking", "running", "stopping"}
+                  or self.service.execution.has_pending(state["id"]))
         if state.get("plan") and state["plan"]["status"] in {"proposed", "approved"}:
             state["plan"]["status"] = "cancelled"
             for step in state["plan"]["steps"]:
@@ -135,13 +136,12 @@ class Controls:
             runs.append((receipt, paths, identifiers, {a["path"] for a in payload["artifacts"]}))
         affected, affected_paths = set(), set()
         display_only = kind == "intake" and bool(changes) and all(row["field"] == "product_name" for row in changes)
-        source_only = kind == "source" or (kind == "intake" and bool(changes)
-            and all(row["field"] == "source_family_id" for row in changes))
-        product_only = kind == "intake" and not any(
-            change["field"] in {"assay", "matrix_location", "count_semantics", "source_family_id",
-                               "sample_id_column", "capture_id_column", "gene_symbol_column"}
-            for change in changes
-        )
+        changed_fields = {row["field"] for row in changes}
+        qc_fields = {"assay", "matrix_location", "count_semantics",
+                     "sample_id_column", "capture_id_column", "gene_symbol_column"}
+        source_preserves_qc = kind == "source" or (kind == "intake"
+            and "source_family_id" in changed_fields and not changed_fields & qc_fields)
+        product_only = kind == "intake" and not changed_fields & (qc_fields | {"source_family_id"})
         linked_paths = ({state["_input_objects"][key]["path"] for key in root_input_ids}
                         if root_input_ids is not None else {upload_path})
         linked_runs = set()
@@ -158,7 +158,7 @@ class Controls:
         for receipt, paths, identifiers, outputs in runs:
             touches = receipt["file"] in linked_runs
             affected_by_change = (receipt["tool_id"] == "P0-10" if display_only else
-                                  receipt["tool_id"] != "P0-01" if source_only else
+                                  receipt["tool_id"] != "P0-01" if source_preserves_qc else
                                   not product_only or receipt["file"] not in reusable_native)
             if touches and affected_by_change and not (kind == "intake" and not changes):
                 affected.add(receipt["file"])
@@ -185,10 +185,50 @@ class Controls:
 
 
     def selection_impact(self, state, before, after):
+        # These two registered analyses add complementary outputs on the same
+        # asset selection. Changing the active planner mode retracts neither.
+        # Asset/declaration/QC changes still use the ordinary dependency fence;
+        # the display separately verifies exact input and DataView equality.
+        if (before.get("tool_id") == after.get("tool_id") == "P0-02"
+                and {before.get("measurement_spec_ref"), after.get("measurement_spec_ref")} == {
+                    "CELLSTATE-scRNA-celltypist-candidate-v0.1", "EXPRESSION-exploration-v0.1"}
+                and before.get("mode_id") == after.get("mode_id")
+                and bool(before.get("asset_ids"))
+                and before.get("asset_ids") == after.get("asset_ids")
+                and not before.get("object_inputs") and not after.get("object_inputs")):
+            return self.impact(state, "", "selection", [], root_input_ids=[])
         # Querying or appending consumes an existing graph; it does not revise
         # the source assertions that produced that immutable graph.
         if after["tool_id"] == "P0-09" and after["mode_id"] in {"case_query", "case_append_v2"}:
             return self.impact(state, "", "selection", [], root_input_ids=[])
+        if after["tool_id"] == "P0-08":
+            from .scientific_inputs import digest
+            assessment = state.get("_assessment") or {}
+            scope = assessment.get("scope") or {}
+            binding = scope.get("binding") or {}
+            append = binding.get("append_p008") or {}
+            resources = binding.get("resources") or {}
+            staged = (assessment.get("status") == "stopped"
+                and assessment.get("stop_reason") == "user_stopped"
+                and (state.get("pending_input_change") or {}).get("kind") == "selection"
+                and state.get("_pending_input_payload") == {"before": before, "after": after})
+            if ((assessment.get("status") == "proposed" or staged)
+                    and assessment.get("scope_digest") == digest(scope)
+                    and scope.get("input_revision") == state["_input_revision"]
+                    and append.get("base_selection") == before
+                    and append.get("selection") == after
+                    and bool(after["object_inputs"])
+                    and all(resources.get(row["input_id"]) == state["_input_objects"].get(row["input_id"])
+                            for row in after["object_inputs"])
+                    and any(row["tool_id"] == "P0-08" and row["state"] in {"succeeded", "partial"}
+                            and row["file"] not in state.get("_invalidated_receipts", {})
+                            for row in state["_tool_runs"])
+                    and any(row["tool_id"] == "P0-09" and row["state"] in {"succeeded", "partial"}
+                            and row["file"] not in state.get("_invalidated_receipts", {})
+                            for row in state["_tool_runs"])):
+                # A distinct source is frozen by the proposed scope; the new
+                # explicit plan still needs its own approval before execution.
+                return self.impact(state, "", "selection", [], root_input_ids=[])
         old_inputs = {row["input_id"] for row in before["object_inputs"]}
         new_inputs = {row["input_id"] for row in after["object_inputs"]}
         changed_inputs = sorted(old_inputs - new_inputs)
@@ -313,6 +353,33 @@ class Controls:
             state["_input_change_history"].append(deepcopy(pending))
             state["_input_revision"] += 1
             state["_chat_input_review"] = False
+        elif pending["kind"] == "intake":
+            # A discarded answer must not override the confirmed facts when
+            # the editor reopens. Restore only fields in this exact proposal.
+            draft = state.get("_intake_autofill", {}).get(pending["upload_id"])
+            fields = {row["field"] for row in pending["changes"] if row["field"] in IntakeFacts.model_fields}
+            if draft is not None and fields:
+                for change in pending["changes"]:
+                    field = change["field"]
+                    if field not in fields:
+                        continue
+                    confirmed = state.get("_intakes", {}).get(pending["upload_id"], {})
+                    same_confirmed_value = confirmed.get("facts", {}).get(field) == change["before"]
+                    origin = confirmed.get("field_sources", {}).get(field) if same_confirmed_value else None
+                    if origin is not None:
+                        draft["field_sources"][field] = deepcopy(origin)
+                    elif draft["values"].get(field) != change["before"]:
+                        # Legacy records may have lost their original provenance.
+                        # Restoring a fact is not a new researcher answer.
+                        if confirmed and same_confirmed_value:
+                            draft["field_sources"][field] = {"kind": "confirmed", "source_ids": [], "quote": ""}
+                        else:
+                            draft["field_sources"].pop(field, None)
+                    draft["values"][field] = change["before"]
+                    draft["other_answers"].pop(field, None)
+                draft["manual_fields"] = [field for field in draft["manual_fields"] if field not in fields]
+                draft["conflicts"] = [row for row in draft["conflicts"] if row["field"] not in fields]
+                draft["revision"] += 1
         state["pending_input_change"] = None
         state.pop("_pending_input_payload", None)
         state.pop("_pending_input_revision", None)

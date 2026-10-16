@@ -11,6 +11,8 @@ from jsonschema import Draft202012Validator
 from bridge.tool_packages.p0_05_off_target_control.adapter import adapter
 from bridge.tool_packages.p0_05_off_target_control.models import (
     OffTargetHardCountProfileV1,
+    OffTargetHardCountProfileV2,
+    OffTargetHardCountProfileV3,
 )
 from bridge.toolkit.contracts import (
     ExecutionState,
@@ -103,11 +105,11 @@ def test_hard_count_profile_binds_inputs_and_publishes_only_count_profile(
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result is not None
     refs = {ref.role: ref for ref in request.object_inputs}
-    assert run.tool_version == "0.6.0"
-    assert run.result_schema_ref == "bridge://schemas/off-target-control-result/v0.1"
-    assert run.result["object_version"] == "0.1.0"
-    assert run.result["profile_version"] == "0.1.0"
-    assert run.result["tool_version"] == "0.6.0"
+    assert run.tool_version == "0.8.0"
+    assert run.result_schema_ref == "bridge://schemas/off-target-control-result/v0.4"
+    assert run.result["object_version"] == "0.3.0"
+    assert run.result["profile_version"] == "0.3.0"
+    assert run.result["tool_version"] == "0.8.0"
     assert run.result["product_case_sha256"] == refs["product_case"].sha256
     assert (
         run.result["product_definition_sha256"]
@@ -146,12 +148,12 @@ def test_hard_count_model_rejects_fraction_or_mass_tamper(tmp_path: Path) -> Non
         "fraction_of_selected_view"
     ] = 0.1
     with pytest.raises(ValueError, match="role fraction"):
-        OffTargetHardCountProfileV1.model_validate(wrong_fraction)
+        OffTargetHardCountProfileV2.model_validate(wrong_fraction)
 
     soft_mass = json.loads(json.dumps(run.result))
     soft_mass["accounting"]["total_soft_mass"] = 10.0
     with pytest.raises(ValueError):
-        OffTargetHardCountProfileV1.model_validate(soft_mass)
+        OffTargetHardCountProfileV2.model_validate(soft_mass)
 
 
 def test_hard_count_mode_preserves_producer_composition_without_source_double_counting(
@@ -489,6 +491,7 @@ def test_hard_count_measurements_preserve_one_inferred_and_three_unavailable_sta
     assert run.execution_state is ExecutionState.SUCCEEDED
     assert run.result is not None
     by_metric = {item.metric_name: item for item in run.measurements}
+    assert all(item.source_run_ref == f"tool-run:{run.run_id}@0.8.0" for item in run.measurements)
     assert set(by_metric) == {
         "off_target_hard_count_accounting",
         "off_target_soft_mass_composition",
@@ -538,16 +541,30 @@ def test_hard_count_mode_is_content_hash_deterministic(tmp_path: Path) -> None:
     assert first.result == second.result
 
 
+def _historical_profile_fixture(result: dict, version: str = "0.1.0") -> dict:
+    """Synthetic frozen payload, not a relabeled execution."""
+    return {**deepcopy(result), "object_version": version,
+            "profile_version": version, "tool_version": "0.6.0" if version == "0.1.0" else "0.7.1"}
+
+
+_HARD_COUNT_SCHEMA_CASES = [
+    ("bridge://schemas/off-target-hard-count-profile/v0.1", "0.1.0"),
+    ("bridge://schemas/off-target-control-result/v0.1", "0.1.0"),
+    ("bridge://schemas/off-target-control-result/v0.2", "0.1.0"),
+    ("bridge://schemas/off-target-hard-count-profile/v0.2", "0.2.0"),
+    ("bridge://schemas/off-target-control-result/v0.3", "0.2.0"),
+    ("bridge://schemas/off-target-hard-count-profile/v0.3", None),
+    ("bridge://schemas/off-target-control-result/v0.4", None),
+]
+
 @pytest.mark.parametrize(
-    "schema_ref",
-    [
-        "bridge://schemas/off-target-hard-count-profile/v0.1",
-        "bridge://schemas/off-target-control-result/v0.1",
-    ],
+    "schema_ref,historical",
+    _HARD_COUNT_SCHEMA_CASES,
 )
 def test_exported_hard_count_schema_rejects_projection_state_contradictions(
     tmp_path: Path,
     schema_ref: str,
+    historical: str | None,
 ) -> None:
     without_spec_root = tmp_path / "without-spec"
     without_spec_root.mkdir()
@@ -559,6 +576,9 @@ def test_exported_hard_count_schema_rejects_projection_state_contradictions(
     ).result
     assert not_requested is not None
     assert available is not None
+    if historical:
+        not_requested = _historical_profile_fixture(not_requested, historical)
+        available = _historical_profile_fixture(available, historical)
     validator = Draft202012Validator(load_schema(schema_ref))
 
     assert not list(validator.iter_errors(not_requested))
@@ -578,18 +598,18 @@ def test_exported_hard_count_schema_rejects_projection_state_contradictions(
 
 
 @pytest.mark.parametrize(
-    "schema_ref",
-    [
-        "bridge://schemas/off-target-hard-count-profile/v0.1",
-        "bridge://schemas/off-target-control-result/v0.1",
-    ],
+    "schema_ref,historical",
+    _HARD_COUNT_SCHEMA_CASES,
 )
 def test_exported_hard_count_schema_requires_all_four_fixed_metric_states(
     tmp_path: Path,
     schema_ref: str,
+    historical: str | None,
 ) -> None:
     available = _run(_hard_count_request_with_measurement_spec(tmp_path)).result
     assert available is not None
+    if historical:
+        available = _historical_profile_fixture(available, historical)
     validator = Draft202012Validator(load_schema(schema_ref))
     assert not list(validator.iter_errors(available))
 
@@ -605,3 +625,43 @@ def test_exported_hard_count_schema_requires_all_four_fixed_metric_states(
     )
     accounting["evidence_state"] = "unavailable"
     assert list(validator.iter_errors(wrong_state))
+
+
+def test_hard_count_version_wrapper_preserves_frozen_rules(tmp_path: Path) -> None:
+    result = _run(_hard_count_request(tmp_path)).result
+    current = OffTargetHardCountProfileV3.model_validate(result)
+    historical = OffTargetHardCountProfileV1.model_validate(_historical_profile_fixture(result))
+    identity = {"object_version", "profile_version", "tool_version"}
+    assert current.model_dump(exclude=identity) == historical.model_dump(exclude=identity)
+    with pytest.raises(ValueError):
+        OffTargetHardCountProfileV1.model_validate(result)
+    frozen_v2 = _historical_profile_fixture(result, "0.2.0")
+    OffTargetHardCountProfileV2.model_validate(frozen_v2)
+    for version in ("0.6.0", "0.7.0", "0.7.2"):
+        with pytest.raises(ValueError):
+            OffTargetHardCountProfileV2.model_validate({**frozen_v2, "tool_version": version})
+
+
+@pytest.mark.parametrize("version,schema", [
+    ("0.6.0", "bridge://schemas/off-target-control-result/v0.1"),
+    ("0.7.0", "bridge://schemas/off-target-control-result/v0.2"),
+    ("0.7.1", "bridge://schemas/off-target-control-result/v0.3"),
+])
+def test_supported_historical_p005_receipt_remains_readable(tmp_path, version, schema):
+    from test_p0_05_off_target_control import _request
+    from bridge.toolkit.contracts import ToolRunV2
+
+    registry = ToolRegistry.load_default()
+    run = registry.run(_request(tmp_path))
+    # Build an explicitly synthetic historical aggregation receipt. No historical
+    # hard-count 0.7.0 execution is invented: that path was broken.
+    request = run.request.model_copy(update={"tool_version": version})
+    receipt = ToolRunV2(
+        run_id="run-synthetic-historical-aggregation", request=request,
+        implementation_state="implemented", execution_state="succeeded",
+        tool_version=version, environment_spec_id="ENV-P0-CORE-v0.1",
+        result_schema_ref=schema, result={**run.result, "tool_version": version},
+    )
+    assert registry.validate_historical_result(receipt, request) == receipt
+    with pytest.raises(ValueError):
+        registry.validate_result(receipt, request)

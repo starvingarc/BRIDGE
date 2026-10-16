@@ -1,7 +1,7 @@
 tool_id: P0-02
 name: Cell-State Evidence
-version: 0.6.1
-summary: Measure candidate CellTypist assignments, rejection diagnostics and source-aware auxiliary evidence without conferring scientific qualification.
+version: 0.8.3
+summary: Explore expression neighborhoods, markers and within-population sample contrasts, or measure reference-backed candidate cell states without conferring scientific qualification.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
@@ -9,6 +9,9 @@ environment_spec_id: ENV-P0-CORE-v0.2
 input_schema_ref: bridge://schemas/tool-request/v0.1
 output_schema_ref: bridge://schemas/tool-run/v0.1
 method_ids:
+- METHOD-SCANPY-INGEST
+- METHOD-SCANPY-EXPRESSION-EXPLORATION
+- METHOD-PYDESEQ2
 - METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-68029D
 - METHOD-BRIDGE-INTERNAL-MARKER-PROGRAM-EVIDENCE
 - METHOD-CELLTYPIST-CUSTOM-CLASSIFIER

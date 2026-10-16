@@ -3,16 +3,32 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-TARGET-IDENTITY-v0.1`；`TASK-REGIONAL-FIDELITY-v0.1` |
-| 文档版本 | `0.4 visualization candidate update` |
-| 日期 | 2026-09-01 |
+| 文档版本 | `0.6 contract alignment` |
+| 日期 | 2026-10-08 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA progenitor |
-| 上游输入 | 11 个 checksummed 核心 JSON；表达模式另加 1 个 analysis-ready H5AD 与 1 个 `TargetRegionalMethodSpec` |
-| 主要输出 | `TargetRegionalEvidenceResult`、3 类 `MeasurementResultV2`、typed visualization data 与 artifact set；表达模式另加 `TargetRegionalMethodBundle` |
+| 上游输入 | `default` 的产品聚合/表达路径、独立参考相似度探索、保存相似度投影或保存整批角色核算；各模式独立绑定输入 |
+| 当前结果 Schema | `bridge://schemas/target-regional-result/v0.2` 联合结果；具体对象和产物随模式选择 |
 
 ## 0. 当前可执行候选
 
-P0-03 v0.4.1 提供两个兼容入口：
+P0-03 v0.6.0 新增保存结果角色核算：读取已保存的非重叠整批分区，可绑定既有
+StateRoleMap 与 ProductDefinitionCard。只有审核后的显式角色、允许 evaluate 的来源
+定义及角色来源齐全才进入角色计数；parent_only、未映射和身份未知部分仍留在整批分母。
+角色未完全覆盖时目标比例为 null，区域与发育匹配仍未评估。该连接不改变下述科学候选，
+也不将真实数据中尚待审阅的角色定义视为通过。
+
+
+当前注册四个模式，包版本与完整合同见 [P0-03 Tool Card](../../src/bridge/tool_packages/cards/P0-03.md)：
+
+| 模式 | 输入与输出边界 |
+|---|---|
+| `default` | 下述产品绑定聚合路径；提供 H5AD 与方法 spec 时执行表达方法 |
+| `reference_similarity_exploratory` | 精确 DataView 绑定的 raw-count H5AD、reference-similarity input 和 reference manifest；发布按来源分开的相关性及技术视图测量，不推断纯度或生物学重复 |
+| `saved_reference_similarity_projection` | 原始已保存 P0-03 相似度运行；验证产物与来源后投影测量，不重新读取表达或 reference 矩阵，不允许重复投影 |
+| `saved_cell_state_context` | 已保存 P0-02 候选运行，可选成对的角色映射与产品定义；发布保留未知/未解析部分的整批角色核算 |
+
+其中 `default` 保留两个兼容入口：
 
 ProductCase 与 P0-02 profile 继续绑定 cell-state source MeasurementSpec；
 P0-03 的 `measurement_spec` 是独立的域测量合同，负责本模块的 assay、工具授权、
@@ -48,7 +64,7 @@ NNLS 的 relative L2 residual 上限同样来自外部 applicability contract；
 空间投射尚未进入本版本。所有数值仍为 `shadow`，`domain_score=null`；真实
 方法可执行不等于 reference、program 或产品结论已经过生物学验证。
 
-v0.4.1 同时从同一 typed data object 生成两类正式图形：完整产品的角色及具名区域
+产品绑定路径从同一 typed data object 生成两类正式图形：完整产品的角色及具名区域
 状态组成，以及按 target identity / regional fidelity、reference source 和 assay
 分开的表达支持矩阵。图、精确 TSV 与 JSON 绑定同一 hash；未评估、部分可用和
 草案审核状态不会被隐藏。相关性只表示 reference-conditioned expression support，
@@ -201,7 +217,7 @@ Web 可以突出展示 cell-level 投射图；正式可比较 raw metrics 先按
 
 ## 9. 运行环境
 
-P0-03 v0.4.1 的聚合与当前表达方法均在冻结的
+P0-03 的产品绑定聚合与表达方法均在冻结的
 `ENV-CELLSTATE-PY-v0.1` 中运行。AnnData 负责 H5AD I/O，NumPy/pandas/SciPy
 负责 pseudobulk、correlation、NNLS 和 bootstrap，decoupler 负责 ULM。
 
@@ -213,7 +229,7 @@ SpatialData、Squidpy、Tangram、SpaOTsc、CellTrek、CytoSPACE 和 cell2locati
 
 ## 10. 当前可视化与后续下钻
 
-P0-03 v0.4.1 当前生成：
+P0-03 的产品绑定路径生成：
 
 - **产品相关细胞组成与区域状态图**：同时显示完整产品中
   target、acceptable adjacent、known off-target、unresolved、unknown、OOD 和

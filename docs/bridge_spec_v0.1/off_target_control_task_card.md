@@ -3,11 +3,11 @@
 | 字段 | 内容 |
 |---|---|
 | Task ID | `TASK-OFFTARGET-v0.5` |
-| 文档版本 | `0.5` |
-| 日期 | 2026-09-07 |
+| 文档版本 | `0.8` |
+| 日期 | 2026-10-08 |
 | 状态 | `candidate / executable shadow` |
 | 上游 | P0-02 V2/V3、预计算 evidence bundle 或 V3 producer composition，以及可选方法运行对象 |
-| 输出 | `OffTargetControlResult v0.1` 联合结果；旧模式保持 `OffTargetControlProfile v0.2`，hard-count 模式输出 `OffTargetHardCountProfile v0.1`；可选 checksummed `MeasurementResultV2`；方法模式另含 `OffTargetMethodBundle v0.1` |
+| 输出 | `bridge://schemas/off-target-control-result/v0.4` 联合结果；聚合/方法模式保持 `OffTargetControlProfileV2`，hard-count 为 profile v0.3，保存原生上下文为 profile v0.2；测量和其他产物由各模式合同限定 |
 
 ## 1. 生物学问题与当前边界
 
@@ -45,7 +45,14 @@ GMP 放行或产品排序结论。
 
 ## 3. 精确输入合同
 
-请求必须是 `ToolRequestV2`。`legacy_aggregation` 恰好包含原有六个对象；
+请求必须是 `ToolRequestV2`。当前包版本为 P0-05 0.8.0；注册四个模式。
+`saved_cell_state_context` 只读取一个已保存 P0-02 候选运行，禁止 asset、parameters、
+MeasurementSpec override 与非零 seed。它保留来源分开的标签组成和整批非重叠分区，
+不重算注释；输出 `native-cell-state-context-profile/v0.2` 及包内生成的描述性测量。
+这一路径不要求产品角色定义，也不据此认定目标/非目标比例。完整合同见
+[Tool Card](../../src/bridge/tool_packages/cards/P0-05.md#saved-native-label-accounting)。
+
+其余三个产品绑定模式中，`legacy_aggregation` 恰好包含原有六个对象；
 `method_runtime` 恰好包含十个对象；`hard_count_accounting` 恰好包含产品上下文
 四对象、P0-02 V3、BiologicalUnitManifest 和 BiologicalUnitAttestationReceipt，
 并可选一个 MeasurementSpec。每个
@@ -98,13 +105,16 @@ mass 和 count 必须分别闭合到声明分母；部分覆盖必须显式标�
 
 ## 5. 输出合同
 
+保存原生上下文模式使用 native profile v0.2；旧 hard-count profile v0.1/v0.2
+和旧结果 union 保持可读，不重写历史回执。以下说明三个产品绑定模式。
+
 legacy 与方法模式生成 checksummed `off_target_control_profile.json`；hard-count
 模式生成 `off_target_hard_count_profile.json`。三者都将同一对象作为
 `ToolRunV2.result` 返回；方法模式原子增加
 `off_target_method_bundle.json`。
 
-P0-05 v0.6.0 以 `OffTargetControlResult v0.1` 联合 Schema 返回结果。旧模式继续
-返回字节形状不变的 profile v0.2；hard-count 模式返回 profile v0.1，其中完整保留
+P0-05 v0.8.0 以 `off-target-control-result/v0.4` 联合 Schema 返回结果。聚合/方法模式
+保持 profile v0.2；hard-count 模式返回 `off-target-hard-count-profile/v0.3`，其中完整保留
 producer composition，`accounting_basis=producer_reference_support_counts`、
 `mass_state=unavailable`、`total_soft_mass=null`，open-set 与 rare detection 均为
 `not_assessed`。未提供 MeasurementSpec 时明确记录
@@ -158,7 +168,7 @@ measurement artifact；unavailable 项仍可被 P0-08 读取，不改变 P0-08 �
 
 ## 7. 拒答与非目标
 
-以下情况在 eligibility 阶段 fail closed：V1 请求、表达资产、任意 parameters、
+以下产品绑定模式的情况在 eligibility 阶段 fail closed：V1 请求、表达资产、任意 parameters、
 对象数量/role/Schema/version 不符、checksum 漂移、跨对象引用不一致、未映射
 state、未允许 unknown reason、未声明 calibration、inactive spec、方法对象不完整、attestation receipt 缺失或未确认、attestation/manifest/assignment/DataView/observation/unit 绑定漂移、
 analysis-unit/independence-group 漂移、同一状态/浓度内重复 spike-in independence group、OOD channel/upstream lineage 不匹配或 aggregate count 不闭合。
@@ -191,3 +201,9 @@ source-family/OOD holdout、known-mixture 组成误差、稀有状态 spike-in �
 ## 9. BiologicalUnitAttestationReceipt 边界
 
 该收据记录 data owner/caller 对四项 biological-unit 设计作出的显式、可追溯声明。runtime 只验证收据结构，以及它与 manifest、assignment、DataView、observation digest、unit contract 和外部 attestation 摘要的绑定；不认证 attestor 身份，也不验证外部记录来源的真实性。部署层负责将已认证的对话或工作流记录映射为 `attestation_ref` 与 `attestation_sha256`。该收据不证明生物学真值、独立审核或科学发布、临床、GMP、疗效、安全、potency 权限。可选 `caveats` 仅保存简短限制，不改变 `confirmed` 语义。
+
+## 10. 保存结果的整批候选组成
+
+已有分层注释可按整批细胞分母核算：细分子项及其未确定余量替代父类，未细分父类和根级未确定部分保留，合计闭合到同一数据视图的 N。谱系内比例另列，不混入整批合计；不同参考来源不相加。
+
+该描述性输出不改变原始注释或来源审阅。`parent_only` 不能升级为细分身份，来源分歧、细分未确定、不可用和尚未评估保留各自状态。没有经过审核的产品角色映射时，目标比例、非目标比例和预期发育窗口仍未判定；不能据此认定目标纯度或完成 P0-03 的目标/区域评估。版本、绑定与拒绝行为由 [Tool Card](../../src/bridge/tool_packages/cards/P0-05.md#saved-native-label-accounting) 维护。

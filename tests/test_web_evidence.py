@@ -16,9 +16,11 @@ from bridge.toolkit.contracts import (
     ToolRequest,
     ToolRun,
 )
-from bridge.web.app import Settings, create_app, write_file
+from bridge.web.app import Settings
+from account_support import create_test_app as create_app
+from bridge.web.sessions import write_file
 from bridge.web.evidence import build_result_context
-from test_web_service import client, declare_counts, h5ad, new_session, settle
+from web_support import client, declare_counts, h5ad, new_session, settle
 
 
 
@@ -58,6 +60,197 @@ def test_assessment_portrait_keeps_axes_and_does_not_classify_arbitrary_programs
     assert all(row["state"] == "unavailable" for index, row in enumerate(families) if index != 1)
 
 
+@pytest.mark.parametrize("mode", ["reference_similarity_exploratory", "saved_reference_similarity_projection"])
+def test_portrait_links_reference_context_without_promoting_identity(mode):
+    from bridge.web.evidence import assessment_portrait
+
+    evidence = [{"alias": "E-reference", "tool_id": "P0-03", "state": "available",
+                 "summary": {"runtime_mode": mode, "similarity": 0.75},
+                 "provenance": {"receipt_sha256": "reference", "plan_id": "current"}}]
+    modes = {"reference": mode}
+    axes = assessment_portrait(evidence, [], modes_by_receipt=modes)
+    for axis in axes[1:3]:
+        assert axis["context_evidence_aliases"] == ["E-reference"]
+        assert axis["evidence_aliases"] == []
+        assert axis["state"] == "missing"
+        assert axis["summary"] == {"channels": []}
+
+    evidence.append({"alias": "E-invalid", "tool_id": "P0-03", "state": "unavailable",
+                     "reason_code": "canonical_result_invalid",
+                     "provenance": {"receipt_sha256": "invalid", "plan_id": "current"}})
+    modes["invalid"] = mode
+    axes = assessment_portrait(evidence, [], modes_by_receipt=modes,
+                              order_by_receipt={"reference": 0, "invalid": 1})
+    assert all(axis["context_evidence_aliases"] == [] for axis in axes[1:3])
+
+
+def test_assessment_portrait_prefers_current_receipt_without_conflating_process_modes():
+    from bridge.web.evidence import assessment_portrait
+    evidence = [
+        {"alias": "E-current-cell", "tool_id": "P0-02", "mode_id": None,
+         "state": "available", "summary": {"n_observations": 9},
+         "provenance": {"plan_id": "current"}},
+        {"alias": "E-current-process", "tool_id": "P0-06", "mode_id": "method_runtime_source_bound",
+         "state": "available", "summary": {"runtime_mode": "method_runtime_source_bound",
+             "program_results": [{"program_id": "current-program"}]},
+         "provenance": {"plan_id": "current"}},
+        {"alias": "E-current-cycle", "tool_id": "P0-06", "mode_id": "exploratory_process",
+         "state": "available", "summary": {"runtime_mode": "exploratory_process",
+             "cell_cycle": {"assessment_state": "available", "n_observations": 9,
+                            "reason_codes": [], "s_g2m_fraction": 0.5}},
+         "provenance": {"plan_id": "current"}},
+        {"alias": "E-reused-cell", "tool_id": "P0-02", "mode_id": None,
+         "state": "available", "summary": {"n_observations": 4},
+         "provenance": {"plan_id": "historical"}},
+        {"alias": "E-reused-cycle", "tool_id": "P0-06", "mode_id": "exploratory_process",
+         "state": "available", "summary": {"runtime_mode": "exploratory_process",
+             "cell_cycle": {"assessment_state": "available", "n_observations": 4,
+                            "reason_codes": [], "s_g2m_fraction": 0.25}},
+         "provenance": {"plan_id": "historical"}},
+    ]
+    axes = {row["id"]: row for row in assessment_portrait(
+        evidence, [], current_plan_ids={"current"})}
+    assert axes["cell_state"]["evidence_aliases"] == ["E-current-cell"]
+    assert axes["cell_state"]["summary"]["n_observations"] == 9
+    assert axes["process"]["evidence_aliases"] == ["E-current-process"]
+    assert axes["process"]["summary"]["program_results"][0]["program_id"] == "current-program"
+    cycle = next(row for row in axes["process"]["families"] if row["id"] == "cell_cycle")
+    assert cycle["evidence_aliases"] == ["E-current-cycle"]
+    assert cycle["summary"]["n_observations"] == 9
+
+
+def test_assessment_portrait_keeps_current_unavailable_and_uses_receipt_order():
+    from bridge.web.evidence import assessment_portrait
+    evidence = [
+        {"alias": "E-new", "tool_id": "P0-06", "state": "unavailable",
+         "reason_code": "output_not_readable", "provenance": {"plan_id": "current", "receipt_sha256": "new"}},
+        {"alias": "E-old", "tool_id": "P0-06", "state": "available",
+         "summary": {"runtime_mode": "exploratory_process", "cell_cycle": {
+             "assessment_state": "available", "n_observations": 4,
+             "reason_codes": [], "s_g2m_fraction": 0.25}},
+         "provenance": {"plan_id": "historical", "receipt_sha256": "old"}},
+        {"alias": "E-earlier-current", "tool_id": "P0-06", "state": "available",
+         "summary": {"runtime_mode": "exploratory_process", "cell_cycle": {
+             "assessment_state": "available", "n_observations": 9,
+             "reason_codes": [], "s_g2m_fraction": 0.5}},
+         "provenance": {"plan_id": "current", "receipt_sha256": "earlier"}},
+    ]
+    axes = assessment_portrait(evidence, [], current_plan_ids={"current"},
+        modes_by_receipt={"new": "exploratory_process", "old": "exploratory_process",
+                          "earlier": "exploratory_process"},
+        order_by_receipt={"old": 0, "earlier": 1, "new": 2})
+    process = axes[-1]
+    cycle = next(row for row in process["families"] if row["id"] == "cell_cycle")
+    assert process["state"] == "unavailable" and process["evidence_aliases"] == ["E-new"]
+    assert cycle["state"] == "unavailable" and cycle["summary"] == {}
+    assert cycle["reason_codes"] == ["output_not_readable"]
+    assert cycle["evidence_aliases"] == ["E-new"]
+
+
+def test_directed_source_projection_keeps_all_program_families_and_nulls():
+    from bridge.web.evidence import _assessment_aggregate, _directed_program_summary, assessment_portrait
+
+    directed = _assessment_aggregate(_directed_program_summary({
+        "runtime_mode": "exploratory_programs", "object_version": "0.2.0",
+        "program_summaries": [{"source_gene_set": "OFLANAGAN-2019-CORE",
+            "method_id": "PROC-SCORE-SCANPY", "assessment_state": "not_assessed",
+            "mean": None, "reason_codes": ["scanpy_signed_signature_not_supported"],
+            "direction_definition": "sign_of_source_logFC",
+            "unresolved_members": [{"source_member_id": "private-member"}]},
+            {"source_gene_set": "OFLANAGAN-2019-CORE", "method_id": "PROC-SCORE-DECOUPLER",
+             "assessment_state": "available", "mean": 0.25, "reason_codes": [],
+             "direction_definition": "sign_of_source_logFC",
+             "unresolved_members": [{"source_member_id": "private-member"}]}]}))
+    assert all(row["unresolved_member_count"] == 1 for row in directed["program_summaries"])
+    assert all("unresolved_members" not in row for row in directed["program_summaries"])
+    assert directed["program_summaries"][0]["mean"] is None
+    sources = [("E-cycle", "exploratory_process", {"cell_cycle": {
+        "assessment_state": "available", "reason_codes": [], "n_observations": 12}}),
+        ("E-hallmark", "exploratory_programs", {"program_summaries": [
+            {"source_gene_set": source, "assessment_state": "available", "reason_codes": []}
+            for source in ("HALLMARK_REACTIVE_OXYGEN_SPECIES_PATHWAY",
+                           "HALLMARK_UNFOLDED_PROTEIN_RESPONSE", "HALLMARK_APOPTOSIS",
+                           "HALLMARK_HYPOXIA")]}),
+        ("E-pluri", "exploratory_programs", {"program_summaries": [
+            {"source_gene_set": "HU-2020-TABLE-S1", "assessment_state": "available", "reason_codes": []}]}),
+        ("E-dissoc", "exploratory_programs", directed)]
+    evidence = [{"alias": alias, "tool_id": "P0-06", "state": "available",
+                 "summary": {"runtime_mode": mode, **summary},
+                 "provenance": {"receipt_sha256": alias, "plan_id": alias}}
+                for alias, mode, summary in sources]
+    families = assessment_portrait(evidence, [], order_by_receipt={alias: index
+        for index, (alias, _, _) in enumerate(sources)})[-1]["families"]
+    by_id = {row["id"]: row for row in families}
+    assert by_id["cell_cycle"]["evidence_aliases"] == ["E-cycle"]
+    assert by_id["pluripotency_like"]["evidence_aliases"] == ["E-pluri"]
+    assert by_id["dissociation_heat_shock"]["evidence_aliases"] == ["E-dissoc"]
+    for family in ("oxidative_stress", "unfolded_protein_response", "apoptosis_related", "hypoxia"):
+        assert by_id[family]["evidence_aliases"] == ["E-hallmark"]
+
+
+def test_cancelled_directed_admission_without_receipt_is_not_automatically_reselected():
+    from bridge.web.scientific_inputs import _admitted_directed_inputs
+
+    source = "a" * 32
+    roots = {source: {"sha256": "b" * 64,
+                      "schema_ref": "bridge://schemas/exploratory-process-input/v0.3"}}
+    request = {"tool_id": "P0-06", "tool_version": "0.11.0", "object_inputs": [{
+        "role": "directed_program_input", "input_id": source, "sha256": "b" * 64,
+        "schema_ref": roots[source]["schema_ref"]}]}
+    state = {"_assessment_history": [{"admissions": [{"plan_id": "plan-1", "tool_id": "P0-06",
+        "mode_id": "directed_programs", "state": "cancelled"}]}],
+        "_plan_history": [{"plan": {"plan_id": "plan-1", "status": "cancelled",
+            "steps": [{"tool_id": "P0-06", "approved_request_json": json.dumps(request)}]}}],
+        "_tool_runs": []}
+    assert _admitted_directed_inputs(state, roots, "0.11.0") == {source}
+    assert _admitted_directed_inputs(state, roots, "0.12.0") == set()
+
+
+def test_directed_scope_keeps_approved_source_with_more_than_one_tool_run():
+    from types import SimpleNamespace
+    from bridge.web.inputs import Selection
+    from bridge.web.scientific_inputs import ScientificInputs
+
+    first, second = "a" * 32, "b" * 32
+    schema = "bridge://schemas/exploratory-process-input/v0.3"
+    records = {key: {"schema_ref": schema, "sha256": key * 2} for key in (first, second)}
+    payloads = {first: {"data_view": {"view_id": "same-view"},
+                        "programs": [{"source_gene_set": "HU-2020-TABLE-S1"}]},
+                second: {"data_view": {"view_id": "same-view"},
+                         "programs": [{"source_gene_set": "OFLANAGAN-2019-CORE"}]}}
+    service = SimpleNamespace(inputs=SimpleNamespace(verify=lambda state, record:
+        payloads[next(key for key, value in records.items() if value is record)]))
+    frozen = Selection(tool_id="P0-06", mode_id="directed_programs", asset_ids=["upload"],
+        object_inputs=[{"role": "directed_program_input", "input_id": first}],
+        measurement_spec_ref=None)
+    scope = SimpleNamespace(upload_id="upload", max_tool_runs=2,
+        binding={"resources": records, "data_view": {"view_id": "same-view"},
+                 "selections": {"P0-06": frozen.model_dump(mode="json")}})
+    empty = Selection(tool_id="P0-06", mode_id="directed_programs", asset_ids=[],
+        object_inputs=[], measurement_spec_ref=None)
+    allowed = SimpleNamespace(tool_id="P0-06", mode_id="directed_programs")
+    coordinator = ScientificInputs(service)
+    assert coordinator.assessment_selection({}, scope, allowed, empty) == frozen
+    # An already executed first source does not turn the old approved scope into
+    # permission for the second source, even with a remaining tool-run slot.
+    state = {"_tool_runs": [{"tool_id": "P0-06", "state": "succeeded"}]}
+    assert coordinator.assessment_selection(state, scope, allowed, empty) == frozen
+
+
+def test_signed_program_graph_validation_uses_available_ulm_method():
+    from types import SimpleNamespace
+    from bridge.web.native_evidence import _program_validation_method
+
+    source = (SimpleNamespace(result={"program_summaries": [
+        {"method_id": "PROC-SCORE-SCANPY", "assessment_state": "not_assessed",
+         "direction_definition": "sign_of_source_logFC"},
+        {"method_id": "PROC-SCORE-DECOUPLER", "assessment_state": "available",
+         "direction_definition": "sign_of_source_logFC"}]}),)
+    assert _program_validation_method(source) == "METHOD-DECOUPLER"
+    source[0].result["program_summaries"][1]["assessment_state"] = "not_assessed"
+    assert _program_validation_method(source) == "METHOD-DECOUPLER"
+
+
 def test_assessment_local_projection_retains_canonical_missingness_and_program_identity():
     from bridge.web.evidence import _assessment_aggregate, assessment_model_evidence
     local = _assessment_aggregate({
@@ -68,16 +261,194 @@ def test_assessment_local_projection_retains_canonical_missingness_and_program_i
     assert local == {"reason_codes": ["process_metadata_incomplete"], "program_summaries": [
         {"program_id": "program:reviewed-example@0.1.0", "availability": "unavailable",
          "reason_codes": ["program_gene_coverage_insufficient"]}]}
+    coverage = {"missing_genes": ["PRIVATE_MISSING_GENE"], "ambiguous_genes": ["PRIVATE_AMBIGUOUS_GENE"],
+        "gene_symbols_sha256": "a" * 64, "observed_gene_count": 3, "declared_gene_count": 5}
+    local["program_summaries"][0].update(coverage)
+    local["program_summaries"].extend([
+        {"program_id": "private-pluri", "source_gene_set": "HU-2020-TABLE-S1",
+         "method_id": "PROC-SCORE-SCANPY", "mean": 0.25, "reason_codes": []},
+        {"program_id": "private-dissoc", "source_gene_set": "OFLANAGAN-2019-CORE",
+         "method_id": "PROC-SCORE-DECOUPLER", "mean": None,
+         "reason_codes": ["program_gene_identifier_ambiguous"]},
+    ])
+    local["marker_observations"] = [{"positive_genes": ["PRIVATE_MISSING_GENE"],
+        "gene_detection": {"PRIVATE_MISSING_GENE": {"count": 0, "denominator": 5, "state": "unknown"}}}]
     rows = [{"alias": "E-privatehashprefix", "state": "available", "tool_id": "P0-06",
-        "summary": local, "measurements": [], "provenance": {"plan_id": "private-plan"},
+        "summary": local, "measurements": [{"alias": "M-local", "raw_value": None,
+            "object_ref": {"object_id": "PRIVATE_MEASUREMENT_REF", "object_version": "0.2.0"}}],
+        "provenance": {"plan_id": "private-plan", "tool_run_ref": {"object_id": "PRIVATE_RUN_REF", "object_version": "1"}},
         "artifact_ids": ["private-artifact"]}]
     shared, binding = assessment_model_evidence(rows)
     assert shared[0]["summary"]["reason_codes"] == ["process_metadata_incomplete"]
     wire = json.dumps(shared)
     for private in ("program:reviewed-example@0.1.0", "E-privatehashprefix",
-                    "private-plan", "private-artifact"):
+                    "private-plan", "private-artifact", "PRIVATE_MISSING_GENE", "PRIVATE_AMBIGUOUS_GENE",
+                    "PRIVATE_MEASUREMENT_REF", "PRIVATE_RUN_REF", "a" * 64):
         assert private not in wire
+    projected = shared[0]["summary"]["program_summaries"][0]
+    pluri, dissoc = shared[0]["summary"]["program_summaries"][1:]
+    assert pluri["program_family"] == "pluripotency_like"
+    assert pluri["method_name"] == "Scanpy score_genes"
+    assert pluri["mean"] == 0.25
+    assert dissoc["program_family"] == "dissociation_heat_shock"
+    assert dissoc["method_name"] == "decoupler ULM"
+    assert dissoc["mean"] is None
+    assert dissoc["reason_codes"] == ["program_gene_identifier_ambiguous"]
+    assert "program_family" not in projected and "method_name" not in projected
+    assert "private-pluri" not in wire and "private-dissoc" not in wire
+    assert "gene_symbols_sha256" not in projected
+    assert local["program_summaries"][0]["gene_symbols_sha256"] == "a" * 64
+    marker = shared[0]["summary"]["marker_observations"][0]
+    gene_alias = projected["missing_genes"][0]
+    assert marker["positive_genes"] == [gene_alias]
+    assert marker["gene_detection"] == {gene_alias: {"count": 0, "denominator": 5, "state": "unknown"}}
+    assert projected["availability"] == "unavailable"
+    assert projected["reason_codes"] == ["program_gene_coverage_insufficient"]
+    assert projected["observed_gene_count"] == 3 and projected["declared_gene_count"] == 5
+    for field in ("missing_genes", "ambiguous_genes"):
+        assert [binding["references"][alias] for alias in projected[field]] == coverage[field]
+        assert local["program_summaries"][0][field] == coverage[field]
     assert binding["evidence"][shared[0]["alias"]] == "E-privatehashprefix"
+
+
+def test_native_model_projection_omits_only_canonically_repeated_observations():
+    from bridge.web.evidence import assessment_model_evidence
+
+    composition = [{"label": "state:example", "count": 1, "denominator": 10,
+                    "fraction": 0.1, "denominator_scope": "selected_data_view"}]
+    observation = {"count": 1, "denominator": 10, "state": "measured"}
+    rows = [
+        {"alias": "E-p005", "state": "available", "tool_id": "P0-05",
+         "summary": {"runtime_mode": "saved_cell_state_context",
+                     "primary_composition": composition, "auxiliary_composition": composition},
+         "measurements": []},
+        {"alias": "E-p004", "state": "available", "tool_id": "P0-04",
+         "summary": {"runtime_mode": "saved_cell_state_context",
+                     "primary_composition": composition, "auxiliary_composition": composition,
+                     "marker_observations": [
+                         {"state_id": "L1:first", "positive_genes": ["GENE1"],
+                          "counter_genes": [], "gene_detection": {"GENE1": observation}},
+                         {"state_id": "L1:second", "positive_genes": [],
+                          "counter_genes": ["GENE1"], "gene_detection": {"GENE1": observation}},
+                         {"state_id": "L1:empty", "positive_genes": [],
+                          "counter_genes": [], "gene_detection": {}}]},
+         "measurements": [{"alias": "M-gene1", "source_alias": "E-p004",
+                           "measurement_class": "gate_input_measurement",
+                           "metric_name": "native_gene_detection_GENE1", "raw_value": 0.1,
+                           "numerator": 1, "denominator": 10, "unit": "fraction",
+                           "evidence_state": "inferred"}]},
+    ]
+
+    projected, bindings = assessment_model_evidence(rows)
+    from model_wire_contract import assert_model_context
+    assert_model_context("generation", {"evidence": projected})
+    source, native = projected
+    assert source["summary"]["primary_composition"][0]["count"] == 1
+    assert source["summary"]["auxiliary_composition"][0]["denominator"] == 10
+    assert bindings["references"][source["summary"]["primary_composition"][0]["label"]] == "state:example"
+    assert "primary_composition" not in native["summary"]
+    assert "auxiliary_composition" not in native["summary"]
+    assert all("gene_detection" not in row for row in native["summary"]["marker_observations"])
+    assert len(native["measurements"]) == 1
+    measurement = native["measurements"][0]
+    assert {key: measurement[key] for key in ("raw_value", "numerator", "denominator", "unit")} == {
+        "raw_value": 0.1, "numerator": 1, "denominator": 10, "unit": "fraction"}
+    assert measurement["evidence_state"] == "inferred"
+    assert measurement["citation_role"] == "observation"
+    assert "alias" not in measurement
+    assert native["measurement_defaults"] == {"measurement_class": "gate_input_measurement",
+        "source_alias": native["alias"], "citation_ref_version": 1}
+    assert bindings["evidence"][measurement["citation_alias"]] == "E-p004#measurement:M-gene1@1"
+    assert native["projection_omissions"]["marker_observations.gene_detection"] == (
+        "canonical_measurements_with_measured_detection_state")
+    assert native["projection_omissions"]["primary_composition"] == source["alias"]
+    assert native["projection_omissions"]["auxiliary_composition"] == source["alias"]
+
+    rows[1]["measurements"][0]["numerator"] = 2
+    mismatch, _ = assessment_model_evidence(rows)
+    assert "gene_detection" in mismatch[1]["summary"]["marker_observations"][0]
+
+
+def test_graph_model_projection_lifts_only_identical_record_fields():
+    from bridge.web.evidence import assessment_model_evidence
+
+    claims = [{"alias": f"N-private-{index}", "node_type": "Claim",
+               "evidence_tier": "formal", "lifecycle_state": "active",
+               "domain_id": "target_identity", "claim_type": "descriptive_domain_observation"}
+              for index in range(15)]
+    summary = {"query_name": "get_case_evidence_subgraph", "graph_alias": "N-private-graph",
+               "graph_version": 1, "returned_node_count": 15, "returned_edge_count": 0,
+               "truncated": False, "omitted_node_count": 0, "omitted_edge_count": 0,
+               "nodes": [], "claims": claims, "requirements": [], "records": [],
+               "reconciliations": [], "edges": []}
+    projected, bindings = assessment_model_evidence([{
+        "alias": "E-private", "state": "available", "tool_id": "P0-09",
+        "summary": summary, "measurements": []}])
+    from model_wire_contract import assert_model_context
+    assert_model_context("generation", {"evidence": projected})
+    graph = projected[0]["summary"]
+    assert graph["record_defaults"]["claims"]["node_type"] == "Claim"
+    assert graph["record_defaults"]["claims"]["domain_id"] == "target_identity"
+    assert "explicit null overrides" in graph["record_defaults_semantics"]
+    assert len(graph["claims"]) == 15
+    assert {bindings["references"][row["alias"]] for row in graph["claims"]} == {
+        f"N-private-{index}" for index in range(15)}
+    assert all("node_type" not in row for row in graph["claims"])
+
+
+def test_verified_case_query_has_bounded_summary_allowance_only_through_100_nodes():
+    from bridge.web.evidence import (
+        MAX_SUMMARY_BYTES, _SummaryLimit, _assessment_result_limit, _check_summary_limit)
+
+    payload = {"summary": "x" * 40000}
+    query = {"query_name": "get_case_evidence_subgraph", "returned_node_count": 100}
+    assert MAX_SUMMARY_BYTES < 40000 < _assessment_result_limit("P0-09", query)
+    _check_summary_limit(payload, limit=_assessment_result_limit("P0-09", query))
+    for tool_id, result in (("P0-09", {**query, "returned_node_count": 101}),
+                            ("P0-09", {**query, "returned_node_count": True}),
+                            ("P0-04", query)):
+        with pytest.raises(_SummaryLimit):
+            _check_summary_limit(payload, limit=_assessment_result_limit(tool_id, result))
+
+
+def test_exploratory_graph_observation_needs_verified_active_applicable_numeric_source():
+    from bridge.web.evidence import _assessment_query, _citation_role, assessment_model_evidence
+
+    result = {"query_name": "get_case_evidence_subgraph", "graph_id": "graph:example",
+        "graph_version": 3, "returned_node_count": 1, "returned_edge_count": 0,
+        "truncated": True, "omitted_node_count": 1, "omitted_edge_count": 0, "edges": [],
+        "nodes": [{"node_id": "node:observation", "node_type": "EvidenceRecord",
+            "graph_id": "graph:example", "graph_version": 3, "record_mode": "owned",
+            "evidence_tier": "exploratory", "lifecycle_state": "active", "properties": {
+                "evidence_id": "evidence:example", "evidence_version": 1,
+                "evidence_family_ref": {"object_id": "family:example", "object_version": "1"},
+                "tool_run_ref": {"object_id": "run:example", "object_version": "1"},
+                "measurement_result_ref": {"object_id": "measurement:example", "object_version": "1"},
+                "measurement_spec_ref": {"object_id": "spec:example", "object_version": "1"},
+                "provenance_refs": ["run:example"], "tool_run_execution_state": "partial",
+                "domain_id": "target_identity", "evidence_state": "inferred", "value": 0.25,
+                "unit": "fraction", "metric_id": "target_identity_fraction",
+                "numerator": 1, "denominator": 4, "applicability": "applicable",
+                "relation": "supports", "interval": None}}]}
+    summary = _assessment_query(result)
+    record = summary["records"][0]
+    assert record["source_verification_state"] == "verified"
+    assert record["eligibility"] == "not_eligible"
+    assert _citation_role(record, graph_record=True) == "observation"
+    projected, bindings = assessment_model_evidence([{
+        "alias": "E-source", "state": "available", "tool_id": "P0-09",
+        "summary": summary, "measurements": []}])
+    visible = projected[0]["summary"]["records"][0]
+    assert "graph_node_id" not in visible
+    assert "node:observation" not in json.dumps(projected)
+    assert visible["citation_role"] == "observation"
+    assert bindings["citation_roles"][visible["citation_alias"]] == "observation"
+    for change in ({"source_verification_state": "unavailable"},
+                   {"lifecycle_state": "superseded"}, {"applicability": "not_applicable"},
+                   {"evidence_tier": "formal"}, {"value": None}):
+        assert _citation_role({**record, **change}, graph_record=True) is None
+    assert _citation_role({**record, "value": None, "evidence_state": "unknown"},
+                          graph_record=True) == "missing"
 
 
 @pytest.mark.parametrize("value,evidence_state,projected_value,projection_state", [
@@ -105,6 +476,8 @@ def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids(
     local = [{"alias": "E-privatehash", "state": "available", "tool_id": "P0-09",
               "summary": summary, "measurements": []}]
     shared, bindings = assessment_model_evidence(local)
+    from model_wire_contract import assert_model_context
+    assert_model_context("generation", {"evidence": shared})
     again, _ = assessment_model_evidence(local)
     graph = shared[0]["summary"]
     assert graph["nodes"][0]["alias"] == graph["records"][0]["alias"] == graph["edges"][0]["source"]
@@ -119,6 +492,170 @@ def test_assessment_graph_model_aliases_keep_joins_without_hash_derived_ids(
     assert "private" not in json.dumps(shared)
     assert shared[0]["alias"] != again[0]["alias"]
     assert bindings["references"][graph["graph_alias"]] == "N-privategraphhash"
+
+
+def test_measurement_states_are_observations_until_a_claim_relation_assigns_a_role():
+    from bridge.web.evidence import assessment_model_evidence
+    from bridge.web.provider import _citation_choices
+
+    local = [{
+        "alias": "E-privatehash",
+        "state": "available",
+        "tool_id": "P0-06",
+        "summary": {},
+        "measurements": [
+            {"alias": "M-measured", "measurement_class": "gate_input_measurement",
+             "metric_name": "mean_g2m_score", "raw_value": 0.2, "unit": "score",
+             "evidence_state": "measured"},
+            {"alias": "M-negative", "measurement_class": "gate_input_measurement",
+             "metric_name": "g2m_detection", "raw_value": 0.0, "unit": "fraction",
+             "evidence_state": "negative"},
+            {"alias": "M-alert", "measurement_class": "gate_input_measurement",
+             "metric_name": "stress_alert", "raw_value": 0.7, "unit": "score",
+             "evidence_state": "alert"},
+            {"alias": "M-missing", "measurement_class": "gate_input_measurement",
+             "metric_name": "independent_repeat_effect", "raw_value": None, "unit": None,
+             "evidence_state": "missing"},
+        ],
+    }]
+
+    shared, bindings = assessment_model_evidence(local)
+    choices = _citation_choices(shared)
+    records = {row["metric_name"]: row for row in shared[0]["measurements"]}
+
+    from bridge.web.provider import provider_citations
+    assert shared[0]["alias"].startswith("R-")
+    assert not provider_citations(shared[0]["alias"])
+    assert all(provider_citations(record["citation_alias"]) == {record["citation_alias"]}
+               for record in records.values())
+    assert shared[0]["alias"] not in {
+        alias for values in choices.values() for alias in values
+    }
+    assert set(choices["evidence_aliases"]) == {
+        records[name]["citation_alias"]
+        for name in ("mean_g2m_score", "g2m_detection", "stress_alert")
+    }
+    assert choices["opposing_evidence_aliases"] == []
+    assert choices["missing_evidence_aliases"] == [
+        records["independent_repeat_effect"]["citation_alias"]]
+    assert {
+        alias: bindings["citation_roles"][alias]
+        for values in choices.values() for alias in values
+    } == {
+        records["mean_g2m_score"]["citation_alias"]: "observation",
+        records["g2m_detection"]["citation_alias"]: "observation",
+        records["stress_alert"]["citation_alias"]: "observation",
+        records["independent_repeat_effect"]["citation_alias"]: "missing",
+    }
+    stable = {bindings["evidence"][alias]
+              for values in choices.values() for alias in values}
+    assert stable == {
+        "E-privatehash#measurement:M-measured@1",
+        "E-privatehash#measurement:M-negative@1",
+        "E-privatehash#measurement:M-alert@1",
+        "E-privatehash#measurement:M-missing@1",
+    }
+
+
+def test_available_container_with_only_missing_record_offers_no_support_or_opposition():
+    from bridge.web.evidence import assessment_model_evidence
+    from bridge.web.provider import _citation_choices
+
+    shared, _ = assessment_model_evidence([{
+        "alias": "E1", "state": "available", "tool_id": "P0-06", "summary": {},
+        "measurements": [{"alias": "M-null", "measurement_class": "gate_input_measurement",
+            "metric_name": "mean_g2m_score", "raw_value": None, "unit": "score",
+            "evidence_state": "missing"}],
+    }])
+
+    choices = _citation_choices(shared)
+    assert choices["evidence_aliases"] == []
+    assert choices["opposing_evidence_aliases"] == []
+    assert choices["missing_evidence_aliases"] == [
+        shared[0]["measurements"][0]["citation_alias"]
+    ]
+
+
+def test_graph_opposition_requires_the_record_to_enter_an_eligible_reconciliation():
+    from bridge.web.evidence import _assessment_query, assessment_model_evidence
+    from bridge.web.provider import _citation_choices
+
+    claim_ref = {"object_id": "claim:synthetic", "object_version": "1.0.0"}
+    family_ref = {"object_id": "evidence-family:synthetic", "object_version": "1.0.0"}
+
+    def evidence_node(identifier, metric, relation, state, value):
+        return {
+            "node_id": "node:" + identifier,
+            "object_id": identifier,
+            "object_version": "1",
+            "node_type": "EvidenceRecord",
+            "evidence_tier": "formal",
+            "lifecycle_state": "active",
+            "properties": {
+                "evidence_id": identifier,
+                "evidence_version": 1,
+                "claim_ref": claim_ref,
+                "evidence_family_ref": family_ref,
+                "domain_id": "target_identity",
+                "evidence_state": state,
+                "value": value,
+                "unit": "fraction",
+                "metric_id": metric,
+                "numerator": None,
+                "denominator": None,
+                "applicability": "applicable",
+                "relation": relation,
+                "interval": None,
+            },
+        }
+
+    result = {
+        "query_name": "get_case_evidence_subgraph",
+        "graph_id": "graph:synthetic",
+        "graph_version": 1,
+        "returned_node_count": 5,
+        "returned_edge_count": 0,
+        "truncated": False,
+        "omitted_node_count": 0,
+        "omitted_edge_count": 0,
+        "edges": [],
+        "nodes": [
+            {"node_id": "node:claim", "object_id": "claim:synthetic",
+             "object_version": "1.0.0", "node_type": "Claim", "evidence_tier": "formal",
+             "lifecycle_state": "active", "properties": {
+                 "domain_id": "target_identity", "claim_type": "descriptive_domain_observation"}},
+            evidence_node("evidence:aaaaaaaaaaaaaaaaaaaaaaaa", "target_identity_fraction",
+                          "contradicts", "negative", 0.0),
+            evidence_node("evidence:bbbbbbbbbbbbbbbbbbbbbbbb", "regional_fidelity_fraction",
+                          "contradicts", "negative", 0.0),
+            evidence_node("evidence:cccccccccccccccccccccccc", "whole_product_target_region_fraction",
+                          "supports", "unknown", None),
+            {"node_id": "node:reconciliation", "object_id": "reconciliation:synthetic",
+             "object_version": "1", "node_type": "ReconciliationRecord", "evidence_tier": "formal",
+             "lifecycle_state": "active", "properties": {
+                 "eligibility": "eligible", "state": "stable", "direction": "contradicts",
+                 "reason_codes": [], "channel_resolutions": [],
+                 "included_evidence_refs": ["evidence:aaaaaaaaaaaaaaaaaaaaaaaa@1"]}},
+        ],
+    }
+
+    summary = _assessment_query(result)
+    local = [{"alias": "E-graph", "state": "available", "tool_id": "P0-09",
+              "summary": summary, "measurements": []}]
+    shared, bindings = assessment_model_evidence(local)
+    choices = _citation_choices(shared)
+    records = {row["metric_name"]: row for row in shared[0]["summary"]["records"]}
+
+    assert choices["opposing_evidence_aliases"] == [
+        records["target_identity_fraction"]["citation_alias"]
+    ]
+    assert "citation_alias" not in records["regional_fidelity_fraction"]
+    assert choices["missing_evidence_aliases"] == [
+        records["whole_product_target_region_fraction"]["citation_alias"]
+    ]
+    assert bindings["evidence"][records["target_identity_fraction"]["citation_alias"]] == (
+        "E-graph#record:N-64bc815af51fa805@1"
+    )
 
 
 @pytest.mark.parametrize("oversized", ["composition", "reasons"])
@@ -224,7 +761,7 @@ def register(service, sid, payload, *, run_id, tool_id="P0-02",
     records = [(key, value) for key, value in state["_input_objects"].items()
                if value.get("receipt_file") == receipt_file
                and value.get("schema_ref") == schema_ref]
-    service.save(state)
+    service.sessions.save(state)
     return {"input_id": records[-1][0] if records else None, "receipt": receipt,
             "receipt_path": receipt_path, "artifact": artifact, "artifact_path": artifact_path}
 
@@ -388,7 +925,7 @@ def test_record_producer_label_cannot_override_canonical_receipt_identity(client
     false_record = register_profile(service, sid, run_id="run-p003", tool_id="P0-03")
     state = service.load(sid)
     state["_input_objects"][false_record["input_id"]]["producer_tool_id"] = "P0-02"
-    service.save(state)
+    service.sessions.save(state)
 
     summary, binding = build_result_context(service.inputs, service.load(sid))
 
@@ -418,7 +955,7 @@ def test_invalid_latest_canonical_evidence_fails_closed(client, damage):
     elif damage == "false_receipt_identity":
         state["_tool_runs"][-1]["tool_id"] = "P0-02"
         state["_input_objects"][registered["input_id"]]["producer_tool_id"] = "P0-02"
-        service.save(state)
+        service.sessions.save(state)
 
     summary, binding = build_result_context(service.inputs, service.load(sid))
 
@@ -500,10 +1037,15 @@ def capture_transport(monkeypatch, captured):
     def respond(request):
         payload = json.loads(request.content)
         captured.append(payload)
-        text = ("E1: 8 of 10 observations are consensus-supported."
+        context = json.loads(payload["messages"][0]["content"].split(
+            "Safe execution context: ", 1)[1])
+        text = ("This observation is descriptive and does not establish product qualification."
                 if len(captured) == 1 else "No result evidence supplied.")
+        aliases = ([context["observation_choices"][0]["observation_alias"]]
+                   if len(captured) == 1 else [])
         return httpx.Response(200, json={"choices": [{"message": {
-            "content": json.dumps({"action": "reply", "text": text})}}]})
+            "content": json.dumps({"action": "reply", "text": text,
+                                   "observation_aliases": aliases})}}]})
     monkeypatch.setattr("bridge.web.provider.httpx.Client",
         lambda **kwargs: original(transport=httpx.MockTransport(respond), **kwargs))
 
@@ -631,13 +1173,13 @@ def test_invalid_latest_qc_canonical_evidence_fails_closed(client, damage):
         write_file(registered["receipt_path"], b'{"tampered":true}')
     elif damage == "producer":
         record["producer_tool_id"] = "P0-02"
-        service.save(state)
+        service.sessions.save(state)
     elif damage == "artifact_identity":
         record["artifact_id"] = "artifact:PRIVATE_FALSE_ID"
-        service.save(state)
+        service.sessions.save(state)
     elif damage == "execution_identity":
         state["_tool_runs"][-1]["state"] = "partial"
-        service.save(state)
+        service.sessions.save(state)
 
     summary, binding = build_result_context(service.inputs, service.load(sid))
 
@@ -843,20 +1385,22 @@ def test_service_sends_opt_in_summary_but_suppresses_prior_result_reply_history(
     assert audit["result_summary"] == first_context["result_summary"]
     assert audit["private_binding"]["E1"]["artifact_id"] == registered["artifact"].artifact_id
     assert audit["assistant_message_id"] == first_assistant["id"]
+    assert audit["observation_refs"] == [
+        first_context["observation_choices"][0]["record_ref"]]
     assert "_result_contexts" not in first_public
 
     reloaded = create_app(service.settings).state.service
     try:
         assert reloaded.load(sid)["_result_contexts"] == first_state["_result_contexts"]
     finally:
-        reloaded.pool.shutdown()
+        reloaded.execution.shutdown()
 
     if suppression == "disabled":
         service.settings = replace(service.settings, share_result_summaries=False)
     else:
         state = service.load(sid)
         service.controls.review(state)
-        service.save(state)
+        service.sessions.save(state)
     client.post(f"/api/sessions/{sid}/messages",
                 json={"text": "Continue without sharing results."})
     final_public = settle(client, sid)
@@ -870,7 +1414,8 @@ def test_service_sends_opt_in_summary_but_suppresses_prior_result_reply_history(
     assert all(item.get("content") != first_assistant["content"] for item in second_history)
     assert any(item["content"] == first_assistant["content"]
                for item in service.load(sid)["messages"])
-    assert first_assistant["content"] in json.dumps(final_public)
+    assert any(item["content"] == first_assistant["content"]
+               for item in final_public["messages"])
 
 
 def test_private_result_context_retention_is_bounded(client, monkeypatch):
@@ -883,7 +1428,7 @@ def test_private_result_context_retention_is_bounded(client, monkeypatch):
                          "private_binding": {}}
         for index in range(24)
     }
-    service.save(state)
+    service.sessions.save(state)
     service.settings = replace(service.settings, share_result_summaries=True)
     captured = []
     capture_transport(monkeypatch, captured)
@@ -900,7 +1445,7 @@ def test_private_result_context_retention_is_bounded(client, monkeypatch):
 
 
 def settings(tmp_path, **updates):
-    values = dict(storage_root=tmp_path / "private", token="t" * 32,
+    values = dict(storage_root=tmp_path / "private",
         model_base_url="https://provider.invalid/v1", model="test-model",
         model_api_key="private-key", origin="http://testserver")
     values.update(updates)
@@ -915,13 +1460,13 @@ def test_settings_default_off_and_reject_non_boolean(tmp_path):
 
 @pytest.mark.parametrize(("configured", "expected"),
                          [(None, False), ("0", False), ("1", True)])
-def test_main_accepts_only_exact_share_result_summary_startup_values(
+def test_settings_accepts_only_exact_share_result_summary_startup_values(
     tmp_path, monkeypatch, configured, expected
 ):
-    from bridge.web import __main__ as web_main
+    from bridge.web.runtime import settings_from_environment
     environment = {
         "BRIDGE_WEB_STORAGE": str(tmp_path / "startup-private"),
-        "BRIDGE_WEB_TOKEN": "t" * 32,
+
         "BRIDGE_WEB_MODEL_BASE_URL": "https://provider.invalid/v1",
         "BRIDGE_WEB_MODEL": "test-model",
         "BRIDGE_WEB_MODEL_API_KEY": "private-key",
@@ -933,26 +1478,16 @@ def test_main_accepts_only_exact_share_result_summary_startup_values(
         monkeypatch.delenv("BRIDGE_WEB_SHARE_RESULT_SUMMARIES", raising=False)
     else:
         monkeypatch.setenv("BRIDGE_WEB_SHARE_RESULT_SUMMARIES", configured)
-    captured = {}
-    monkeypatch.setattr(web_main.uvicorn, "run",
-                        lambda app, **kwargs: captured.update(app=app))
-
-    web_main.main()
-
-    service = captured["app"].state.service
-    try:
-        assert service.settings.share_result_summaries is expected
-    finally:
-        service.pool.shutdown()
+    assert settings_from_environment().share_result_summaries is expected
 
 
-def test_main_rejects_ambiguous_share_result_summary_startup_value(
+def test_settings_rejects_ambiguous_share_result_summary_startup_value(
     tmp_path, monkeypatch
 ):
-    from bridge.web import __main__ as web_main
+    from bridge.web.runtime import settings_from_environment
     environment = {
         "BRIDGE_WEB_STORAGE": str(tmp_path / "startup-private"),
-        "BRIDGE_WEB_TOKEN": "t" * 32,
+
         "BRIDGE_WEB_MODEL_BASE_URL": "https://provider.invalid/v1",
         "BRIDGE_WEB_MODEL": "test-model",
         "BRIDGE_WEB_MODEL_API_KEY": "private-key",
@@ -960,8 +1495,139 @@ def test_main_rejects_ambiguous_share_result_summary_startup_value(
     for key, value in environment.items():
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("BRIDGE_WEB_TRUSTED_ANCESTORS", raising=False)
-    monkeypatch.setattr(web_main.uvicorn, "run",
-        lambda *args, **kwargs: pytest.fail("server started"))
 
     with pytest.raises(ValueError, match="invalid_server_configuration"):
-        web_main.main()
+        settings_from_environment()
+
+def test_saved_target_roles_remain_visible_when_receipt_has_no_mode():
+    from bridge.web.evidence import assessment_portrait
+    row=dict(tool_id="P0-03",alias="saved-roles",state="available",
+        provenance={"receipt_sha256":"a"*64},
+        summary={"runtime_mode":"saved_cell_state_context","target_fraction":None})
+    axes=assessment_portrait([row],[],modes_by_receipt={"a"*64:None})
+    target=next(axis for axis in axes if axis["id"]=="target_identity")
+    assert target["context_evidence_aliases"]==["saved-roles"]
+    assert target["evidence_aliases"]==[]
+    assert target["state"]=="missing"
+
+
+@pytest.mark.parametrize("tool_id", ["P0-03", "P0-05"])
+def test_saved_whole_product_projection_fits_counts_and_citable_measurements(tool_id):
+    """A fine-state portrait must not disappear when its measurements are included."""
+    from bridge.web.evidence import _assessment_aggregate, _assessment_result_limit, _check_summary_limit, _SummaryLimit
+
+    composition = [{"record_id": f"whole-product:synthetic-{i}", "record_kind": "state",
+        "state_id": f"L2:synthetic_{i}", "display_name": f"Synthetic reference state {i}",
+        "level": "L2", "parent_state_id": "L1:Radial_Glia", "count": 100,
+        "whole_product_denominator": 9600, "whole_product_fraction": 100 / 9600,
+        "parent_denominator": 9600, "parent_fraction": 100 / 9600,
+        "resolution_state": "candidate", "scientific_status": "not_established"} for i in range(96)]
+    result = {"runtime_mode": "saved_cell_state_context", "data_view": {"n_observations": 9600},
+        "whole_product_composition": composition, "target_fraction": None,
+        "non_target_fraction": None, "domain_score": None, "score_state": "unavailable"}
+    row = {"state": "available", "tool_id": tool_id, "summary": _assessment_aggregate(result),
+        "measurements": [{"alias": f"M-{i:016x}", "measurement_class": "gate_input_measurement",
+            "metric_name": f"whole_product_fraction_synthetic_reference_state_{i}",
+            "raw_value": 100 / 9600, "numerator": 100, "denominator": 9600, "unit": "fraction",
+            "interval": None, "interval_confidence_level": None, "unknown_scope": "not_assessed",
+            "evidence_state": "inferred", "score_state": "unavailable", "domain_score": None,
+            "source_execution_state": "succeeded", "source_alias": "E-synthetic-source",
+            "artifact_sha256": f"{i:064x}"} for i in range(96)]}
+    assert len(json.dumps(row, separators=(",", ":")).encode()) > 64 * 1024
+    _check_summary_limit(row, limit=_assessment_result_limit(tool_id, result))
+    # This allowance belongs to saved whole-view accounting, not every tool result.
+    for other in ({"runtime_mode": "saved_cell_state_context"}, {**result, "runtime_mode": "other"}):
+        with pytest.raises(_SummaryLimit):
+            _check_summary_limit(row, limit=_assessment_result_limit(tool_id, other))
+    with pytest.raises(_SummaryLimit):
+        _check_summary_limit({**row, "measurements": row["measurements"] * 4},
+                             limit=_assessment_result_limit(tool_id, result))
+    with pytest.raises(_SummaryLimit):
+        _assessment_aggregate({**result, "whole_product_composition": composition * 2})
+
+
+def test_native_model_projection_keeps_missing_genes_and_reuses_exact_whole_counts():
+    from copy import deepcopy
+    from bridge.web.evidence import assessment_model_evidence
+
+    composition = [{"state_id": "L2:synthetic", "count": 3,
+                    "whole_product_denominator": 10, "whole_product_fraction": 0.3}]
+    source = {"alias": "E-composition", "state": "available", "tool_id": "P0-05",
+              "summary": {"runtime_mode": "saved_cell_state_context",
+                          "whole_product_composition": composition}, "measurements": []}
+    target = {"alias": "E-target", "state": "available", "tool_id": "P0-03",
+              "summary": {"runtime_mode": "saved_cell_state_context",
+                          "whole_product_composition": deepcopy(composition),
+                          "target_fraction": None, "role_judgement_state": "not_assessed"},
+              "measurements": []}
+    development = {"alias": "E-development", "state": "available", "tool_id": "P0-04",
+        "summary": {"runtime_mode": "saved_cell_state_context", "marker_observations": [{
+            "positive_genes": ["DETECTED", "ABSENT"], "counter_genes": [],
+            "gene_detection": {"DETECTED": {"count": 3, "denominator": 10, "state": "measured"},
+                               "ABSENT": {"count": None, "denominator": None, "state": "missing"}}}]},
+        "measurements": [
+            {"alias": "M-detected", "source_alias": "E-development",
+             "measurement_class": "gate_input_measurement",
+             "metric_name": "native_gene_detection_DETECTED",
+             "numerator": 3, "denominator": 10, "raw_value": 0.3,
+             "unit": "fraction", "evidence_state": "inferred"},
+            {"alias": "M-absent", "source_alias": "E-development",
+             "measurement_class": "gate_input_measurement",
+             "metric_name": "native_gene_detection_ABSENT",
+             "numerator": None, "denominator": None, "raw_value": None,
+             "unit": "fraction", "evidence_state": "unavailable"}]}
+    original = deepcopy([source, target, development])
+    rows, bindings = assessment_model_evidence([source, target, development,
+        {"alias": "E-following", "tool_id": "P0-06", "state": "available",
+         "summary": {}, "measurements": []}])
+    assert bindings["evidence"][rows[-1]["alias"]] == "E-following"
+    assert "whole_product_composition" not in rows[1]["summary"]
+    assert rows[1]["projection_omissions"]["whole_product_composition"] == rows[0]["alias"]
+    assert rows[1]["summary"]["target_fraction"] is None
+    remaining = rows[2]["summary"]["marker_observations"][0]["gene_detection"]
+    assert {bindings["references"][key]: value for key, value in remaining.items()} == {
+        "ABSENT": {"count": None, "denominator": None, "state": "missing"}}
+    assert rows[2]["measurements"][0]["raw_value"] == 0.3
+    assert rows[2]["measurements"][1]["raw_value"] is None
+    assert rows[2]["measurements"][1]["citation_role"] == "missing"
+    assert [source, target, development] == original
+
+    target["summary"]["whole_product_composition"][0]["whole_product_denominator"] = 12
+    development["measurements"][0]["numerator"] = 4
+    mismatched, _ = assessment_model_evidence([source, target, development])
+    assert mismatched[1]["summary"]["whole_product_composition"][0]["whole_product_denominator"] == 12
+    assert len(mismatched[2]["summary"]["marker_observations"][0]["gene_detection"]) == 2
+
+
+def test_model_query_defaults_reconstruct_numeric_and_missing_records_without_mutation():
+    from copy import deepcopy
+    from bridge.web.evidence import assessment_model_evidence, _assessment_model_query
+
+    records = [{"alias": f"N-synthetic-{index}", "node_type": "EvidenceObservation",
+        "evidence_tier": "formal", "lifecycle_state": "active",
+        "domain_id": "target_identity", "evidence_state": "inferred",
+        "metric_id": "target_fraction", "value": index / 100,
+        "numerator": index, "denominator": 100, "unit": "fraction",
+        "interval": None, "applicability": "applicable", "relation": "supports",
+        "source_verification_state": "verified", "source_execution_state": "succeeded"}
+        for index in range(20)]
+    records[-1].update(value=None, numerator=None, denominator=None, evidence_state="unavailable")
+    summary = {"query_name": "get_case_evidence_subgraph", "graph_alias": "N-graph",
+        "graph_version": 2, "returned_node_count": 20, "returned_edge_count": 0,
+        "truncated": False, "omitted_node_count": 0, "omitted_edge_count": 0,
+        "nodes": [], "claims": [], "requirements": [], "records": records,
+        "reconciliations": [], "edges": []}
+    original = deepcopy(summary)
+    rows, bindings = assessment_model_evidence([{"alias": "E-query", "tool_id": "P0-09",
+        "state": "available", "summary": summary, "measurements": []}])
+    graph = rows[0]["summary"]
+    reverse = {value: key for key, value in bindings["references"].items()}
+    expected = _assessment_model_query(summary, reverse.__getitem__)["records"]
+    defaults = graph["record_defaults"]["records"]
+    assert defaults["interval"] is None
+    assert "denominator" not in defaults
+    restored = [{**defaults, **row} for row in graph["records"]]
+    for actual, wanted in zip(restored, expected):
+        assert {key: actual[key] for key in wanted} == wanted
+    assert restored[-1]["value"] is None and restored[-1]["denominator"] is None
+    assert summary == original

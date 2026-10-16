@@ -6,6 +6,7 @@ type Props = {
   data: IntakeResponse;
   busy: boolean;
   onAnswer: (field: keyof IntakeFacts, value: string | number, other: boolean) => Promise<void>;
+  onOpenMaterials?: () => void;
   onProtocol: (file: File) => void;
   onParse: () => void;
   onStage: (facts: IntakeFacts) => void;
@@ -14,9 +15,9 @@ type Props = {
 
 const visibleFields: (keyof IntakeFacts)[] = ["product_name", "starting_cell_type", "cell_line", "culture_day",
   "target_cell_type", "target_stage", "assay", "sequencing_method", "protocol_name", "independent_cultures"];
-const provenance: Record<string, string> = { metadata: "文件元数据", model: "模型提取 · 待核对", user: "您已填写" };
+const provenance: Record<string, string> = { metadata: "文件元数据", model: "模型提取 · 待核对", user: "您已填写", confirmed: "既有已确认值 · 原始出处未保存" };
 
-export function IntakeWizard({ data, busy, onAnswer, onProtocol, onParse, onStage, protocolReview }: Props) {
+export function IntakeWizard({ data, busy, onAnswer, onProtocol, onOpenMaterials, onParse, onStage, protocolReview }: Props) {
   const [edit, setEdit] = useState<keyof IntakeFacts | null>(null);
   const fill = data.autofill!;
   const parsing = fill.state === "not_started" || fill.state === "parsing";
@@ -71,10 +72,10 @@ export function IntakeWizard({ data, busy, onAnswer, onProtocol, onParse, onStag
     <section className="intake-protocol" aria-label="分化方案">
       <h3>分化 protocol</h3>
       <p>上传方案，自动整理起始细胞、分化目标与阶段安排。</p>
-      <label className="intake-protocol-upload">上传分化 protocol
+      {onOpenMaterials ? <button disabled={busy || parsing} onClick={onOpenMaterials}>从研究资料选择方案</button> : <label className="intake-protocol-upload">上传分化 protocol
         <input type="file" accept=".pdf,.docx,.txt,.md" disabled={busy || parsing}
           onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onProtocol(file); event.currentTarget.value = ""; }} />
-      </label>
+      </label>}
       <small>支持 PDF、Word、文本，单个文件不超过 25 MB。扫描版 PDF 需先转为可选中文字。</small>
       {fill.protocols.map(protocol => <p key={protocol.id}>{protocol.name}</p>)}
       {protocolReview}

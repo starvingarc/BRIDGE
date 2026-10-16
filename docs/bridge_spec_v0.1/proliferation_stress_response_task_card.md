@@ -3,24 +3,36 @@
 | 字段 | 内容 |
 | --- | --- |
 | Task ID | `TASK-PROCESS-v0.1` |
-| 文档版本 | `0.7.0-candidate` |
-| 日期 | 2026-09-05 |
+| 文档版本 | `0.11.1-candidate` |
+| 日期 | 2026-10-08 |
 | 状态 | `candidate` |
 | 首个实例 | 移植前 hPSC-derived VM floor-plate/mDA 产品 |
-| 上游输入 | `legacy_aggregation` 使用七个对象，可选独立 P0-06 `MeasurementSpecV2`；`method_runtime` 使用六个共同对象（其中 Cell-State 为 P0-02 V3）、BiologicalUnit manifest/assignment、caller/data-owner attestation receipt、方法 spec/input、必需的 P0-06 `MeasurementSpecV2` 和一个与 DataView 精确一致的 normalized-expression 或 raw-count H5AD，不接收调用方 `ProgramEvidenceBundle` |
-| 主要输出 | 三种模式均输出 v0.3 `ProliferationStressResponseProfile`、typed visualization data、精确 TSV、SVG/PNG/PDF 和 artifact manifest；legacy projection 保留原有状态映射，method runtime 从真实 `ProgramScoreSummary`/`CellCycleSummary` 一一产生 `MeasurementResultV2`，并输出具备矩阵和 normalization lineage 的 v0.2 `ProcessMethodBundle` |
+| 上游输入 | 三个产品绑定模式消费版本化产品/状态/单位合同；三个探索模式消费一个来源绑定的 exploratory input 和精确选定视图 H5AD，见下表 |
+| 当前结果 Schema | `bridge://schemas/proliferation-stress-response-result/v0.3` 联合结果；产品模式、周期探索和程序探索分别输出自己的 profile，不能互换 |
 
-## 0. 当前 v0.7 可执行候选
+## 0. 当前可执行候选
 
-P0-06 `0.7.0` 通过同一 `ToolRequestV2 validate/run` 接口提供三种模式：
+P0-06 `0.11.1` 通过同一 `ToolRequestV2 validate/run` 接口提供六个注册模式。
+完整字段、版本和拒绝条件由 [P0-06 Tool Card](../../src/bridge/tool_packages/cards/P0-06.md) 维护：
 
 | 模式 | 输入 | 实际执行 | 输出 |
 | --- | --- | --- | --- |
 | `legacy_aggregation` | 七个 checksummed JSON 对象；Cell-State 使用 V2；MeasurementSpec 可选 | 绑定并聚合预计算 `ProgramEvidenceBundle`，不读取表达矩阵 | profile v0.3、可选 legacy measurement projection 与 manifest |
 | `method_runtime` | 十二个 checksummed JSON 对象、恰好一个与 P0-02 DataView 一致的 H5AD；Cell-State 使用 V3；MeasurementSpec 与 biological-unit attestation receipt 必需；ProgramEvidenceBundle 禁止 | 对 normalized expression 直接运行，或对整数 raw counts 固定执行 1e4 library-size normalization + `log1p`，随后调用 Scanpy/decoupler 并按 BiologicalUnit 与 candidate state 聚合 | profile v0.3、method bundle v0.2、逐 summary measurement 与 manifest |
 | `method_runtime_source_bound` | 与 method runtime 相同的十二个角色和 H5AD 约束，但 process input 使用 v0.2，唯一行来源为同一次 P0-02 运行的 V3 profile、manifest 与 `cell_state_evidence.parquet` | 先校验文件、hash、producer lineage、artifact 与 L1 reconciliation，再按 observation ID 连接表达行；whole product 保留 conflict/unavailable，state-specific 只用 ProgramSpec 允许的唯一 candidate | 与 method runtime 相同的 profile v0.3、method bundle v0.2、measurement 与 manifest；`domain_score=null` |
+| `exploratory_process` | 一个 `exploratory_process_input`（`exploratory-process-input/v0.1`）和 checksummed scRNA/snRNA H5AD；绑定精确 DataView、S/G2M 列表及来源 checksum | Scanpy 程序评分、decoupler ULM、周期预测和整视图 phase 汇总；缺失/歧义基因保持不可评估 | `exploratory-process-profile/v0.1`、逐观测 Parquet、技术视图 MeasurementSpecV3 与五项来源绑定测量；不输出产品域 profile |
+| `exploratory_programs` | 一个 `exploratory_program_input`（`exploratory-process-input/v0.2`）、精确选定视图 H5AD、checksummed MSigDB Hallmark JSON；显式选择程序与 coverage policy | 分别执行 Scanpy 与 ULM；`complete_only` 要求完整覆盖，`observed_subset` 只描述唯一匹配的已观察成员，歧义不打分 | `exploratory-program-profile/v0.1`、分方法均值/分位数/覆盖与缺失记录、逐观测 Parquet 和技术视图测量 |
+| `directed_programs` | 一个 `directed_program_input`（`exploratory-process-input/v0.3`）、相同 H5AD/view 绑定和 checksummed `hu_pluripotency_csv` 或 `oflanagan_core_csv` | 保留原始成员及方向；后者用 sign(logFC) 而非效应量作权重。负向 signature 不支持 Scanpy 时保留 null，ULM 使用有符号成员 | `exploratory-program-profile/v0.2`，保留未解析成员、实际评分成员/方向、hash 和方法状态；不推断残留比例或解离原因 |
 
-`ProgramSpec` 是 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数。method runtime 的 MeasurementSpec 必须精确绑定 P0-06、assay、生物学单位、实际启用的 metric/scope/unit/method；它不含阈值或 alert。三种模式均保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`。
+上述三个探索模式描述细胞/细胞核的技术视图，独立生物学重复数未知。分位数不是置信区间，
+周期预测不是实际分裂率，缺失基因不能补零，方法数不是独立证据数。它们不生成产品角色、
+阶段判定、review flag、domain score 或产品绑定图形，也不满足产品模式的审核/attestation gate。
+当前顶层 result union 为 v0.3；内层 profile v0.1/v0.2 与历史 result union 版本分开保存。
+
+以下 `ProgramSpec`、产品阶段/单位、review flag 和门控要求适用于产品绑定路径；
+探索输入使用自己的显式来源与覆盖合同，不能继承尚未建立的产品资格。
+
+`ProgramSpec` 是产品路径 program gene/weight/phase 内容的唯一事实源，并持有这些内容的 canonical SHA-256、适用 stage/state/scope、coverage/LOD 和 review mapping。`ProcessMethodSpec` 只选择 program ID、方法、scope 与运行参数。method runtime 的 MeasurementSpec 必须精确绑定 P0-06、assay、生物学单位、实际启用的 metric/scope/unit/method；它不含阈值或 alert。三个产品绑定模式保持 `descriptive_only`、`candidate/shadow`、`domain_score=null`。
 
 raw-count 路径在 method bundle 中记录 `normalization_recipe_id=bridge_normalize_total_log1p_v0.1` 与 `normalization_target_sum=10000.0`；该标识是 P0-06 包内 recipe 元数据，不冒充 knowledge catalog 的 Method reference。
 
@@ -95,7 +107,7 @@ raw-count 路径在 method bundle 中记录 `normalization_recipe_id=bridge_norm
 ## 4. 分析流程
 ### 4.1 当前可执行基线
 
-P0-06 v0.7 提供三种兼容调用：
+当前共有上表六个模式，其中三个产品绑定调用保留原有合同：
 
 - `legacy_aggregation` 保留七个结构化对象的预计算证据聚合；
 - `method_runtime` 读取 P0-02 V3 精确绑定的 checksummed DataView H5AD；
@@ -212,7 +224,7 @@ P0 核心候选不依赖 GPU。不同环境只交换版本化 h5ad/Parquet/TSV�
 
 ## 9. Web 必备可视化
 
-当前 v0.7 提供三组 package-owned typed candidate 图形：
+当前产品绑定模式提供三组 package-owned typed candidate 图形；三个探索模式不生成这些图形：
 
 - 按 stage、cell state 和 scope 排列的 program evidence 与 review-state
   矩阵，显示 gene coverage、适用性、证据状态和缺失原因；

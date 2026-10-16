@@ -28,11 +28,11 @@ describe("PlanCard", () => {
       <PlanCard plan={plan} sessionStatus="awaiting_approval" busy={false} onApprove={approve} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Confirm analysis" }));
+    await user.click(screen.getByRole("button", { name: "开始分析" }));
     expect(approve).toHaveBeenCalledOnce();
 
     rerender(<PlanCard plan={plan} sessionStatus="running" busy={false} onApprove={approve} />);
-    expect(screen.getByRole("button", { name: "Analysis running…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "分析中…" })).toBeDisabled();
   });
 
   it("disables confirmation when every proposed step is blocked", async () => {
@@ -52,7 +52,7 @@ describe("PlanCard", () => {
       />,
     );
 
-    const button = screen.getByRole("button", { name: "Confirm analysis" });
+    const button = screen.getByRole("button", { name: "开始分析" });
     expect(button).toBeDisabled();
     await user.click(button);
     expect(approve).not.toHaveBeenCalled();
@@ -74,9 +74,9 @@ describe("PlanCard", () => {
       </>,
     );
 
-    expect(screen.getByText("Input QC completed.")).toBeInTheDocument();
-    expect(screen.getByText("Review the declared input before execution.")).toBeInTheDocument();
-    expect(screen.getByText("succeeded")).toBeInTheDocument();
+    expect(screen.getAllByText("输入与质量检查")).toHaveLength(3);
+    expect(screen.getByRole("button", {name:"开始分析"})).toBeEnabled();
+    expect(screen.getAllByText("已完成")[0]).toBeInTheDocument();
     expect(screen.getByText("QC evidence retained.")).toBeInTheDocument();
   });
 
@@ -94,13 +94,13 @@ describe("PlanCard", () => {
       />,
     );
 
-    expect(screen.getByText("sample.h5ad · aaaaaaaa")).toBeInTheDocument();
-    expect(screen.getByText("sample.h5ad · bbbbbbbb")).toBeInTheDocument();
-    const inputs = screen.getAllByLabelText("Data source / experiment reference");
+    expect(screen.getByText("sample.h5ad · 文件 1")).toBeInTheDocument();
+    expect(screen.getByText("sample.h5ad · 文件 2")).toBeInTheDocument();
+    const inputs = screen.getAllByLabelText("数据来源或实验编号");
     await user.type(inputs[1], "Study_1.batch-2:donor.A");
     expect(inputs[1]).toBeValid();
-    expect(screen.getAllByText(/staged for confirmation/)).toHaveLength(2);
-    await user.click(screen.getAllByRole("button", { name: "Stage change" })[1]);
+    expect(screen.getAllByText(/修改后需确认，已有结果会保留/)).toHaveLength(2);
+    await user.click(screen.getAllByRole("button", { name: "核对修改" })[1]);
     expect(save).toHaveBeenCalledWith("bbbbbbbb22222222", "Study_1.batch-2:donor.A");
 
     view.rerender(
@@ -119,7 +119,7 @@ describe("PlanCard", () => {
         onSourceInput={save}
       />,
     );
-    const refreshedInputs = screen.getAllByLabelText("Data source / experiment reference");
+    const refreshedInputs = screen.getAllByLabelText("数据来源或实验编号");
     expect(refreshedInputs[1]).toHaveValue("Study_1.batch-2:donor.A");
 
     for (const invalidValue of ["invalid source", "invalid/source"]) {
@@ -145,4 +145,16 @@ describe("PlanCard", () => {
       expect(screen.queryByLabelText("Succeeded")).not.toBeInTheDocument();
     },
   );
+});
+
+
+it("uses researcher labels for legacy plan text and retains the original action binding", async () => {
+  const original: Plan = { ...plan, summary: "P0-01：input_not_eligible", steps: [{
+    ...plan.steps[0], label: "P0-01", status: "blocked", reason: "new_internal_guard_required",
+  }] };
+  const before = JSON.stringify(original);
+  const { container } = render(<PlanCard plan={original} sessionStatus="awaiting_approval" busy={false} onApprove={vi.fn()} />);
+  expect(container.textContent).not.toMatch(/P0-01|input_not_eligible|new_internal_guard_required|blocked/);
+  expect(screen.getByText("输入与质量检查")).toBeInTheDocument();
+  expect(JSON.stringify(original)).toBe(before);
 });

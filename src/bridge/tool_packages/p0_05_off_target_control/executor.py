@@ -20,7 +20,7 @@ from bridge.tool_packages.p0_05_off_target_control.models import (
     OffTargetControlProfileV2,
     OffTargetHardCountAccounting,
     OffTargetHardCountMeasurementArtifactBinding,
-    OffTargetHardCountProfileV1,
+    OffTargetHardCountProfileV3,
     OffTargetHardCountRoleRecord,
     OffTargetMeasurementArtifactBinding,
     ProductRole,
@@ -65,7 +65,7 @@ class MeasurementProjectionBundle:
 
 @dataclass(frozen=True)
 class HardCountMeasurementProjectionBundle:
-    profile: OffTargetHardCountProfileV1
+    profile: OffTargetHardCountProfileV3
     measurements: list[MeasurementResultV2]
     payloads: dict[str, bytes]
 
@@ -96,7 +96,7 @@ def aggregate_hard_count_profile(
     biological_units: BiologicalUnitManifest,
     attestation_receipt: BiologicalUnitAttestationReceipt,
     input_sha256_by_role: dict[str, str],
-) -> OffTargetHardCountProfileV1:
+) -> OffTargetHardCountProfileV3:
     assignments = {item.state_id: item.product_role for item in role_map.assignments}
     count_by_role = {role: 0 for role in ProductRole}
     for record in cell_state_profile.composition.records:
@@ -141,10 +141,10 @@ def aggregate_hard_count_profile(
     )
     profile_reasons = set(accounting.reason_codes)
     profile_reasons.add("biological_unit_attestation_is_caller_declared")
-    return OffTargetHardCountProfileV1(
-        object_version="0.1.0",
+    return OffTargetHardCountProfileV3(
+        object_version="0.3.0",
         profile_id=f"off-target-hard-count:{input_hash[:24]}",
-        profile_version="0.1.0",
+        profile_version="0.3.0",
         tool_id="P0-05",
         tool_version=tool_version,
         product_case_ref=product_case.ref.ref,
@@ -190,7 +190,7 @@ def aggregate_hard_count_profile(
 def project_hard_count_measurements(
     *,
     run_id: str,
-    profile: OffTargetHardCountProfileV1,
+    profile: OffTargetHardCountProfileV3,
     measurement_spec: MeasurementSpecV2,
     measurement_spec_sha256: str,
     evidence_refs: list[str],
@@ -248,7 +248,7 @@ def project_hard_count_measurements(
                 sha256=sha256,
             )
         )
-    projected = OffTargetHardCountProfileV1.model_validate(
+    projected = OffTargetHardCountProfileV3.model_validate(
         {
             **profile.model_dump(mode="python"),
             "measurement_projection_state": "available",

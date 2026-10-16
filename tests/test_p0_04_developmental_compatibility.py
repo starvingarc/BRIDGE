@@ -513,7 +513,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-04",
         tool_id="P0-04",
-        tool_version="0.5.1",
+        tool_version="0.6.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -542,9 +542,9 @@ def _mutate(request: ToolRequestV2, role: str, change) -> ToolRequestV2:
 def test_registry_exposes_current_traceable_contract() -> None:
     registry = ToolRegistry.load_default()
     spec = registry.describe("P0-04")
-    assert spec.version == "0.5.1"
+    assert spec.version == "0.6.0"
     assert spec.implementation_state.value == "implemented"
-    assert RESULT_SCHEMA_REF.endswith("/v0.3")
+    assert RESULT_SCHEMA_REF.endswith("/v0.4")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
     assert len(REQUIRED_ROLES) == 11
 
@@ -561,7 +561,7 @@ def test_valid_aggregation_reports_two_denominators_and_no_score(
 ) -> None:
     run = _run(_request(tmp_path))
     assert run.execution_state is ExecutionState.SUCCEEDED
-    assert run.result_schema_ref.endswith("/v0.3")
+    assert run.result_schema_ref.endswith("/v0.4")
     assert run.result["object_version"] == "0.3.0"
     assert run.result["result_state"] == "complete"
     assert run.result["whole_product_profile"]["denominator"] == 12
@@ -845,7 +845,7 @@ def test_v1_request_is_typed_refusal(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="legacy-request",
         tool_id="P0-04",
-        tool_version="0.5.1",
+        tool_version="0.6.0",
         output_dir=tmp_path.resolve(),
     )
     eligibility = adapter.check_eligibility(request, spec)

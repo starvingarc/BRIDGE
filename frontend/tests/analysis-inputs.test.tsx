@@ -1,3 +1,4 @@
+import { inputRoles } from "../src/researcherLabels";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
@@ -142,15 +143,15 @@ describe("AnalysisInputs", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     await openPanel(user);
-    expect(await screen.findByRole("option", { name: "P0-06 · Program response" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "增殖与应激" })).toBeInTheDocument();
 
     await chooseContract(user);
 
-    expect(screen.getByText("Exact selected mode:")).toHaveTextContent("supplied_evidence");
+    expect(screen.getByText("已选择：使用已有证据")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Supplied product case · User-supplied" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Package product case · Package resource" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Configured product case · Configured reference" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Prior product case · Prior tool output · P0-05" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Prior product case · Prior tool output · 全产品与非目标组成" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Wrong schema/ })).not.toBeInTheDocument();
     expect(screen.getByText(/contract-compatible, not proof of scientific validity/)).toBeInTheDocument();
   });
@@ -308,7 +309,7 @@ describe("AnalysisInputs", () => {
 
     await openPanel(user);
     await chooseContract(user);
-    const picker = screen.getByLabelText("evidence records object");
+    const picker = screen.getByLabelText("证据记录 object");
     await user.selectOptions(picker, ["evidence-a", "evidence-b"]);
 
     expect((screen.getByRole("option", { name: /Evidence A/ }) as HTMLOptionElement).selected).toBe(true);
@@ -327,7 +328,7 @@ describe("AnalysisInputs", () => {
 
     await openPanel(user);
     await chooseContract(user);
-    const objectSelect = screen.getByLabelText("product case object") as HTMLSelectElement;
+    const objectSelect = screen.getByLabelText("产品资料 object") as HTMLSelectElement;
     await user.selectOptions(objectSelect, "user-object");
     expect(objectSelect.value).toBe("user-object");
 
@@ -335,7 +336,7 @@ describe("AnalysisInputs", () => {
     await openPanel(user);
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
 
-    expect((screen.getByLabelText("product case object") as HTMLSelectElement).value).toBe("user-object");
+    expect((screen.getByLabelText("产品资料 object") as HTMLSelectElement).value).toBe("user-object");
     expect(screen.getByText(/Save this new or changed selection/)).toBeInTheDocument();
   });
 
@@ -358,13 +359,13 @@ describe("AnalysisInputs", () => {
     await user.click(screen.getByText("Analysis inputs"));
     await openPanel(user);
     second.resolve(jsonResponse(registry("P0-09", "Evidence reconciliation")));
-    expect(await screen.findByRole("option", { name: "P0-09 · Evidence reconciliation" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "结果依据整理" })).toBeInTheDocument();
 
     first.resolve(jsonResponse(registry("P0-06", "Stale program response")));
     await new Promise((resolve) => window.setTimeout(resolve, 0));
 
     expect(screen.queryByRole("option", { name: /Stale program response/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "P0-09 · Evidence reconciliation" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "结果依据整理" })).toBeInTheDocument();
   });
 
   it("requires save before prepare, recovers after a save error, and keeps preparation non-approving", async () => {
@@ -411,7 +412,7 @@ describe("AnalysisInputs", () => {
 
     await openPanel(user);
     await chooseContract(user);
-    await user.selectOptions(screen.getByLabelText("product case object"), "user-object");
+    await user.selectOptions(screen.getByLabelText("产品资料 object"), "user-object");
 
     const prepare = screen.getByRole("button", { name: "Prepare plan" });
     expect(prepare).toBeDisabled();
@@ -482,7 +483,7 @@ describe("AnalysisInputs", () => {
     ));
     expect(screen.queryByText("Plan prepared. It has not been approved or run.")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Plan not prepared: object required product case.",
+      "Plan not prepared: 请补充并确认：产品资料。.",
     );
     expect(fetchMock.mock.calls.some(([path]) =>
       String(path).endsWith("/prepare-analysis"))).toBe(true);
@@ -515,7 +516,7 @@ describe("AnalysisInputs", () => {
     );
     await user.selectOptions(screen.getByLabelText("Object version"), "0.2.0");
     await user.upload(
-      screen.getByLabelText("Register JSON for evidence sufficiency profile"),
+      screen.getByLabelText("Register JSON for 证据充分性结果"),
       new File(["{}"], "profile.json", { type: "application/json" }),
     );
 
@@ -569,7 +570,7 @@ describe("AnalysisInputs", () => {
     await openPanel(user);
     await chooseContract(user);
     await user.upload(
-      screen.getByLabelText(`Register JSON for ${uploadRole.role.replaceAll("_", " ")}`),
+      screen.getByLabelText(`Register JSON for ${inputRoles[uploadRole.role]}`),
       new File([JSON.stringify(payload)], "object.json", { type: "application/json" }),
     );
 
@@ -611,7 +612,7 @@ describe("AnalysisInputs", () => {
       "large.json",
       { type: "application/json" },
     );
-    await user.upload(screen.getByLabelText("Register JSON for product case"), objectFile);
+    await user.upload(screen.getByLabelText("Register JSON for 产品资料"), objectFile);
     expect(await screen.findByRole("alert")).toHaveTextContent("exceeds the 2048 KiB");
 
     const metadataFile = new File(
@@ -725,7 +726,7 @@ describe("AnalysisInputs", () => {
     expect(screen.getByLabelText("Input mode")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save selection" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Prepare plan" })).toBeDisabled();
-    expect(screen.getByLabelText("Register JSON for product case")).toBeDisabled();
+    expect(screen.getByLabelText("Register JSON for 产品资料")).toBeDisabled();
   });
 
   it("recovers a failed lazy load through the visible retry control", async () => {
@@ -739,7 +740,21 @@ describe("AnalysisInputs", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("registry_unavailable");
     await user.click(screen.getByRole("button", { name: "Retry" }));
 
-    expect(await screen.findByRole("option", { name: "P0-06 · Program response" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "增殖与应激" })).toBeInTheDocument();
     expect(screen.queryByText("registry_unavailable")).not.toBeInTheDocument();
   });
+});
+
+
+it("hides internal capability codes in an opened input panel while keeping exact selections", async () => {
+  const user = userEvent.setup();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(registry()));
+  const { container } = render(<AnalysisInputs {...props({capabilities:[{
+    tool_id:"P0-06",label:"P0-06 program response",state:"needs_input",reason_codes:["object_required:product_case"]
+  }]})} />);
+  await openPanel(user);
+  await chooseContract(user);
+  expect(container.textContent).not.toMatch(/P0-\d+|object_required|needs_input|supplied_evidence/);
+  expect(screen.getByLabelText("Analysis tool")).toHaveValue("P0-06");
+  expect(screen.getByLabelText("Input mode")).toHaveValue("supplied_evidence");
 });

@@ -9,13 +9,18 @@
 | Analysis unit | `metric x claim target x biological context x MeasurementSpec` |
 | Runtime state | `implemented` |
 | Scientific state | `candidate` |
-| Result Schema | `bridge://schemas/evidence-compiler-run-result/v0.1` |
+| ToolRun result Schema | `bridge://schemas/evidence-compiler-result/v0.2` |
+| 编译结果文件内层 Schema | `bridge://schemas/evidence-compiler-run-result/v0.1`；不作为 ToolRun 顶层 result Schema |
 
 ## 1. 生物学问题与边界
 
 P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记录支持或反对某项已登记 Claim，哪些记录共享同一 EvidenceFamily 因而不能当作独立重复，哪些必需证据仍然缺失，以及当前证据是否满足预注册的协调条件。
 
 本模块不重新运行单细胞分析，不修改 MeasurementResult，不从文件名或路径推断关系，不选择“更好看”的方法，不生成 `domain_score`、总分、等级、产品 pass/fail、potency、安全性、疗效、GMP 放行或临床结论。它建立的是可执行的候选证据编译器，不是科学发布门禁。
+
+当前包版本与完整合同见 [P0-09 Tool Card](../../src/bridge/tool_packages/cards/P0-09.md)。
+另有 `case_query`、`comparison_query` 两个只读模式，读取保存 graph manifest 和
+`evidence-graph-query/v0.1`；返回查询结果而非重新编译图，接口见第 7 节。
 
 ## 2. 输入合同
 
@@ -25,14 +30,14 @@ P0-09 读取已经完成且版本化的产品证据，回答：哪些原子记�
 |---|---:|---|---|
 | `compilation_bundle` | 1 | `evidence-compilation-bundle/v0.1` | Case/Comparison scope、候选项、缺失观察、对象目录和可选历史 |
 | `evidence_sufficiency_profile` | Case 1–5；Comparison 2–25 | `evidence-sufficiency-profile/v0.1` 或 `v0.2` | P0-08 的产品、域、MeasurementSpec、sufficiency 和 provenance |
-| `evidence_sufficiency_run_result` | Case 1；Comparison 2–5 | `evidence-sufficiency-run-result/v0.2` | P0-08 canonical wrapper、source bindings、profiles、case summary 与 gate trace |
+| `evidence_sufficiency_run_result` | Case 1；Comparison 2–5 | `evidence-sufficiency-run-result/v0.2` 或 `/v0.3` | P0-08 canonical wrapper、source bindings、profiles、case summary 与 gate trace |
 | `evidence_family_registry` | 1 | `evidence-family-registry/v0.1` | family 类型、channel role、独立性范围和审核状态 |
 | `claim_registry` | 1 | `claim-registry/v0.1` | Claim、允许方向和 requirement template |
 | `reconciliation_spec_registry` | 1 | `reconciliation-spec-registry/v0.1` | required/optional channel、独立 family 数和冲突规则 |
 | `base_graph_manifest` / `base_evidence_record_set` / `base_evidence_requirement_set` | Case 或 Comparison append 有对应 base 时各 1，否则 0 | 同类 graph manifest / 两类 fact set | 三者与 `AppendGraphRef` 的 input ID 逐一绑定；initial 模式禁止 |
 | `source_case_graph_manifest` / `source_case_evidence_record_set` | Comparison 每个 Case 各 1 | Case manifest / EvidenceRecordSet | 与每个 `BoundCaseGraphRef` input ID 严格双射；Case 禁止 |
 
-四个 direct-profile 模式保留兼容；四个对应 `_v2` 模式只接收 canonical run-result。两类输入不得混用。canonical-run 模式中，bundle 的 `sufficiency_profile_input_id` 指向 run-result input ID；adapter 仅按 wrapper、ProductCase 和 domain 唯一定位内嵌 profile。MeasurementSpec、MeasurementResult、Claim、source record 和 family 的逐条漂移由 compiler 隔离为 partial，不升级为整次技术失败。重复 result ID/version、case set 不闭合或 profile 无法唯一解析仍 fail closed。
+`case_initial`、`case_append`、`comparison_initial`、`comparison_append` 四个 direct-profile 模式保留兼容；对应的 `case_initial_v2`、`case_append_v2`、`comparison_initial_v2`、`comparison_append_v2` 接收 canonical run-result v0.2/v0.3。两类输入不得混用。canonical-run 模式中，bundle 的 `sufficiency_profile_input_id` 指向 run-result input ID；adapter 仅按 wrapper、ProductCase 和 domain 唯一定位内嵌 profile。MeasurementSpec、MeasurementResult、Claim、source record 和 family 的逐条漂移由 compiler 隔离为 partial，不升级为整次技术失败。重复 result ID/version、case set 不闭合或 profile 无法唯一解析仍 fail closed。
 
 `assets=[]`、顶层 `measurement_spec_ref=null`、`parameters={}`。`random_seed` 仅为共享 envelope 兼容而保留，算法不使用随机数。输入期间发生任何字节变化都使整次运行失败。
 

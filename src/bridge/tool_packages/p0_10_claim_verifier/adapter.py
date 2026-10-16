@@ -65,7 +65,7 @@ from bridge.toolkit.contracts import (
 from bridge.toolkit.schemas import load_schema
 from bridge.tool_packages.p0_10_claim_verifier.research import (
     ResearchStatementRegistry, ResearchReleaseContract, RESEARCH_STATEMENT_SCHEMA_REF,
-    ResearchReportContext, RESEARCH_CONTEXT_SCHEMA_REF,
+    ResearchReportContextV05, RESEARCH_CONTEXT_V05_SCHEMA_REF, ResearchReportContext, RESEARCH_CONTEXT_SCHEMA_REF, ResearchReportContextV04, RESEARCH_CONTEXT_V04_SCHEMA_REF,
     RESEARCH_RESULT_SCHEMA_REF, APPROVED_RESEARCH_CONTRACT_SHA256,
     load_research_release_contract, build_research_snapshot, render_research_snapshot,
 )
@@ -315,9 +315,10 @@ def _envelope_reasons(
     for ref in request.object_inputs:
         contract = ROLE_MODELS.get(ref.role)
         research_statements = ref.role == "statement_registry" and ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF
-        if contract is not None and ref.schema_ref != contract[0] and not research_statements:
+        literature_context = ref.role == "research_report_context" and ref.schema_ref in {RESEARCH_CONTEXT_V04_SCHEMA_REF, RESEARCH_CONTEXT_V05_SCHEMA_REF}
+        if contract is not None and ref.schema_ref != contract[0] and not research_statements and not literature_context:
             reasons.append("object_input_schema_mismatch")
-        expected_version = "0.3.0" if ref.role == "research_report_context" else ("0.2.0" if research_statements else "0.1.0")
+        expected_version = ("0.5.0" if ref.schema_ref == RESEARCH_CONTEXT_V05_SCHEMA_REF else "0.4.0" if literature_context else "0.3.0") if ref.role == "research_report_context" else ("0.2.0" if research_statements else "0.1.0")
         if ref.role != "evidence_graph_manifest" and ref.object_version != expected_version:
             reasons.append("object_input_version_mismatch")
     if directory_state(request.output_dir) == "other":
@@ -330,7 +331,7 @@ def _load_inputs(
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ResearchStatementRegistry if ref.role == "statement_registry" and ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF else ROLE_MODELS.get(ref.role, ("", None))[1],
+        model_for=lambda ref: ResearchReportContextV05 if ref.role == "research_report_context" and ref.schema_ref == RESEARCH_CONTEXT_V05_SCHEMA_REF else ResearchReportContextV04 if ref.role == "research_report_context" and ref.schema_ref == RESEARCH_CONTEXT_V04_SCHEMA_REF else ResearchStatementRegistry if ref.role == "statement_registry" and ref.schema_ref == RESEARCH_STATEMENT_SCHEMA_REF else ROLE_MODELS.get(ref.role, ("", None))[1],
         validate_payload=_validate_json_schema,
         validate_model=_validate_object_version,
     )
@@ -339,7 +340,7 @@ def _load_inputs(
 def _validate_json_schema(ref: StructuredInputRef, payload: Any) -> None:
     try:
         local_models = {RESEARCH_STATEMENT_SCHEMA_REF: ResearchStatementRegistry,
-                        RESEARCH_CONTEXT_SCHEMA_REF: ResearchReportContext}
+                        RESEARCH_CONTEXT_SCHEMA_REF: ResearchReportContext, RESEARCH_CONTEXT_V04_SCHEMA_REF: ResearchReportContextV04, RESEARCH_CONTEXT_V05_SCHEMA_REF: ResearchReportContextV05}
         schema = local_models[ref.schema_ref].model_json_schema() if ref.schema_ref in local_models else load_schema(ref.schema_ref)
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(payload)
@@ -567,7 +568,7 @@ def _run_research(
     run_id = f"run-{input_hash[:16]}"
     graph_ref = next(ref for ref in request.object_inputs if ref.role == "evidence_graph_manifest")
     try:
-        context = (single_object(request, loaded, "research_report_context", ResearchReportContext)
+        context = (single_object(request, loaded, "research_report_context", (ResearchReportContext, ResearchReportContextV04, ResearchReportContextV05))
                    if any(ref.role == "research_report_context" for ref in request.object_inputs) else None)
         snapshot = build_research_snapshot(graph_manifest_path=graph_ref.path, report=report, report_context=context)
         if (snapshot.graph_manifest_sha256 != evidence_graph.manifest_sha256

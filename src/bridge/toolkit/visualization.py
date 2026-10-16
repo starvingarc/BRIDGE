@@ -566,6 +566,17 @@ def _typed_component(
 
 
 _DEFAULT_COMPONENTS = (
+    *(_typed_component('bridge.expression.' + kind, '0.1.0', title=title,
+        question=question, figure_family=family, tool_id='P0-02',
+        data_schema_ref='bridge://schemas/expression-plot-data/v0.1').model_copy(update={
+            'interactions': [VisualizationInteraction.FILTER] if kind == 'umap' else [],
+            'surfaces': [FigureSurface.DESKTOP, FigureSurface.MOBILE_PORTRAIT, FigureSurface.STATIC_EXPORT, FigureSurface.TABLE],
+        })
+      for kind, title, question, family in (
+        ('umap', 'Expression neighborhoods', 'How do expression neighborhoods relate to declared groups?', 'scatter'),
+        ('markers', 'Group markers', 'Which genes distinguish the groups in this dataset?', 'marker_scatter'),
+        ('differential-expression', 'Within-population sample contrast', 'How do two conditions differ within the same cell population?', 'volcano'),
+    )),
     _legacy_component(
         "bridge.qc.overview",
         "bridge.qc.overview.v0.1",

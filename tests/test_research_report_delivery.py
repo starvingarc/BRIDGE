@@ -229,6 +229,29 @@ def test_versioned_models_export_valid_schemas_without_legacy_benchmark():
     assert release_contract_sha256() == "c8a9237652cba4e6b3eb1c4f4215437980f0f480a0944d232abddeef5c4236c8"
 
 
+@pytest.mark.parametrize("check", ["P0-05", None])
+def test_explanation_version_keeps_old_check_hash_and_accepts_explicit_no_suitable_check(check):
+    from jsonschema import Draft202012Validator
+    from bridge.toolkit.schemas import load_schema
+    r = research()
+    content = {"object_version": "1.0.0", "scope_digest": "a" * 64,
+        "input_revision": 3, "hypotheses": [{
+            "statement": "Bounded candidate explanation", "evidence_aliases": ["E-current"],
+            "opposing_evidence_aliases": [], "missing_evidence_aliases": [],
+            "expected_observation": None, "competing_explanation": "Technical alternative",
+            "discriminating_check": check}],
+        "evidence_snapshot_sha256": "b" * 64, "qualification": "proposed_explanation"}
+    original_bytes = canonical_json_bytes(content)
+    raw = {**content, "version": 1, "content_sha256": hashlib.sha256(original_bytes).hexdigest(),
+        "predecessor_sha256": None, "created_at": "2026-09-16T00:00:00Z"}
+    version = r.ResearchExplanationVersion.model_validate(raw)
+    assert canonical_json_bytes(version.model_dump(mode="json",
+        exclude={"version", "content_sha256", "predecessor_sha256", "created_at"})) == original_bytes
+    assert version.content_sha256 == raw["content_sha256"]
+    schema = load_schema(r.RESEARCH_CONTEXT_SCHEMA_REF)
+    Draft202012Validator({"$defs": schema["$defs"], **schema["$defs"]["ResearchExplanationVersion"]}).validate(raw)
+
+
 @pytest.mark.parametrize("state,label", [("unknown", "未知"), ("unavailable", "不可用")])
 def test_unavailable_and_unknown_do_not_become_zero(tmp_path, state, label):
     candidate = _candidate(value=None)
@@ -363,8 +386,8 @@ def test_revised_research_report_uses_effective_evidence_not_historical_active_f
     artifacts = {a.path.name: a.path for a in run.artifacts}
     report = artifacts["research_report.html"].read_text()
     current = report.split("<details>", 1)[0]
-    assert "<td>75</td>" not in current
-    assert ("<td>80</td>" in current) is bool(expected_versions)
+    assert "75 个 / 共 100 个细胞" not in current
+    assert ("80 个 / 共 100 个细胞" in current) is bool(expected_versions)
     raw = json.loads(artifacts["research_report.json"].read_bytes())
     history = json.loads(raw["source_evidence_record_set_json"])["records"]
     assert history[0]["value"] == 0.75 and history[0]["lifecycle_state"] == "active"
@@ -440,7 +463,7 @@ def context_request(root, graph_path, context):
     path = root / "research_context.json"
     path.write_bytes(canonical_json_bytes(context.model_dump(mode="json"), indent=2))
     ref = StructuredInputRef(input_id="context", role="research_report_context",
-        schema_ref=r.RESEARCH_CONTEXT_SCHEMA_REF, object_version="0.3.0",
+        schema_ref="bridge://schemas/research-report-context/v" + context.object_version.rsplit(".", 1)[0], object_version=context.object_version,
         path=path, sha256=hashlib.sha256(path.read_bytes()).hexdigest(), media_type="application/json")
     return request.model_copy(update={"object_inputs": [*request.object_inputs, ref]})
 
@@ -469,7 +492,7 @@ def test_private_context_corrected_name_failure_and_legacy_bytes(graph_path, tmp
 
 
 
-@pytest.mark.parametrize("version", ["0.4.4", "0.4.5", "0.4.6"])
+@pytest.mark.parametrize("version", ["0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0"])
 def test_previous_report_patch_remains_readable_but_not_a_current_run(graph_path, tmp_path, version):
     from bridge.tool_packages.p0_10_claim_verifier.adapter import adapter
     registry = ToolRegistry.load_default()
@@ -489,6 +512,30 @@ def test_context_report_opens_with_product_before_technical_identifiers(graph_pa
     assert result.execution_state.value == "succeeded"
     report = next(a.path for a in result.artifacts if a.path.name == "research_report.html").read_text()
     assert report.index(context.confirmed_product_facts.product_name) < report.index("快照 SHA-256")
+    from html.parser import HTMLParser
+    class ReaderText(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.ignored = 0
+            self.text = []
+        def handle_starttag(self, tag, attrs):
+            if tag in {"template", "style"}:
+                self.ignored += 1
+        def handle_endtag(self, tag):
+            if tag in {"template", "style"}:
+                self.ignored -= 1
+        def handle_data(self, data):
+            if not self.ignored:
+                self.text.append(data)
+    reader = ReaderText()
+    reader.feed(report)
+    visible = "".join(reader.text)
+    assert context.confirmed_product_facts.product_name in visible
+    assert "资料版本 7" in visible
+    assert "快照 SHA-256" not in visible and "schema_ref" not in visible
+    assert "<template id=\"report-audit\">" in report
+    assert "候选" in visible and "尚待验证" in visible
+
 
 
 
@@ -516,18 +563,28 @@ def test_context_private_allowlist_refuses_active_or_private_data(graph_path, te
         context_for(graph_path, name=text)
 
 
-@pytest.mark.parametrize("kind", ["composition", "process"])
+@pytest.mark.parametrize("kind", ["composition", "process", "program", "directed_program"])
 def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, kind):
     from types import SimpleNamespace
     from bridge.web.research_context import build_research_context
     r = research()
     label = {"label": "L1:source-family", "assignment_state": "candidate"}
+    program = "S" if kind == "process" else "PROC-ROS"
     metric = ("candidate_composition_fraction_" + r._digest(label)[:16] if kind == "composition"
-              else "native_mean_proc_score_scanpy_s")
+              else "native_mean_proc_score_scanpy_" + program.lower())
     candidate = _candidate(metric_id=metric)
-    if kind == "process":
+    if kind != "composition":
         candidate.update(value=0.125, numerator=None, denominator=None, unit="scanpy_control_adjusted_expression", interval=None)
-    compilation = _run(tmp_path / "graph", bundle=_bundle(candidates=[candidate]))
+    # This test isolates native profile/measurement presentation. Match the
+    # immutable producer identity now required by the context builder.
+    receipt_payload = {"run_id": "target", "tool_version": "1.0.0", "fixture_kind": kind}
+    def bound_bundle(**kwargs):
+        bundle = _bundle(**kwargs)
+        for item in bundle["object_catalog"]:
+            if item["object_id"] == "tool-run:target":
+                item["content_hash"] = r._digest(receipt_payload)
+        return bundle
+    compilation = _run(tmp_path / "graph", bundle=bound_bundle(candidates=[candidate]))
     assert compilation.execution_state.value == "succeeded", compilation.reason_codes
     graph = compilation.request.output_dir / compilation.run_id / "case_evidence_graph_manifest.json"
     view = context_for(graph).data_view.model_dump(mode="json")
@@ -542,7 +599,7 @@ def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, ki
         "unit": candidate["unit"], "numerator": candidate["numerator"], "denominator": candidate["denominator"],
         "source_run_ref": "tool-run:target@1.0.0"}
     values["measurement"] = measurement
-    run = SimpleNamespace(run_id="target", tool_version="1.0.0",
+    run = SimpleNamespace(run_id="target", tool_version="1.0.0", model_dump=lambda **kwargs: receipt_payload,
         measurements=[SimpleNamespace(measurement_id=measurement["measurement_id"], model_dump=lambda **kwargs: measurement)])
     if kind == "composition":
         profile = {"input_data_view": view, "candidate_composition": [
@@ -553,9 +610,11 @@ def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, ki
         profile_schema = "bridge://schemas/cell-state-candidate-profile/v1.0"
     else:
         profile = {"input_contract": {"data_view": view}, "program_summaries": [
-            {"method_id": "PROC-SCORE-SCANPY", "program_id": "S", "mean": 0.125,
+            {"method_id": "PROC-SCORE-SCANPY", "program_id": program, "mean": 0.125,
              "score_unit": candidate["unit"], "n_observations": 100, "assessment_state": "available", "reason_codes": []}]}
-        profile_schema = "bridge://schemas/exploratory-process-profile/v0.1"
+        profile_schema = {"process": "bridge://schemas/exploratory-process-profile/v0.1",
+            "program": "bridge://schemas/exploratory-program-profile/v0.1",
+            "directed_program": "bridge://schemas/exploratory-program-profile/v0.2"}[kind]
     run.result = values["profile"] = profile
     schemas = {"graph": "bridge://schemas/case-evidence-graph-manifest/v0.1",
         "measurement": "bridge://schemas/measurement-result/v0.2", "profile": profile_schema,
@@ -568,9 +627,32 @@ def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, ki
         verify=lambda state, record: values[record["value_key"]])),
         _canonical_outputs=lambda state, pool, tool, schema: (
             [("qc", values["qc"], None)] if tool == "P0-01" else
-            [("profile", profile, run)] if schema == profile_schema else []))
+            [("profile", profile, run)] if profile_schema in ((schema,) if isinstance(schema, str) else schema) else []))
     context, dependencies = build_research_context(reports, state, scope, pool, graph_manifest_input_id="graph")
     assert {"graph", "qc", "profile", "measurement"} <= set(dependencies)
+    # Historical executions may reuse this run ID/version but have different
+    # content. Ordering cannot make their profile replace the graph's producer.
+    canonical = reports._canonical_outputs
+    stale_run = SimpleNamespace(run_id=run.run_id, tool_version=run.tool_version,
+        model_dump=lambda **kwargs: {**receipt_payload, "historical_attempt": True}, result=profile)
+    for stale_first in (True, False):
+        def with_stale(state, pool, tool, schema):
+            rows = canonical(state, pool, tool, schema)
+            if any(identifier == "profile" for identifier, _, _ in rows):
+                stale = [("stale-profile", profile, stale_run)]
+                return stale + rows if stale_first else rows + stale
+            return rows
+        reports._canonical_outputs = with_stale
+        actual, actual_dependencies = build_research_context(
+            reports, state, scope, pool, graph_manifest_input_id="graph")
+        assert actual == context and actual_dependencies == dependencies
+        assert "stale-profile" not in actual_dependencies
+    reports._canonical_outputs = lambda state, pool, tool, schema: [
+        (identifier, value, stale_run if identifier == "profile" else producer)
+        for identifier, value, producer in canonical(state, pool, tool, schema)]
+    with pytest.raises(ValueError, match="^report_context_producer_identity_mismatch$"):
+        build_research_context(reports, state, scope, pool, graph_manifest_input_id="graph")
+    reports._canonical_outputs = canonical
     if kind == "composition":
         assert context.composition_mapping[0].label == label["label"]
         assert context.composition_mapping[0].count == 75
@@ -590,7 +672,7 @@ def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, ki
         profile["program_summaries"][0]["n_observations"] = 100
     prior = json.loads((graph.parent / "evidence_records.json").read_bytes())["records"]
     manifest = json.loads(graph.read_bytes())
-    invalidated = _run(tmp_path / "invalidated", bundle=_bundle(
+    invalidated = _run(tmp_path / "invalidated", bundle=bound_bundle(
         candidates=[{**candidate, "revision_action": "invalidate",
             "predecessor_ref": prior[0]["evidence_id"] + "@1"}],
         prior_records=prior,
@@ -608,7 +690,7 @@ def test_context_builder_binds_native_labels_and_actual_mean_counts(tmp_path, ki
     assert not {"profile", "measurement"} & set(dependencies)
 
 
-def test_context_preserves_unverified_explanation_hash_history(graph_path):
+def test_context_preserves_unverified_explanation_hash_history(graph_path, tmp_path):
     r = research()
     content = {
         "object_version": "1.0.0", "scope_digest": "a" * 64, "input_revision": 7,
@@ -618,7 +700,12 @@ def test_context_preserves_unverified_explanation_hash_history(graph_path):
         "evidence_snapshot_sha256": "b" * 64, "qualification": "proposed_explanation"}
     first = {**content, "version": 1, "content_sha256": r._digest(content),
         "predecessor_sha256": None, "created_at": "2026-09-11T00:00:00Z"}
-    content2 = {**content, "evidence_snapshot_sha256": "c" * 64}
+    content2 = {**content, "evidence_snapshot_sha256": "c" * 64,
+        "hypotheses": [{**content["hypotheses"][0], "discriminating_check": None},
+            {"statement": "本次程序不可估计", "evidence_aliases": [],
+             "opposing_evidence_aliases": [], "missing_evidence_aliases": ["evidence:missing"],
+             "expected_observation": None, "competing_explanation": "缺失不代表信号低",
+             "discriminating_check": None}]}
     second = {**content2, "version": 2, "content_sha256": r._digest(content2),
         "predecessor_sha256": first["content_sha256"], "created_at": "2026-09-11T01:00:00Z"}
     payload = context_for(graph_path).model_dump(mode="json", exclude={"context_sha256"})
@@ -626,6 +713,288 @@ def test_context_preserves_unverified_explanation_hash_history(graph_path):
     context = r.seal_research_context(payload)
     assert context.explanation_versions[0].hypotheses[0].opposing_evidence_aliases == ["evidence:opposing"]
     assert context.explanation_versions[1].predecessor_sha256 == first["content_sha256"]
+    gap = context.explanation_versions[1].hypotheses[1]
+    assert gap.is_evidence_gap
+    for changes in ({"missing_evidence_aliases": []}, {"opposing_evidence_aliases": ["evidence:other"]},
+                    {"expected_observation": "A prediction"}, {"discriminating_check": "P0-06"}):
+        assert not gap.model_copy(update=changes).is_evidence_gap
+    from jsonschema import Draft202012Validator
+    from bridge.toolkit.schemas import load_schema
+    # Existing public schema and hash history already support empty primary arrays.
+    Draft202012Validator(load_schema(r.RESEARCH_CONTEXT_SCHEMA_REF)).validate(context.model_dump(mode="json"))
+    run = execute(context_request(tmp_path, graph_path, context))
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    artifacts = {artifact.path.name: artifact.path for artifact in run.artifacts}
+    snapshot = r.ResearchAnalysisSnapshotV03.model_validate_json(
+        artifacts["research_snapshot.json"].read_bytes())
+    versions = json.loads(snapshot.report_context_json)["explanation_versions"]
+    assert [row["hypotheses"][0]["discriminating_check"] for row in versions] == ["P0-06", None]
+    assert "本范围没有合适的科学鉴别检查" not in artifacts["research_report.html"].read_text()
+    gap_html = artifacts["research_report.html"].read_text().split("<h3>待补充证据</h3>")[1].split("</article>")[0]
+    assert "缺失不代表信号低" in gap_html and "<details>" in gap_html
+    assert not any(label in gap_html for label in ("竞争解释", "鉴别检查", "预期观察"))
+    assert versions[1]["hypotheses"][1]["missing_evidence_aliases"] == ["evidence:missing"]
     second["hypotheses"] = []
     with pytest.raises(ValueError, match="explanation_hash_mismatch"):
         r.seal_research_context(payload)
+
+
+def test_graph_composition_display_is_source_bound_read_only_and_rejects_ambiguity(tmp_path):
+    from copy import deepcopy
+    from types import SimpleNamespace
+    from bridge.web.research_context import graph_composition_display
+    r = research()
+    category = {"label": "L1:source-category", "assignment_state": "candidate"}
+    metric = "candidate_composition_fraction_" + r._digest(category)[:16]
+    candidate = _candidate(metric_id=metric)
+    candidate["artifact_refs"] = [{"object_id": "artifact:profile", "object_version": "1.0.0"}]
+    bundle = _bundle(candidates=[candidate])
+    bundle["object_catalog"].append({**candidate["artifact_refs"][0], "node_type": "Artifact",
+        "schema_ref": "bridge://schemas/artifact/v0.1", "content_hash": "a" * 64})
+    compilation = _run(tmp_path / "graph", bundle=bundle)
+    assert compilation.execution_state.value == "succeeded", compilation.reason_codes
+    graph = compilation.request.output_dir / compilation.run_id / "case_evidence_graph_manifest.json"
+    cytoscape = next(a for a in compilation.artifacts if a.kind == "cytoscape_elements")
+    display = json.loads(cytoscape.path.read_bytes())
+    profile = {"producer_run_ref": "target", "producer_tool_version": "1.0.0", "input_sha256": "b" * 64,
+        "candidate_composition": [{**category, "fraction": 0.75, "count": 75, "denominator": 100}]}
+    measurement = {"measurement_id": "measurement-result:target", "metric_name": metric,
+        "raw_value": 0.75, "numerator": 75, "denominator": 100, "unit": "fraction",
+        "source_run_ref": "tool-run:target@1.0.0"}
+    run = SimpleNamespace(run_id="target", tool_version="1.0.0", input_hash="b" * 64, result=profile,
+        measurements=[SimpleNamespace(measurement_id=measurement["measurement_id"], model_dump=lambda **kwargs: measurement)])
+    values = {"profile": profile, "measurement": measurement, "graph": json.loads(graph.read_bytes())}
+    schemas = {"graph": "case-evidence-graph-manifest/v0.1", "profile": "cell-state-candidate-profile/v1.0",
+        "measurement": "measurement-result/v0.2"}
+    pool = {key: {"schema_ref": "bridge://schemas/" + schema, "object_version": "1.0.0",
+        "sha256": r._digest(values[key]), "receipt_file": "graph" if key == "graph" else "native",
+        "receipt_sha256": "f" * 64, "source": "tool_output", "producer_tool_id": "P0-09" if key == "graph" else "P0-02",
+        "artifact_id": "artifact:" + key, "value_key": key} for key, schema in schemas.items()}
+    pool["graph"].update(path=str(graph), sha256=hashlib.sha256(graph.read_bytes()).hexdigest())
+    state = {"id": "case", "_input_objects": pool,
+        "_tool_runs": [{"file": "graph", "sha256": "f" * 64, "tool_id": "P0-09"}],
+        "_canonical_artifacts": {"view": {"artifact_id": cytoscape.artifact_id, "path": str(cytoscape.path),
+            "sha256": cytoscape.sha256, "receipt_file": "graph", "receipt_sha256": "f" * 64}},
+        "_artifacts": {"view": {"source_artifact_id": cytoscape.artifact_id, "source_sha256": cytoscape.sha256}}}
+    service = SimpleNamespace(directory=lambda sid: tmp_path)
+    service.inputs = SimpleNamespace(verify=lambda state, row: values[row["value_key"]],
+        receipt_artifacts=lambda state, row: {cytoscape.artifact_id: cytoscape.model_dump(mode="json")})
+    service.report_inputs = SimpleNamespace(_canonical_outputs=lambda state, selected, tool, schema:
+        [(key, values[row["value_key"]], run) for key, row in selected.items()])
+    before = deepcopy(state)
+    result = graph_composition_display(service, state, "view", display)
+    assert state == before
+    assert set(result) == {"graph_id", "graph_version", "graph_manifest_sha256", "composition_mapping", "sources"}
+    assert result["composition_mapping"][0]["label"] == category["label"]
+    assert result["composition_mapping"][0]["measurement_ref"] == "measurement-result:target@1.0.0"
+    assert result["composition_mapping"][0]["interpretation"] == "candidate_method_output_only"
+    assert "confirmed_product_facts" not in result
+    # No report, intake, current assessment or current input revision is present.
+    for key in ("graph_id", "graph_version"):
+        with pytest.raises(ValueError, match="manifest_mismatch"):
+            graph_composition_display(service, state, "view", {**display, key: "different"})
+    for key in ("graph", "profile"):
+        pool["duplicate"] = deepcopy(pool[key])
+        with pytest.raises(ValueError, match="ambiguous"):
+            graph_composition_display(service, state, "view", display)
+        del pool["duplicate"]
+    for field, value in (("label", "wrong-label"), ("count", 74), ("fraction", 0.7)):
+        saved = profile["candidate_composition"][0][field]
+        profile["candidate_composition"][0][field] = value
+        with pytest.raises(ValueError, match="composition"):
+            graph_composition_display(service, state, "view", display)
+        profile["candidate_composition"][0][field] = saved
+    pool["measurement"]["object_version"] = "2.0.0"
+    with pytest.raises(ValueError, match="measurement_graph_mismatch"):
+        graph_composition_display(service, state, "view", display)
+    pool["measurement"]["object_version"] = "1.0.0"
+    saved_profile = pool.pop("profile")
+    with pytest.raises(ValueError, match="missing"):
+        graph_composition_display(service, state, "view", display)
+    pool["profile"] = saved_profile
+    profile["candidate_composition"][0]["label"] = "/home/private/patient"
+    with pytest.raises(ValueError):
+        graph_composition_display(service, state, "view", display)
+
+
+def test_reader_ratios_distinguish_zero_missing_and_population_without_audit_jargon(graph_path):
+    r = research()
+    context = context_for(graph_path)
+    before = context.model_dump(mode="json")
+    report = r._context_report_html(context, [
+        {"metric_id": "native_s_g2m_fraction", "value": 0.0, "numerator": 0, "denominator": 100, "unit": "fraction"},
+        {"metric_id": "candidate_assignment_fraction", "value": None, "numerator": None, "denominator": None, "unit": "fraction"},
+    ], "AUDIT_EXACT", "", "")
+    visible = report.split('<template id="report-audit">')[0]
+    assert "0%" in visible and "0 个 / 共 100 个细胞" in visible
+    assert "暂无数值" in visible
+    assert all(word not in visible for word in ("分子", "分母", "工具原值", "周期预测比例不等于", "预期观察：未提供"))
+    assert "AUDIT_EXACT" in report and context.model_dump(mode="json") == before
+
+
+def test_literature_context_version_preserves_old_hash_and_requires_read_support(graph_path, monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from bridge.web import literature
+    from test_web_literature import transport, article, response
+    r = research()
+    old = context_for(graph_path)
+    old_bytes = canonical_json_bytes(old.model_dump(mode="json"))
+    scope = SimpleNamespace(literature_enabled=True, literature_concept_refs=["neuron"],
+                            max_literature_searches=1, max_literature_reads=1)
+    assessment = {}
+    public_article = article(pubTypeList={"pubType": ["Journal Article"]},
+        commentCorrectionList={"commentCorrection": [{"type": "ErratumIn", "id": "67890",
+            "source": "MED", "reference": "Synthetic correction", "note": "<script>untrusted</script>"}]})
+    transport(monkeypatch, [response([public_article]), response([public_article])])
+    search = literature.reserve(assessment, scope,
+        {"action":"search_literature", "concept_refs":["neuron"], "focus":"identity"})
+    literature.complete(assessment, search, literature.execute(search))
+    read = literature.reserve(assessment, scope,
+        {"action":"read_literature", "source_ref":"literature:epmc-med-12345"})
+    literature.complete(assessment, read, literature.execute(read))
+    hypothesis = {"statement":"候选神经状态可能反映分化过程。",
+        "evidence_aliases":["evidence:test@1"], "opposing_evidence_aliases":[], "missing_evidence_aliases":[],
+        "expected_observation":"成熟相关表达应在相同细胞群内共同出现。",
+        "competing_explanation":"不同细胞群混合也可能产生总体信号。", "discriminating_check":None,
+        "literature_support":[{"source_ref":"literature:epmc-med-12345", "rationale":"提供分化机制的研究背景。",
+            "species":"原文物种需要核对", "lineage":"神经谱系", "stage":"实验阶段与本样本不完全相同",
+            "experimental_context":"研究背景，不是本样本的直接证据。", "qualification":"unverified_applicability"}]}
+    interpretation = {"object_version":"1.1.0", "scope_digest":"a"*64, "input_revision":7,
+        "hypotheses":[hypothesis], "evidence_snapshot_sha256":"b"*64, "qualification":"proposed_explanation",
+        "biological_context":{"source":"confirmed_intake", "input_revision":7, "facts":{
+            "product_family":"unknown","starting_cell_type":None,"culture_day":None,"target_cell_type":None,
+            "target_stage":None,"sampling_context":"unknown","independent_cultures":None,
+            "assay":"unknown","sequencing_method":None}},
+        "literature":literature.freeze(assessment, scope)}
+    version = {**interpretation, "version":1,"predecessor_sha256":None,
+        "content_sha256":r._digest(interpretation),"created_at":"2026-10-05T00:00:00Z"}
+    r.parse_research_explanation(version)
+    payload = old.model_dump(mode="json", exclude={"context_sha256"})
+    context = r.seal_research_context({**payload, "object_version":"0.4.0", "explanation_versions":[version]})
+    assert context.object_version == "0.4.0"
+    run = ToolRegistry.load_default().run(context_request(tmp_path / "with-literature", graph_path, context))
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    paths = {a.path.name: a.path for a in run.artifacts}
+    report_html = paths["research_report.html"].read_text()
+    assert "Synthetic public article" in report_html
+    assert "来源报告更正信息" in report_html and "Synthetic correction" in report_html
+    assert "&lt;script&gt;untrusted&lt;/script&gt;" in report_html
+    assert "<script>untrusted</script>" not in report_html
+    assert 'href="https://europepmc.org/article/MED/12345"' in report_html
+    assert "实验阶段与本样本不完全相同" in report_html
+    snapshot = r.ResearchAnalysisSnapshotV04.model_validate_json(paths["research_snapshot.json"].read_bytes())
+    assert snapshot.object_version == "0.4.0"
+
+    assert canonical_json_bytes(r.ResearchReportContext.model_validate_json(old_bytes).model_dump(mode="json")) == old_bytes
+    bad = json.loads(json.dumps(version))
+    bad["hypotheses"][0]["literature_support"][0]["source_ref"] = "literature:epmc-med-999"
+    bad["content_sha256"] = r._digest({k:v for k,v in bad.items()
+        if k not in {"version","predecessor_sha256","content_sha256","created_at"}})
+    with pytest.raises(ValueError, match="literature_support_not_read"):
+        r.parse_research_explanation(bad)
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_reader_keeps_method_scores_in_details_and_preserves_material_conflict(graph_path, conflict):
+    from html.parser import HTMLParser
+    r = research()
+    payload = context_for(graph_path).model_dump(mode="json", exclude={"context_sha256"})
+    payload["process_means"] = [
+        {"source_ref": "candidate-profile:test@1", "measurement_ref": f"measurement:process-{i}@1",
+         "metric_id": "native_mean_" + method.lower().replace("-", "_") + "_proc-ros",
+         "method_id": method, "program_id": "PROC-ROS", "mean": mean, "score_unit": unit,
+         "n_observations": 100, "assessment_state": "available", "reason_codes": []}
+        for i, (method, mean, unit) in enumerate([
+            ("PROC-SCORE-SCANPY", -0.25, "scanpy_relative_expression_score"),
+            ("PROC-SCORE-DECOUPLER", 1.5, "decoupler_ulm_t_value")])]
+    statement = ("在可比条件的同一比较中，Scanpy 指向上调，而 ULM 指向下调，方向不一致。"
+                 if conflict else "氧化应激相关转录模式需结合参照解释。")
+    experiment = "在匹配条件下补充独立培养样本并测量氧化损伤，以区分应激变化与表达背景影响。"
+    content = {"object_version": "1.0.0", "scope_digest": "a" * 64, "input_revision": 7,
+        "hypotheses": [{"statement": statement, "evidence_aliases": ["evidence:first"],
+            "opposing_evidence_aliases": ["evidence:second"] if conflict else [],
+            "missing_evidence_aliases": [], "expected_observation": experiment, "competing_explanation": "表达背景也可能影响该模式。",
+            "discriminating_check": None}], "evidence_snapshot_sha256": "b" * 64,
+        "qualification": "proposed_explanation"}
+    payload["explanation_versions"] = [{**content, "version": 1, "content_sha256": r._digest(content),
+        "created_at": "2026-09-11T00:00:00Z"}]
+    context = r.seal_research_context(payload)
+    before = context.model_dump(mode="json")
+    report = r._context_report_html(context, [], "AUDIT_EXACT", "", "")
+
+    class ReaderText(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.collapsed = 0
+            self.inert = 0
+            self.visible = []
+            self.details = []
+        def handle_starttag(self, tag, attrs):
+            if tag == "details" and "open" not in dict(attrs):
+                self.collapsed += 1
+            if tag in {"template", "style"}:
+                self.inert += 1
+        def handle_endtag(self, tag):
+            if tag == "details":
+                self.collapsed -= 1
+            if tag in {"template", "style"}:
+                self.inert -= 1
+        def handle_data(self, value):
+            if not self.inert:
+                (self.details if self.collapsed else self.visible).append(value)
+    reader = ReaderText()
+    reader.feed(report)
+    visible, details = "".join(reader.visible), "".join(reader.details)
+    assert statement in visible
+    if not conflict:
+        assert "Scanpy" not in visible and "ULM" not in visible
+    assert all(value in details for value in ("Scanpy", "ULM", "-0.25", "1.5", "100", experiment))
+    assert "AUDIT_EXACT" in report and context.model_dump(mode="json") == before
+
+
+def test_semantic_explanation_survives_registered_report_and_rejects_graph_tampering(graph_path, tmp_path):
+    from test_interpretation_graph import hypothesis
+    r = research()
+    h = hypothesis()
+    interpretation = dict(object_version="1.2.0", scope_digest="a"*64, input_revision=7,
+        hypotheses=[h], evidence_snapshot_sha256="b"*64, qualification="proposed_explanation",
+        biological_context=None, literature=None, graph_ref={key: getattr(context_for(graph_path), key) for key in
+            ("graph_id", "graph_version", "graph_manifest_sha256")}, feature_coverage=dict(object_version="1.0.0",
+            upload_sha256="b"*64, input_revision=7, matrix_location="layers/counts", identifier_column="var/gene",
+            complete=True, feature_count=2, semantics="exact_identifier_membership_not_expression_or_biological_absence",
+            results=[dict(identifier="FOXA2", state="present"), dict(identifier="EN1", state="present")]))
+    version = {**interpretation, "version":1, "predecessor_sha256":None,
+        "content_sha256":r._digest(interpretation), "created_at":"2026-10-08T00:00:00Z"}
+    r.parse_research_explanation(version)
+    payload = context_for(graph_path).model_dump(mode="json", exclude={"context_sha256"})
+    context = r.seal_research_context({**payload, "object_version":"0.5.0", "explanation_versions":[version]})
+    run = ToolRegistry.load_default().run(context_request(tmp_path, graph_path, context))
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    paths = {a.path.name:a.path for a in run.artifacts}
+    snapshot = r.ResearchAnalysisSnapshotV05.model_validate_json(paths["research_snapshot.json"].read_bytes())
+    graph = json.loads(snapshot.interpretation_graph_json)
+    relation = next(e["data"] for e in graph["elements"]["edges"] if e["data"]["edge_type"] == "limits")
+    assert relation["rationale"] == h["evidence_relations"][0]["rationale"]
+    assert graph["qualification"] == "unverified"
+    assert graph["graph_manifest_sha256"] == snapshot.graph_manifest_sha256
+    html = paths["research_report.html"].read_text()
+    assert "证据如何支持或限制" in html and "FOXA2：输入包含" in html
+    altered = snapshot.model_dump(mode="json")
+    graph["elements"]["edges"][0]["data"]["edge_type"] = "supports"
+    altered["interpretation_graph_json"] = r._json(graph)
+    altered["snapshot_sha256"] = r._digest({k:v for k,v in altered.items() if k != "snapshot_sha256"})
+    with pytest.raises(ValueError, match="interpretation_graph_context_mismatch"):
+        r.ResearchAnalysisSnapshotV05.model_validate(altered)
+
+
+def test_historical_semantic_explanation_is_not_rebound_to_new_input_or_graph():
+    from types import SimpleNamespace
+    from bridge.toolkit.interpretation import interpretation_graph
+    ref = SimpleNamespace(graph_id="graph", graph_version=1, graph_manifest_sha256="a"*64)
+    version = SimpleNamespace(object_version="1.2.0", input_revision=1, graph_ref=ref,
+        content_sha256="b"*64, scope_digest="c"*64, hypotheses=[])
+    for revision, graph_version, sha in [("2", 1, "a"*64), ("1", 2, "a"*64), ("1", 1, "d"*64)]:
+        graph = interpretation_graph(SimpleNamespace(input_revision=revision, graph_id="graph",
+            graph_version=graph_version, graph_manifest_sha256=sha, explanation_versions=[version]))
+        assert graph["explanation_sha256"] is None
+        assert graph["elements"] == {"nodes": [], "edges": []}

@@ -237,3 +237,12 @@ Negative/OOD 数据检验 specificity 和拒答能力，不代表“低质量 PD
 6. MacroDiff 的 biological preparation hierarchy；SphereDiff `HRA008865` 样本与分析对象的精确对应；Studer-protocol D16 测序来源与已发表方案的边界。
 7. 各 graft 的 originating preparation、宿主、animal 和 timepoint map。
 8. 所有待核实 D/timepoint 字段不得由 Agent 按论文惯例补全。
+
+
+## 只读空间展示参考
+
+产品 UMAP 的空间联动消费部署方固定配置的版本化清单，配置入口与字段由
+[Web 配置](../web-preview.md#产品与空间参考联动配置)维护。该资源仅提供坐标、
+类型、捕获单元和有审阅状态的类型对应；不作为新的训练、校准或科学资格来源。
+真实路径、输入、对应表及模型留在受控环境，不进入资源注册表或主应用静态包。
+未审阅对应保持 pending；坐标图和三维解剖参照不能建立细胞配准或发育阶段等同。

@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "adaptation": "BRIDGE workflow adaptations, 2026-10-04. Wording, routes, stopping rules and execution interfaces modified for existing BRIDGE contracts. Upstream commands and dependencies are not executed.",
+  "sources": {
+    "tu-single-cell": {
+      "repository": "https://github.com/mims-harvard/ToolUniverse",
+      "commit": "ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7",
+      "path": "skills/tooluniverse-single-cell/SKILL.md",
+      "url": "https://github.com/mims-harvard/ToolUniverse/blob/ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7/skills/tooluniverse-single-cell/SKILL.md",
+      "sha256": "fa77dc571ab5cc47dfdaba5565bcd004d4417155b61bd5a5e8afa32d9c52a404",
+      "license": "Apache-2.0",
+      "license_file": "licenses/tooluniverse-apache-2.0.txt",
+      "adapted": "Question-driven analysis branches; explicit data inspection and result interpretation."
+    },
+    "tu-stem-cell": {
+      "repository": "https://github.com/mims-harvard/ToolUniverse",
+      "commit": "ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7",
+      "path": "skills/tooluniverse-stem-cell-organoid/SKILL.md",
+      "url": "https://github.com/mims-harvard/ToolUniverse/blob/ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7/skills/tooluniverse-stem-cell-organoid/SKILL.md",
+      "sha256": "a9dc7b7d2265c6aad194b0b268b517e41ca44363855ea6880eb6955f89d5f7fc",
+      "license": "Apache-2.0",
+      "license_file": "licenses/tooluniverse-apache-2.0.txt",
+      "adapted": "Separate identity, developmental context, reference applicability and model limitations."
+    },
+    "tu-datasets": {
+      "repository": "https://github.com/mims-harvard/ToolUniverse",
+      "commit": "ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7",
+      "path": "skills/tooluniverse-dataset-discovery/SKILL.md",
+      "url": "https://github.com/mims-harvard/ToolUniverse/blob/ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7/skills/tooluniverse-dataset-discovery/SKILL.md",
+      "sha256": "234cf6dbd26ef2167c59fdce38d8aa2b6a05c727031cc3edcb001cd11af9e2c3",
+      "license": "Apache-2.0",
+      "license_file": "licenses/tooluniverse-apache-2.0.txt",
+      "adapted": "Frame question, required study design, variables and population before selecting data."
+    },
+    "tu-literature": {
+      "repository": "https://github.com/mims-harvard/ToolUniverse",
+      "commit": "ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7",
+      "path": "skills/tooluniverse-literature-deep-research/SKILL.md",
+      "url": "https://github.com/mims-harvard/ToolUniverse/blob/ffe2d0b94fa43f31b9afcd2d99543d3bad4eb4a7/skills/tooluniverse-literature-deep-research/SKILL.md",
+      "sha256": "f5defe8a4752c34cf0dbdc8e53ed3b834d7ee53c95b9bd04c263dab44e1f819b",
+      "license": "Apache-2.0",
+      "license_file": "licenses/tooluniverse-apache-2.0.txt",
+      "adapted": "Right-size deliverable; retain sources, missing evidence and synthesis."
+    },
+    "kd-design": {
+      "repository": "https://github.com/K-Dense-AI/scientific-agent-skills",
+      "commit": "154988403bb5a18e9d3c0ce4e6d5e2e4b184a298",
+      "path": "skills/experimental-design/SKILL.md",
+      "url": "https://github.com/K-Dense-AI/scientific-agent-skills/blob/154988403bb5a18e9d3c0ce4e6d5e2e4b184a298/skills/experimental-design/SKILL.md",
+      "sha256": "db2de0f3d29b7729776a91e923c9c83801298f5ad8e88fe44570045fbefcc248",
+      "license": "MIT",
+      "license_file": "licenses/kdense-mit.txt",
+      "adapted": "Experimental unit, technical nesting, independent replication and confounding."
+    },
+    "kd-hypotheses": {
+      "repository": "https://github.com/K-Dense-AI/scientific-agent-skills",
+      "commit": "154988403bb5a18e9d3c0ce4e6d5e2e4b184a298",
+      "path": "skills/hypothesis-generation/SKILL.md",
+      "url": "https://github.com/K-Dense-AI/scientific-agent-skills/blob/154988403bb5a18e9d3c0ce4e6d5e2e4b184a298/skills/hypothesis-generation/SKILL.md",
+      "sha256": "5bccec0437d96d61821ec2095e7e32b61e8634cd8c02f11f42da953121e92719",
+      "license": "MIT",
+      "license_file": "licenses/kdense-mit.txt",
+      "adapted": "Observation versus explanation, rival hypotheses and discriminating predictions."
+    },
+    "kd-appraisal": {
+      "repository": "https://github.com/K-Dense-AI/scientific-agent-skills",
+      "commit": "154988403bb5a18e9d3c0ce4e6d5e2e4b184a298",
+      "path": "skills/scientific-critical-thinking/SKILL.md",
+      "url": "https://github.com/K-Dense-AI/scientific-agent-skills/blob/154988403bb5a18e9d3c0ce4e6d5e2e4b184a298/skills/scientific-critical-thinking/SKILL.md",
+      "sha256": "563af70571b7dcd6a96bf2e303bedfdcba623b4e9f082d58f04aacbc961fdae4",
+      "license": "MIT",
+      "license_file": "licenses/kdense-mit.txt",
+      "adapted": "Question/unit, extracted evidence, applicability, dependence and bounded critique."
+    },
+    "kd-writing": {
+      "repository": "https://github.com/K-Dense-AI/scientific-agent-skills",
+      "commit": "154988403bb5a18e9d3c0ce4e6d5e2e4b184a298",
+      "path": "skills/scientific-writing/SKILL.md",
+      "url": "https://github.com/K-Dense-AI/scientific-agent-skills/blob/154988403bb5a18e9d3c0ce4e6d5e2e4b184a298/skills/scientific-writing/SKILL.md",
+      "sha256": "511a2096bebecd8cf0f8212b9d262d37154ae1ba566eb385d93ac968682edbd1",
+      "license": "MIT",
+      "license_file": "licenses/kdense-mit.txt",
+      "adapted": "Evidence-bound reporting; preserve units, uncertainty, missingness and separate verification."
+    },
+    "kd-statistics": {
+      "repository": "https://github.com/K-Dense-AI/scientific-agent-skills",
+      "commit": "154988403bb5a18e9d3c0ce4e6d5e2e4b184a298",
+      "path": "skills/statistical-analysis/SKILL.md",
+      "url": "https://github.com/K-Dense-AI/scientific-agent-skills/blob/154988403bb5a18e9d3c0ce4e6d5e2e4b184a298/skills/statistical-analysis/SKILL.md",
+      "sha256": "e112848726b3713267cac65e4e2c15491a0a26ee1ed628db01195f7e43f97997",
+      "license": "MIT",
+      "license_file": "licenses/kdense-mit.txt",
+      "adapted": "Define contrast, unit and dependence before choosing a method; descriptive/inferential distinction."
+    },
+    "kd-census": {
+      "repository": "https://github.com/K-Dense-AI/scientific-agent-skills",
+      "commit": "154988403bb5a18e9d3c0ce4e6d5e2e4b184a298",
+      "path": "skills/cellxgene-census/SKILL.md",
+      "url": "https://github.com/K-Dense-AI/scientific-agent-skills/blob/154988403bb5a18e9d3c0ce4e6d5e2e4b184a298/skills/cellxgene-census/SKILL.md",
+      "sha256": "123b66d6701c7c0587d0a615a2394caee52e62745b3fd31176381ea64aaa794a",
+      "license": "MIT",
+      "license_file": "licenses/kdense-mit.txt",
+      "adapted": "Pin reference release, preserve dataset provenance and avoid duplicate source evidence."
+    }
+  },
+  "workflows": {
+    "case-understanding": {
+      "sources": [
+        "kd-design",
+        "tu-datasets"
+      ],
+      "bridge_reuse": [
+        "web/intake.py",
+        "web/clarification.py",
+        "web/service.py"
+      ],
+      "excluded": "No new study allocation engine, direct search or invented sample relationships."
+    },
+    "expression-exploration": {
+      "sources": [
+        "tu-single-cell"
+      ],
+      "bridge_reuse": [
+        "tool_packages/p0_01_input_qc",
+        "tool_packages/p0_02_cell_state",
+        "tool_packages/p0_07_product_comparison_stability"
+      ],
+      "excluded": "No direct Scanpy/R script calls, fixed QC thresholds or filename-based result authority."
+    },
+    "reference-and-target-definition": {
+      "sources": [
+        "tu-stem-cell",
+        "kd-census"
+      ],
+      "bridge_reuse": [
+        "web/scientific_inputs.py",
+        "tool_packages/p0_02_cell_state"
+      ],
+      "excluded": "No live atlas import, automatic marker-based identity or default maturity window."
+    },
+    "product-assessment": {
+      "sources": [
+        "tu-stem-cell"
+      ],
+      "bridge_reuse": [
+        "web/assessment.py",
+        "tool_packages/p0_03_target_regional",
+        "tool_packages/p0_04_developmental_compatibility",
+        "tool_packages/p0_05_off_target_control",
+        "tool_packages/p0_06_proliferation_stress_response"
+      ],
+      "excluded": "No upstream fidelity score, fixed marker count or differentiation intervention prescription."
+    },
+    "evidence-reasoning": {
+      "sources": [
+        "kd-hypotheses",
+        "kd-appraisal"
+      ],
+      "bridge_reuse": [
+        "web/provider.py",
+        "web/assessment.py",
+        "tool_packages/p0_08_evidence_sufficiency",
+        "tool_packages/p0_09_evidence_compiler"
+      ],
+      "excluded": "No independent hypothesis schema, confidence score, unregistered test or formal GRADE rating."
+    },
+    "research-reporting": {
+      "sources": [
+        "kd-writing",
+        "tu-literature"
+      ],
+      "bridge_reuse": [
+        "web/assessment.py",
+        "tool_packages/p0_10_claim_verifier"
+      ],
+      "excluded": "No manuscript scaffold, mandatory section quota, automatic live search or external publication."
+    },
+    "product-comparison": {
+      "sources": [
+        "kd-design",
+        "kd-statistics"
+      ],
+      "bridge_reuse": [
+        "tool_packages/p0_07_product_comparison_stability",
+        "web/inputs.py"
+      ],
+      "excluded": "No new t-test/ANOVA engine, inferred replicates, unsupported intervals or product ranking."
+    },
+    "graft-followup": {
+      "sources": [
+        "kd-design",
+        "kd-appraisal",
+        "tu-stem-cell"
+      ],
+      "bridge_reuse": [
+        "tool_packages/p0_12_graft_assessment"
+      ],
+      "excluded": "No efficacy/safety inference, automatic state classifier or pre-transplant backfill."
+    }
+  }
+}

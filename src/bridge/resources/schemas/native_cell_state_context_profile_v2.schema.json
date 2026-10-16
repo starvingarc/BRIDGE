@@ -1,0 +1,172 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/$defs/DataViewBinding"
+    },
+    "HierarchicalCompositionRecord": {
+      "$ref": "bridge://schemas/hierarchical-cell-state-composition-data/v0.1#/$defs/HierarchicalCompositionRecord"
+    }
+  },
+  "$id": "bridge://schemas/native-cell-state-context-profile/v0.2",
+  "additionalProperties": false,
+  "description": "Candidate hierarchy counts, never a substitute for reviewed product roles.",
+  "properties": {
+    "auxiliary_composition": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/auxiliary_composition"
+    },
+    "auxiliary_producer_ref": {
+      "title": "Auxiliary Producer Ref",
+      "type": "string"
+    },
+    "created_at": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/created_at"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "derivation": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/derivation"
+    },
+    "domain_score": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/domain_score"
+    },
+    "evidence_family_id": {
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "expected_window_match": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/expected_window_match"
+    },
+    "hierarchy_artifact_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Hierarchy Artifact Sha256",
+      "type": "string"
+    },
+    "hierarchy_profile_ref": {
+      "minLength": 1,
+      "title": "Hierarchy Profile Ref",
+      "type": "string"
+    },
+    "hierarchy_view_binding": {
+      "enum": [
+        "selected_data_view",
+        "historical_asset_checked_against_selected_view"
+      ],
+      "title": "Hierarchy View Binding",
+      "type": "string"
+    },
+    "independence_state": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/independence_state"
+    },
+    "limitations": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/limitations"
+    },
+    "marker_observations": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/marker_observations"
+    },
+    "n_independent_replicates": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/n_independent_replicates"
+    },
+    "non_target_fraction": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/non_target_fraction"
+    },
+    "object_version": {
+      "const": "0.2.0",
+      "default": "0.2.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "original_figure_refs": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/original_figure_refs"
+    },
+    "original_producer_ref": {
+      "title": "Original Producer Ref",
+      "type": "string"
+    },
+    "primary_composition": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/primary_composition"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "reference_state_portrait": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/reference_state_portrait"
+    },
+    "role_judgement_state": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/role_judgement_state"
+    },
+    "runtime_mode": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/runtime_mode"
+    },
+    "score_state": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/score_state"
+    },
+    "source_definition_decisions": {
+      "additionalProperties": {
+        "enum": [
+          "evaluate",
+          "parent_only",
+          "unavailable"
+        ],
+        "type": "string"
+      },
+      "title": "Source Definition Decisions",
+      "type": "object"
+    },
+    "source_receipt_sha256": {
+      "title": "Source Receipt Sha256",
+      "type": "string"
+    },
+    "source_review_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Source Review Sha256",
+      "type": "string"
+    },
+    "target_fraction": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.1#/properties/target_fraction"
+    },
+    "tool_id": {
+      "const": "P0-05",
+      "default": "P0-05",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "whole_product_composition": {
+      "items": {
+        "$ref": "#/$defs/HierarchicalCompositionRecord"
+      },
+      "minItems": 1,
+      "title": "Whole Product Composition",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tool_version",
+    "profile_id",
+    "data_view",
+    "source_receipt_sha256",
+    "original_producer_ref",
+    "auxiliary_producer_ref",
+    "evidence_family_id",
+    "primary_composition",
+    "auxiliary_composition",
+    "marker_observations",
+    "reference_state_portrait",
+    "original_figure_refs",
+    "limitations",
+    "created_at",
+    "whole_product_composition",
+    "hierarchy_profile_ref",
+    "hierarchy_artifact_sha256",
+    "hierarchy_view_binding",
+    "source_review_sha256",
+    "source_definition_decisions"
+  ],
+  "title": "NativeWholeProductContextProfile",
+  "type": "object"
+}

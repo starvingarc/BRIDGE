@@ -12,7 +12,7 @@ before calling `validate` or `run`.
 | P0-02 | [`p0_02_cell_state.json`](requests/p0_02_cell_state.json) | Shadow Cell-State Evidence request and deployment-resolved reference/QC bindings |
 | P0-03 | [`p0_03_target_regional_evidence.json`](requests/p0_03_target_regional_evidence.json) | Eleven-object target/regional evidence request |
 | P0-04 | [`p0_04_developmental_compatibility.json`](requests/p0_04_developmental_compatibility.json) | Traceable aggregation plus optional expression-method request |
-| P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Nine-object method-runtime request for whole-product composition, uncertainty, rare-state and OOD coordination |
+| P0-05 | [`p0_05_off_target_control.json`](requests/p0_05_off_target_control.json) | Ten-object method-runtime request for whole-product composition, uncertainty, rare-state and OOD coordination |
 | P0-03 | [`p0_03_target_regional_expression.json`](requests/p0_03_target_regional_expression.json) | Optional H5AD expression-method request |
 | P0-03 | [`p0_03_target_regional_method_spec.json`](objects/p0_03_target_regional_method_spec.json) | External method, reference, program and coverage choices |
 | P0-06 | [`p0_06_process_method_runtime.json`](requests/p0_06_process_method_runtime.json) | Exact DataView H5AD, external program/state/unit contracts, caller biological-unit attestation and required gate-facing MeasurementSpec; normalized expression or raw counts are accepted |
@@ -77,19 +77,17 @@ resources or construct scientific objects. See
 [Agent Integration](../docs/agent-integration.md) for the ownership and failure
 boundaries.
 
-## Synthetic scRNA Upload Demo
+## Dataset availability
 
-`demo-data/scrna-upload-v0.1/` mimics files a user may upload for Agent
-integration testing. The expression values, cells, samples, captures, batches,
-preparations and timepoint are fully synthetic. Public human gene symbols are
-used only as feature identifiers.
+The [collaboration data bundle](demo/README.md) includes a small synthetic
+product H5AD, synthetic reference H5AD, built reference profiles, regeneration
+script and checksums. It uses the existing reference loader and contains no
+private data. Public dataset source links are provided separately in that guide.
+The previous private migration archive remains excluded from Git history.
 
-| File | Purpose | SHA-256 |
-|---|---|---|
-| `demo-data/scrna-upload-v0.1/demo_scrna.h5ad` | 2,048-cell by 10,000-gene object with log-normalized `X`, integer `layers/counts` and synthetic `obs` metadata | `984f74f7a4118da1c898e593a0d93b536aee092bcda5dbf76d10fc65addd5a91` |
-| `demo-data/scrna-upload-v0.1/sample_metadata.csv` | Four-row capture-level companion metadata | `81c15f855da1c83ee58d0a5711d5afe1d0e52c78362f514604864d5aa194c93a` |
+Regression tests still construct minimal inputs in code. These inputs do not
+establish biological validity, product quality or clinical suitability.
 
-- Source class: `fully_synthetic`.
-- Intended tests: upload handling, metadata hand-off and Agent integration.
-- Not validated here: P0 execution, biological state recovery, scoring or any
-  scientific, product-quality or clinical interpretation.
+## Protocol visualization
+
+The [protocol visualization reference pack](protocol-visualization/README.md) provides an interactive organoid workflow and a sourced human midbrain dopaminergic small-molecule atlas. It is a standalone design example for the upload, extraction, review and visualization path; model and upload integration remain future work.

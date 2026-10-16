@@ -6,6 +6,7 @@ apply to that historical run, not to the current main branch or a newly
 qualified method/product. Consolidation changes organization and links only;
 it does not combine evidence families or create a new validation result.
 
+- [Saved whole-product role connection — 2026-09-30](#saved-whole-product-role-connection--2026-09-30)
 - [P0-03 target/regional candidate validation — 2026-08-25](#record-p0-03-target-regional-20260825)
 - [P0-03 expression-method validation — 2026-08-26](#record-p0-03-expression-methods-20260826)
 
@@ -153,3 +154,27 @@ P0-03 remains `candidate`. Numeric evidence remains `shadow` and
 `domain_score=null`. Successful execution does not validate reference
 suitability, marker programs, target identity, regional fidelity, spatial
 localization, potency, safety, efficacy or release eligibility.
+
+## Saved whole-product role connection — 2026-09-30
+
+P0-03 0.6.0 reuses the checked saved P0-02 hierarchy already consumed by P0-05,
+with the same selected-view denominator and non-overlapping partition. Its new
+result union preserves historical P0-03 receipt schemas. This is a connection
+and deterministic accounting change, not a new classifier or reviewed biological
+definition.
+
+A controlled replay of an existing real saved result preserved every source
+checksum and all selected-view counts without matrix execution. With no reviewed
+role map supplied, all product roles remained unresolved and target fraction
+remained null. Private receipts stay in the controlled environment.
+
+Synthetic checks exercise closed and incomplete mappings, parent-only refusal,
+missing child mappings, map/definition checksums and mutual references.
+The Web path carries the saved result into the target context, then into
+sufficiency/evidence compilation. UI checks retain the whole-view denominator
+and display role sources and unresolved reasons separately from candidate labels.
+
+These observations do not qualify a real target role, developmental stage,
+regional fidelity, product purity or clinical property. The reviewed fine-state
+identity/stage/role definitions remain the scientific dependency in the
+[active plan](../../plans/step7-evidence-coordinator.md#capability-todo).

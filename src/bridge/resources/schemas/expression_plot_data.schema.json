@@ -1,0 +1,212 @@
+{
+  "$defs": {
+    "ExpressionPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "const": "applicable",
+          "default": "applicable",
+          "title": "Applicability",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "evidence_state": {
+          "default": "measured",
+          "enum": [
+            "measured",
+            "unavailable"
+          ],
+          "title": "Evidence State",
+          "type": "string"
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "missing_reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Reason Codes",
+          "type": "array"
+        },
+        "record_id": {
+          "title": "Record Id",
+          "type": "string"
+        },
+        "scientific_status": {
+          "const": "exploratory",
+          "default": "exploratory",
+          "title": "Scientific Status",
+          "type": "string"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "X"
+        },
+        "y": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Y"
+        }
+      },
+      "required": [
+        "record_id",
+        "x",
+        "y",
+        "label",
+        "evidence_ids"
+      ],
+      "title": "ExpressionPoint",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/expression-plot-data/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "colors": {
+      "additionalProperties": {
+        "items": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "array"
+      },
+      "title": "Colors",
+      "type": "object"
+    },
+    "composition": {
+      "items": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "title": "Composition",
+      "type": "array"
+    },
+    "data_view_ref": {
+      "title": "Data View Ref",
+      "type": "string"
+    },
+    "inference": {
+      "title": "Inference",
+      "type": "string"
+    },
+    "input_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Input Sha256",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "umap",
+        "markers",
+        "differential_expression"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "missing_genes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Genes",
+      "type": "array"
+    },
+    "n_observations": {
+      "exclusiveMinimum": 0,
+      "title": "N Observations",
+      "type": "integer"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/ExpressionPoint"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/expression-plot-data/v0.1",
+      "default": "bridge://schemas/expression-plot-data/v0.1",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "x_label": {
+      "title": "X Label",
+      "type": "string"
+    },
+    "y_label": {
+      "title": "Y Label",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "input_sha256",
+    "data_view_ref",
+    "n_observations",
+    "records",
+    "x_label",
+    "y_label",
+    "inference"
+  ],
+  "title": "ExpressionPlotData",
+  "type": "object"
+}

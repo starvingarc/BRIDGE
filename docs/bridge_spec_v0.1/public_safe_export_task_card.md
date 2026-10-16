@@ -2,6 +2,7 @@
 
 | 字段 | 内容 |
 |---|---|
+| Current result schema | See [Tool Card contract](../../src/bridge/tool_packages/cards/P0-11.md#contract) |
 | Task ID | `TASK-PUBLIC-SAFE` |
 | Package version | `0.4.0` |
 | Object version | `0.1.0` |

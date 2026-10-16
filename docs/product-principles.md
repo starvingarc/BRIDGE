@@ -13,14 +13,18 @@ measurement specifications are replaced and validated.
 
 ## Implementation Stage
 
-The current `main` branch implements the deterministic P0 tool and contract
-layer that the Agent will call. The conversational Coordinator, AnalysisPlan and
-task-graph runtime, Web application, product-evidence database, Visualization
-Composer and interactive interpretation/recommendation workflow remain target
-product capabilities rather than integrated runtime behavior.
-The shared v0.2 visualization data binding, v0.1 figure registry and
-package-owned deterministic static renderers are available; they do not
-constitute an integrated Composer or Web result page.
+The current `main` branch integrates the deterministic P0 tools with a private,
+single-operator Web application, approved analysis plans, task execution, private
+call records, saved evidence and version-bound research interpretation/reports.
+Web assembly, HTTP, session storage, artifact access and execution have separate
+owners. These capabilities remain subject to their recorded acceptance limits.
+
+Multi-user accounts, public hosting, a product-evidence database and the full
+Visualization Composer remain unfinished product capabilities. The shared v0.2
+visualization data binding, v0.1 figure registry, deterministic static renderers
+and existing Web result views do not establish complete Composer acceptance or
+scientific qualification. See the [current capability table](../README.md)
+and [active plans](../plans/README.md) for their remaining scope.
 
 ## Current Tool-layer Outputs
 
@@ -37,7 +41,7 @@ The approved [visualization system](BRIDGE_PRD.md#66-visualization-composer-与-
 experience around researcher questions: data readiness, product composition,
 identity support, target/regional and developmental fit, off-target/unknown and
 process signals, comparison, and evidence gaps.
-The figure registry contains 43 components: 36 typed candidates and 7 legacy
+The figure registry contains 46 components: 39 typed candidates and 7 legacy
 components. P0-02 contributes typed whole-product reference-correspondence and a
 static state-definition evidence registry. P0-11 contributes four typed local-review components for
 claim-content projection, candidate-digest state, candidate artifact status and
@@ -47,14 +51,17 @@ records current capability and does not promote
 scientific or publication status.
 
 The product overview uses domain rows with explicit status, denominator,
-limitations and evidence links. It does not use a total score, radar chart,
-overall rank or pass/fail traffic light. Interactive and static figures must use
+limitations and evidence links. It does not use a weighted total score,
+overall rank or pass/fail traffic light. The differentiation chain (five conditional
+fractions with numerators and denominators) may be shown as rings, radar or funnel;
+it is a raw measurement, not a domain score. Interactive and static figures must use
 the same checksummed data and preserve missingness, uncertainty, provenance and
 candidate/shadow status. P0-11 local-review figures are not publication approval;
 its internal ToolRun and provenance manifest are not public downloads. P0-12
 technical samples remain nested within the declared graft, and its visual values
 do not establish tissue-wide composition, maturity or function. This is an approved
-design contract; the integrated Web runtime is not yet implemented.
+design contract. The private Web runtime is integrated; complete figure-family
+and biological-reader acceptance remain separate.
 
 ## Current Non-claims
 

@@ -11,7 +11,7 @@
 | Current result | `bridge://schemas/product-comparison-stability-profile/v0.2` |
 | Detailed runtime contract | [P0-07 Tool Card](../../src/bridge/tool_packages/cards/P0-07.md) |
 
-> v0.4 engineering note: the executable package retains the comparability,
+> Current engineering scope: the executable package retains the comparability,
 > descriptive-delta and selected-method runtime, and adds typed static views for
 > comparison eligibility, declared sample/preparation metrics and method-specific evidence.
 > Observed group ranges are descriptive minima and maxima, not confidence
@@ -21,6 +21,12 @@
 > `not_assessed` unless each analysis unit has a complete one-to-one independence
 > binding with no overlap across groups. Methods remain on separate scales, and
 > all scores and ranks remain null.
+
+当前包为 P0-07 0.4.1，注册 `legacy_comparison` 与 `method_runtime` 两个模式。
+两者均读取一个比较 spec、一个案例 manifest 和 2–20 个版本化 product-evidence
+bundles；方法模式另需 method spec 和 typed method input。两者都使用上表的
+profile v0.2；不接受表达资产、任意参数、顶层 MeasurementSpec 或非零 seed。
+完整角色与失败语义由 [Tool Card](../../src/bridge/tool_packages/cards/P0-07.md#input-modes) 维护。
 
 ## 1. 任务目标与边界
 

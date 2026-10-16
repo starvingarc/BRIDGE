@@ -1,14 +1,14 @@
 tool_id: P0-03
 name: Target Identity & Regional Fidelity
-version: 0.4.1
-summary: Run configured target/regional expression methods and aggregate role-bound evidence.
+version: 0.6.0
+summary: Run configured target/regional evidence, saved whole-product role accounting, and descriptive raw-count reference similarity.
 implementation_state: implemented
 scientific_status: candidate
 optional: false
 environment_spec_id: ENV-CELLSTATE-PY-v0.1
 input_schema_ref: bridge://schemas/tool-request/v0.2
 output_schema_ref: bridge://schemas/tool-run/v0.2
-result_schema_ref: bridge://schemas/target-regional-evidence-result/v0.2
+result_schema_ref: bridge://schemas/target-regional-result/v0.2
 adapter_ref: bridge.tool_packages.p0_03_target_regional.adapter:adapter
 method_ids:
   - METHOD-BRIDGE-DETERMINISTIC-STATEROLEMAP

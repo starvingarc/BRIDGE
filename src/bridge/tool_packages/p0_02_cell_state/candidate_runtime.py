@@ -14,16 +14,12 @@ import shutil
 import tempfile
 from typing import Any, Literal
 
-import numpy as np
 from pydantic import Field, model_validator
-from scipy import sparse
 
 from bridge.toolkit.contracts import (
     DataViewBinding, ExecutionState, FrozenModel, MeasurementResult, MeasurementResultV2, MeasurementSpecV2, ScoreState, ToolRun,
 )
 from .celltypist_runtime import load_model_bundle, predict_celltypist, classify_with_rejection
-from .metrics import normalize_query
-from .reference import canonicalize_source_family_id, DENIED_SOURCE_FAMILIES, resolve_reference_snapshot
 from .scientific_review import load_development_review, development_review_sha256
 
 CANDIDATE_SPEC = "CELLSTATE-scRNA-celltypist-candidate-v0.1"
@@ -89,6 +85,8 @@ class CellStateCandidateProfile(FrozenModel):
 
     @model_validator(mode="after")
     def preserve_measured_view_and_candidate_scope(self):
+        import numpy as np
+
         if self.n_observations != self.input_data_view.n_observations:
             raise ValueError("candidate_profile_view_count_mismatch")
         if self.profile_id != f"cell-state-candidate:{self.producer_run_ref}":
@@ -133,6 +131,8 @@ def candidate_runtime_binding(runtime_id):
 
 
 def load_candidate_runtime(request):
+    from .reference import canonicalize_source_family_id, DENIED_SOURCE_FAMILIES
+
     binding, fingerprint = candidate_runtime_binding(request.parameters.get("candidate_runtime_ref"))
     if binding.measurement_spec_ref != request.measurement_spec_ref:
         raise ValueError("candidate_runtime_measurement_binding_mismatch")
@@ -198,6 +198,9 @@ def reviewed_marker_evidence(query, genes):
 
 
 def run_candidate_cell_state(request, spec, upstream_qc, input_hash, measurement_spec):
+    from .metrics import normalize_query
+    from .reference import resolve_reference_snapshot
+
     from . import executor as legacy
     from .qc import validate_selected_data_view, validate_upstream_qc_unchanged
     from bridge.tool_packages.p0_01_input_qc.io import read_expression_asset, validate_expression_object, sha256_path

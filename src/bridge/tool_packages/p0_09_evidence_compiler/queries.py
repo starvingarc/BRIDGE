@@ -16,6 +16,7 @@ from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     evidence_identity,
     evidence_record_logical_key,
     graph_identity_for_ref,
+    normalize_identity_payload,
     reconciliation_identity,
     requirement_identity,
 )
@@ -501,7 +502,7 @@ def _validate_fact_projection(
                 require_properties
                 and (
                     node.properties_json is None
-                    or json.loads(node.properties_json) != payload
+                    or json.loads(node.properties_json) != normalize_identity_payload(payload)
                 )
             )
         ):

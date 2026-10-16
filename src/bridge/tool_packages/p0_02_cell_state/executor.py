@@ -175,6 +175,7 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
     query = normalize_query(query_matrix, asset.matrix_semantics or "")
     observation_ids = adata.obs_names.astype(str).to_numpy()
     selected_data_view = None
+    validated_view = None
     if upstream_qc.profile_v2 is not None:
         try:
             validated_view = validate_selected_data_view(
@@ -329,8 +330,9 @@ def run_cell_state_evidence(request: ToolRequest, spec: ToolPackageSpec) -> Tool
         f"evidence:{run_id}:source-reconciliation",
     ]
     hierarchy_evidence_ids = [evidence_ids[0], evidence_ids[2]]
-    input_view_ref = asset.asset_id
-    input_view_sha256 = input_hash
+    # Hierarchy identity follows the verified QC view even without typed sample lineage.
+    input_view_ref = validated_view.view_id if validated_view else asset.asset_id
+    input_view_sha256 = validated_view.sha256 if validated_view else input_hash
     try:
         hierarchical_composition = build_hierarchical_composition(
             evidence=evidence,

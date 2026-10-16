@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bridge.tool_packages.p0_03_target_regional.method_runtime import (
+        ReferenceStateSupportValue,
+    )
+
+
 from collections import defaultdict
 from enum import StrEnum
 from statistics import median
@@ -16,9 +24,6 @@ from bridge.tool_packages._configurable_contracts import (
 from bridge.tool_packages.p0_03_target_regional.method_models import (
     TargetRegionalMethodBundle,
     TargetRegionalMethodId,
-)
-from bridge.tool_packages.p0_03_target_regional.method_runtime import (
-    ReferenceStateSupportValue,
 )
 from bridge.tool_packages.p0_03_target_regional.models import (
     InputChecksumBindings,

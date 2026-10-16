@@ -1,7 +1,53 @@
-# Contributing to BRIDGE
+# 协作开发指南
 
-Development setup, scientific and privacy boundaries, maintained sources,
-branch/plan lifecycle and verification requirements are maintained in the
-[BRIDGE Agent Handbook](AGENTS.md). Read that handbook before changing the
-repository; use the [documentation index](docs/README.md) to find the relevant
-contract.
+本仓库发布经审核的 BRIDGE 源码、文档与示例，`main` 是公开集成主线。
+真实数据与内部验收在各自获准环境中进行；代码访问权限不代表数据访问权限。
+
+首次参与先读 [开发环境与启动](docs/DEVELOPMENT.md)、[PRD](docs/BRIDGE_PRD.md) 中相关功能及 [总体路线图](docs/ROADMAP.md)。使用 Coding Agent 时，要求它先读 [AGENTS](AGENTS.md)。
+
+## 提交与认领 Issue
+
+先搜索已有 Issue 和 [活动计划](plans/README.md)，再从 the development follow-up 选择：
+
+| 类型 | 需要说明 |
+|---|---|
+| 开发任务 | 要解决的问题、PRD／模块关联、范围与非目标、接口影响、可检查的完成标准 |
+| 错误报告 | 版本或提交、环境、最小复现、预期与实际、影响范围；安全的脱敏日志可选 |
+| 科学方法／资源问题 | 科学问题、方法与资源身份、现有证据、缺口、需要负责人确认的决定 |
+
+- 一条 Issue 对应一个可验收目标。纯工程任务关联工程模块即可，不必虚构生物学问题；拼写或失效链接等小修正可以直接 PR。
+- 维护者确认范围、优先级和验收人；认领后设置 assignee，无权限时评论认领，由维护者确认。未获同意不指派他人。
+- 优先处理数据泄露、错误科学结论、阻断主要流程的问题，其次是 PRD 必需能力，再是非阻断改进。标签用现有 `bug`、`enhancement`、`question`、`documentation` 等，不另建重复状态体系。
+- Issue 正文保存目标与验收项；进展、依赖和阻塞写评论。跨模块任务列出输入、输出、错误语义和责任人，先确认接口再并行实现。
+- **Issue 和 PR 不上传真实 H5AD、样本身份、服务器内部路径、API 配置、密钥或原始模型日志。**用逻辑资源 ID、版本、合成复现与获准共享的摘要；有安全问题按 [SECURITY](SECURITY.md) 私下报告。
+
+## 从任务到合并
+
+1. **确认任务：**检查重复项、PRD 范围、完成标准和依赖。科学语义由科学负责人确认，代码接口由对应模块维护者确认；同一人可以兼任。
+2. **从最新主线开短分支：**例如 `fix/upload-validation` 或 `docs/developer-guide`，不使用 `codex/` 前缀。单人可使用普通 checkout，并行任务使用独立 worktree；不新建长期候选分支。
+3. **实现并自检：**一个 PR 解决一个目标，复用已有模块与测试。遵守 [低耦合规则](AGENTS.md#实现原则)，避免混入无关格式化、重构或数据文件。
+4. **提交 PR 到 `main`：**使用模板，写明范围、接口影响、检查命令与结果、未验证项、兼容性和风险。尚待必需测试或验收时保持 Draft。
+5. **审查与验收：**由维护者审查并按 [开发指南](docs/DEVELOPMENT.md#检查与内部验收) 核对受影响行为、必要测试记录及轻量 CI；科学验收只在授权环境进行。记录明确提交和资源版本，不能以“测试通过”替代科学资格。
+6. **合并与关闭：**验收人确认本任务标准满足后，由获授权维护者合并。Issue 验收全部完成才用 `Closes #123`；只完成部分内容用 `Refs #123`，保留未完成事项。
+7. **清理分支：**合并后删除远端主题分支；本地工作树确认无未提交成果、活动依赖后再移除。历史由 Git／PR 保留，不复制成长期目录。
+
+直接推送或强制推送 `main` 不属于协作流程。推送、创建 PR、合并和部署分别需要授权；合并不会自动更新服务。GitHub 执行公开仓库工作流中列出的完整工程检查；需要受控数据的验证在获准环境按改动风险执行并记录。云端因额度、付款或平台故障未启动时，可在同一提交执行相同静态检查，连同必要测试结果交维护者审查，无需购买云端额度。真实的代码检查失败仍须修复；未执行、失败或运行中的云端检查不得写成通过。具体范围与记录要求见开发指南，不能豁免数据隐私或科学声明边界。
+
+仓库规则是团队约定，**不代表 GitHub 已启用分支保护或强制审核**；平台实际设置需由维护者核对。
+
+## 计划与文档
+
+- Issue 保存任务状态，PR 保存变更与审查，`docs/` 保存稳定事实，`docs/ROADMAP.md` 保存总体阶段，`plans/user-journey.md` 保存工作台功能顺序（对应 milestone A–G、X 与 `roadmap` 标签）；不将同一待办复制到多份文件。新增工作台功能先在 `plans/user-journey.md` 加一行，再建 issue 挂到对应 milestone。
+- 跨多个合同、分阶段验收，或涉及 Schema、隐私、评分、reference、locked/sealed 数据和发布风险时，才创建 `plans/<task-slug>.md`，从 `plans/README.md` 链接，并在 Issue 中引用。
+- 计划记录范围、接口、验收和关键决定；分支尚未完成的能力不能写成已交付。完成后将可复用事实和获准共享的证据归入稳定文档／验证记录，未完成项保持明确，移除施工日记并修复链接。
+- 工程验证、真实数据运行与科学资格分别记录。纯文档和工程任务无需“生物学发现”；科学任务必须说明数据角色、对照、证据缺口和结论边界。
+
+## 发布与数据
+
+合并 `main` 仅代表集成。候选版本、资源锁定、内部科学验收、公开内容审核和托管服务部署遵守 [发布说明](docs/RELEASE.md) 与 [路线图](docs/ROADMAP.md)，不是一次 PR 合并的附带动作。
+
+协作者自行配置 LLM 服务；资源和用户数据按 [数据说明](docs/DATA.md) 管理。当前账号服务面向本地及受控内网，不能直接作为公网服务。
+
+## 设计参考
+
+采用 [Scanpy 的问题模板](https://github.com/scverse/scanpy/tree/main/.github/ISSUE_TEMPLATE) 中版本与最小复现的结构，以及 [Codex 仓库指引](https://github.com/openai/codex/blob/main/AGENTS.md) 中任务相关说明与定向检查的组织方式；表单使用 [GitHub Issue Forms](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms)。流程按 BRIDGE 的私有协作和科学边界编写，不照搬其他项目的贡献准入政策。

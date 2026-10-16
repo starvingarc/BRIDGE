@@ -1,6 +1,7 @@
+import { testPrincipal, onTestSignedOut } from "./account-fixture";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../src/App";
+import SessionWorkspace from "../src/SessionWorkspace";
 
 const aid = "a".repeat(32);
 const initial = () => ({
@@ -74,7 +75,7 @@ beforeEach(() => localStorage.clear());
 it("renders inline options without selecting or submitting a biological fact", async () => {
   const { writes } = setup();
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   const radio = await screen.findByRole("radio", { name: /单细胞测序/ });
   expect(radio).not.toBeChecked();
   const submit = screen.getByRole("button", { name: "提交答案" });
@@ -89,13 +90,13 @@ it("renders inline options without selecting or submitting a biological fact", a
     body: { card_id: "b".repeat(32), card_digest: "c".repeat(64),
       answers: [{ field: "assay", selected: ["scRNA-seq"], text: "", unknown: false }] },
   });
-  expect(screen.queryByRole("button", { name: "Confirm analysis" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "开始分析" })).not.toBeInTheDocument();
 });
 
 it("omits the unknown option and retains a private Other answer", async () => {
   const { writes } = setup();
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   await user.click(await screen.findByRole("radio", { name: /单细胞测序/ }));
   expect(screen.queryByRole("radio", { name: "未知／不确定" })).not.toBeInTheDocument();
   await user.click(screen.getByRole("radio", { name: "其他／自行填写" }));
@@ -111,7 +112,7 @@ it("permits a free-text alternative without forcing a listed answer", async () =
   value.clarifications[0].questions[0].field = "target_cell_type";
   const { writes } = setup(value);
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   await user.click(await screen.findByRole("radio", { name: "其他／自行填写" }));
   await user.type(screen.getByLabelText("补充说明"), "用户补充的目标");
   await user.click(screen.getByRole("button", { name: "提交答案" }));
@@ -128,7 +129,7 @@ it("supports multiple priorities and keyboard submission with no analysis approv
     ] };
   const { writes } = setup(value);
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   await user.click(await screen.findByRole("checkbox", { name: /细胞组成/ }));
   await user.click(screen.getByRole("checkbox", { name: /发育阶段/ }));
   screen.getByRole("button", { name: "提交答案" }).focus();
@@ -144,10 +145,10 @@ it("restores a saved answer on refresh and provides an explicit revision action"
   value.clarifications[0].answers = [{ field: "assay", selected: [], text: "尚不确定", unknown: true }];
   const { writes } = setup(value);
   const user = userEvent.setup();
-  const view = render(<App />);
+  const view = render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText("尚不确定")).toBeInTheDocument();
   view.unmount();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   await user.click(await screen.findByRole("button", { name: "修改回答" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "提交答案" })).toBeInTheDocument());
   expect(writes[0].path).toMatch(/clarification\/revise$/);
@@ -157,7 +158,7 @@ it("makes stale questions read-only and never submits their old digest", async (
   const value = initial();
   value.clarifications[0].status = "stale";
   const { writes } = setup(value);
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText(/相关资料已变化/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "提交答案" })).not.toBeInTheDocument();
   expect(writes).toHaveLength(0);

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from test_web_service import client, confirm_change, h5ad, new_session, settle
+from web_support import client, confirm_change, h5ad, new_session, settle
 
 
 def uploaded(client, tmp_path):
@@ -52,14 +52,22 @@ def test_confirmed_product_scope_gates_chat_and_advanced_cell_state_plans(client
     state = client.get(f"/api/sessions/{sid}").json()
     capability = next(item for item in state["capabilities"] if item["tool_id"] == "P0-02")
     assert "supported_product_family_required" in capability["reason_codes"]
+    user_message = "当前产品类型尚未进入这项分析的支持范围，请先核对产品类型或选择其他分析。"
     manual = client.post(f"/api/sessions/{sid}/prepare-analysis", json={"tool_id": "P0-02"})
     assert manual.status_code == 200
-    assert manual.json()["error"] == "supported_product_family_required"
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    assert manual.json()["error"] == user_message
+    assert manual.json()["presentation"]["issue"] == {
+        "error_version": 1,
+        "error_id": "input_required",
+        "user_message": user_message,
+        "results_state": "not_available",
+    }
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"prepare_analysis","tool_id":"P0-02"}'}))
     client.post(f"/api/sessions/{sid}/messages", json={"text": "Prepare the next cell-state plan"})
     final = settle(client, sid)
-    assert final["error"] == "supported_product_family_required"
+    assert final["error"] == user_message
+    assert final["presentation"]["issue"]["error_id"] == "input_required"
     assert client.app.state.service.load(sid)["_tool_runs"] == []
 
 
@@ -73,7 +81,7 @@ def test_confirmed_private_product_facts_never_enter_provider_context(client, tm
     def reply(settings, messages, context):
         captured.append({"messages": messages, "context": context})
         return parse_action({"content": '{"action":"reply","text":"Review the private panel."}'})
-    monkeypatch.setattr("bridge.web.app.converse", reply)
+    monkeypatch.setattr("bridge.web.service.converse", reply)
     client.post(f"/api/sessions/{sid}/messages", json={"text": "What is the next stage?"})
     assert settle(client, sid)["error"] is None
     wire = json.dumps(captured)
@@ -83,7 +91,7 @@ def test_confirmed_private_product_facts_never_enter_provider_context(client, tm
 
 
 def test_advanced_source_edit_makes_intake_stale_without_overwriting_new_facts(client, tmp_path):
-    from test_web_service import declare_source
+    from web_support import declare_source
     sid, aid = uploaded(client, tmp_path)
     confirm_change(client, sid, stage(client, sid, aid))
     service = client.app.state.service
@@ -222,7 +230,7 @@ def test_typed_chat_intake_stages_without_inventing_confirmation(client, tmp_pat
     from bridge.web.provider import parse_action
 
     sid, aid = uploaded(client, tmp_path)
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": json.dumps({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({"content": json.dumps({
         "action": "propose_intake", "upload_id": aid,
         "facts": {"assay": "scRNA-seq", "matrix_location": "X",
                   "count_semantics": "raw_counts", "target_cell_type": "stated target"},
@@ -241,7 +249,7 @@ def test_chat_prepare_cannot_bypass_initial_fact_confirmation(client, tmp_path, 
     from bridge.web.provider import parse_action
 
     sid, aid = uploaded(client, tmp_path)
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": json.dumps({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({"content": json.dumps({
         "action": "prepare_qc", "upload_id": aid, "matrix_location": "X"
     })}))
     client.post(f"/api/sessions/{sid}/messages",
@@ -272,7 +280,7 @@ def test_intake_plan_runs_real_qc_once_then_chat_reuses_its_evidence(client, tmp
     service = client.app.state.service
     before = service.load(sid)
     assert len(before["_tool_runs"]) == 1
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": json.dumps({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({"content": json.dumps({
         "action": "prepare_qc", "upload_id": aid, "matrix_location": "X"
     })}))
     client.post(f"/api/sessions/{sid}/messages",
@@ -285,10 +293,84 @@ def test_intake_plan_runs_real_qc_once_then_chat_reuses_its_evidence(client, tmp
     confirm_change(client, sid, stage(client, sid, aid, stated_facts(target_stage="revised target")))
     revised = service.load(sid)
     assert revised["_uploads"][aid]["declaration_start"] == before["_uploads"][aid]["declaration_start"]
-    service.qc_asset(revised, aid, register=False)
+    service.qc.asset(revised, aid, register=False, enrich=False)
     confirm_change(client, sid, stage(client, sid, aid, stated_facts(count_semantics="unknown")))
     retracted = service.load(sid)
     assert aid not in retracted["_asset_declarations"]
     assert retracted["_uploads"][aid]["declaration_start"] == before["_uploads"][aid]["declaration_start"] + 1
-    with pytest.raises(ValueError, match="qc_declaration_retracted"):
-        service.qc_asset(retracted, aid, register=False)
+    # Retraction invalidates the old receipt before QC lookup; historical files remain intact.
+    qc_receipts = [row["file"] for row in before["_tool_runs"] if row["tool_id"] == "P0-01"]
+    assert qc_receipts and all(name in retracted["_invalidated_receipts"] for name in qc_receipts)
+    assert retracted["_tool_runs"] == before["_tool_runs"]
+    with pytest.raises(ValueError, match="completed_qc_required"):
+        service.qc.asset(retracted, aid, register=False, enrich=False)
+
+@pytest.mark.parametrize("original_name", ["Confirmed product", None])
+def test_discarded_name_answer_restores_editor_and_fences_stale_draft(client, tmp_path, original_name):
+    from copy import deepcopy
+    sid, aid = uploaded(client, tmp_path)
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(product_name=original_name)))
+    service = client.app.state.service
+    baseline = deepcopy(service.load(sid))
+    url = f"/api/sessions/{sid}"
+    current = client.get(url + "/intake", params={"upload_id": aid}).json()
+    answer = {"upload_id": aid, "revision": current["autofill"]["revision"],
+              "field": "product_name", "value": "Discard this draft", "other": False}
+    assert client.post(url + "/intake/answer", json=answer).status_code == 200
+    draft = client.get(url + "/intake", params={"upload_id": aid}).json()
+    assert draft["facts"]["product_name"] == "Discard this draft"
+    pending = stage(client, sid, aid, draft["facts"])["pending_input_change"]
+    assert client.post(url + "/input-change/discard", json={
+        "change_id": pending["id"], "change_digest": pending["digest"]}).status_code == 200
+    restored = client.get(url + "/intake", params={"upload_id": aid}).json()
+    assert restored["facts"]["product_name"] == original_name
+    assert restored["state"] == "confirmed"
+    assert restored["autofill"]["revision"] > draft["autofill"]["revision"]
+    assert client.post(url + "/intake/answer", json={
+        **answer, "revision": draft["autofill"]["revision"]}).status_code == 409
+    after = service.load(sid)
+    for key in ("_input_revision", "_intakes", "_tool_runs", "_invalidated_receipts"):
+        assert after[key] == baseline[key]
+    assert after["pending_input_change"] is None
+    # A new deliberate edit can still be confirmed; cancellation does not lock the form.
+    assert client.post(url + "/intake/answer", json={
+        **answer, "revision": restored["autofill"]["revision"], "value": "New confirmed name"}).status_code == 200
+    facts = client.get(url + "/intake", params={"upload_id": aid}).json()["facts"]
+    confirm_change(client, sid, stage(client, sid, aid, facts))
+    assert client.get(url + "/intake", params={"upload_id": aid}).json()["facts"]["product_name"] == "New confirmed name"
+    assert service.load(sid)["_tool_runs"] == baseline["_tool_runs"]
+
+@pytest.mark.parametrize("origin_kind", ["metadata", "model", "legacy"])
+def test_discarded_answer_restores_confirmed_provenance_without_inventing_user_input(client, tmp_path, origin_kind):
+    from copy import deepcopy
+    sid, aid = uploaded(client, tmp_path)
+    service = client.app.state.service
+    url = f"/api/sessions/{sid}"
+    client.get(url + "/intake", params={"upload_id": aid})
+    state = service.load(sid)
+    origin = {"kind": "model" if origin_kind == "legacy" else origin_kind,
+              "source_ids": ["synthetic-source"], "quote": "Original product"}
+    state["_intake_autofill"][aid]["values"]["product_name"] = "Original product"
+    state["_intake_autofill"][aid]["field_sources"]["product_name"] = deepcopy(origin)
+    service.sessions.save(state)
+    confirm_change(client, sid, stage(client, sid, aid, stated_facts(product_name="Original product")))
+    baseline = deepcopy(service.load(sid))
+    if origin_kind == "legacy":
+        baseline["_intakes"][aid].pop("field_sources", None)
+        service.sessions.save(baseline)
+    else:
+        assert baseline["_intakes"][aid]["field_sources"]["product_name"] == origin
+    current = client.get(url + "/intake", params={"upload_id": aid}).json()
+    assert client.post(url + "/intake/answer", json={"upload_id": aid, "revision": current["autofill"]["revision"],
+        "field": "product_name", "value": "Abandoned name", "other": False}).status_code == 200
+    draft = client.get(url + "/intake", params={"upload_id": aid}).json()
+    proposal = stage(client, sid, aid, draft["facts"])["pending_input_change"]
+    assert client.post(url + "/input-change/discard", json={
+        "change_id": proposal["id"], "change_digest": proposal["digest"]}).status_code == 200
+    restored = client.get(url + "/intake", params={"upload_id": aid}).json()
+    assert restored["facts"]["product_name"] == "Original product"
+    assert restored["autofill"]["field_sources"]["product_name"] == (
+        {"kind": "confirmed", "source_ids": [], "quote": ""} if origin_kind == "legacy" else origin)
+    after = service.load(sid)
+    for key in ("_intakes", "_input_revision", "_tool_runs", "_invalidated_receipts"):
+        assert after[key] == baseline[key]

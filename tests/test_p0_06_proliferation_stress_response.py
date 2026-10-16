@@ -453,7 +453,7 @@ def test_registry_declares_executable_v2_contract() -> None:
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert spec.method_ids == METHOD_IDS
     assert spec.result_schema_ref == (
-        "bridge://schemas/proliferation-stress-response-result/v0.1"
+        "bridge://schemas/proliferation-stress-response-result/v0.3"
     )
 
 

@@ -26,4 +26,10 @@ Every registered chart binds its source artifact, denominator, units, uncertaint
 
 ## Completion Evidence
 
-Completion claims require a fresh full test run, CLI smoke, knowledge validation, privacy scan, `git diff --check`, and documented server integration results. Unavailable external services or datasets remain explicitly unverified.
+Completion claims require checks appropriate to the affected behavior, following
+[the developer guide](DEVELOPMENT.md#检查与内部验收). Documentation-only cleanup
+requires link/privacy/layout and diff checks, not a repeated scientific run.
+Runtime, contract and packaging changes require their relevant tests and
+integration checks; full-suite CI results must identify the tested commit.
+Server acceptance and scientific qualification are separate evidence, never
+implied by a green CI run. Unavailable services or datasets remain unverified.

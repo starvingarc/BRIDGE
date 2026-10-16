@@ -124,6 +124,17 @@ def test_registered_exploratory_run_preserves_cells_without_invented_review(tmp_
     assert result["domain_score"] is None
     assert result["score_state"] == "unavailable"
     assert len(run.measurements) == 5
+    from bridge.toolkit.contracts import MeasurementSpecV3
+    native_spec_path = next(a.path for a in run.artifacts if a.kind == "native_measurement_spec")
+    native_spec = MeasurementSpecV3.model_validate_json(native_spec_path.read_bytes())
+    assert native_spec.analysis_unit_kind == "whole_view_technical_aggregate"
+    assert native_spec.independence_group_kind is None
+    assert native_spec.biological_independence == "unknown"
+    assert native_spec.n_independent_biological_replicates is None
+    assert native_spec.data_view.model_dump(mode="json") == _payload(request)["data_view"] | {
+        "sample_or_preparation_ref": None, "selection_spec_ref": None,
+        "biological_unit_manifest_ref": None, "biological_unit_manifest_sha256": None,
+    }
     cycle = run.measurements[0]
     assert cycle.raw_value == run.result["cell_cycle"]["s_g2m_fraction"]
     assert cycle.denominator == run.result["n_observations"]
@@ -404,3 +415,21 @@ def test_ambiguous_program_symbol_is_not_arbitrarily_selected_or_summed(tmp_path
     assert run.result["cell_cycle"]["s_ambiguous_genes"] == ["SPHASE0"]
     g2m = [x for x in run.result["program_summaries"] if x["program_id"] == "G2M"]
     assert all(x["assessment_state"] == "available" for x in g2m)
+
+
+@pytest.mark.parametrize("programs", [False, True])
+def test_separate_execution_attempts_share_inputs_but_not_result_identity(tmp_path, programs):
+    from tests.test_p0_06_candidate_programs import request_for_programs
+    request = request_for_programs(tmp_path) if programs else _request(tmp_path)
+    registry = ToolRegistry.load_default()
+    first = registry.run(request)
+    hashes = {a.path: hashlib.sha256(a.path.read_bytes()).hexdigest() for a in first.artifacts}
+    second = registry.run(request.model_copy(update={
+        'request_id': 'request:retry-after-environment-repair', 'output_dir': tmp_path / 'retry'}))
+    assert first.input_hash == second.input_hash
+    assert first.run_id != second.run_id
+    assert not {a.artifact_id for a in first.artifacts} & {a.artifact_id for a in second.artifacts}
+    assert not {m.measurement_id for m in first.measurements} & {m.measurement_id for m in second.measurements}
+    assert first.measurements[0].raw_value == second.measurements[0].raw_value
+    assert hashes == {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in hashes}
+    assert registry.run(request) == first

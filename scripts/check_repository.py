@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import re
 import subprocess
 from pathlib import Path
 
-import yaml
-
-from bridge.toolkit.contracts import ImplementationState, ToolPackageSpecV2
-from bridge.toolkit.registry import ToolRegistry
+from check_documentation import check_documentation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +47,9 @@ PACKAGED_ADAPTER_REF = re.compile(
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Check repository policy and tool contracts")
+    parser.add_argument("--static", action="store_true", help="Check layout, links and private paths without importing scientific tools")
+    args = parser.parse_args()
     problems: list[str] = []
     tracked_files = _tracked_files()
     if tracked_files is not None:
@@ -87,12 +88,15 @@ def main() -> int:
         if legacy_term in active_source:
             problems.append(f"legacy scoring term in active source: {legacy_term}")
 
-    _check_tool_package_specs(problems)
+    problems.extend(check_documentation(ROOT, tracked_files))
+
+    if not args.static:
+        _check_tool_package_specs(problems)
 
     if problems:
         print("\n".join(sorted(problems)))
         return 1
-    print("Repository policy checks passed")
+    print("Static repository checks passed" if args.static else "Repository policy checks passed")
     return 0
 
 
@@ -137,6 +141,11 @@ def _check_tracked_layout(tracked_files: list[Path], problems: list[str]) -> Non
             problems.append(f"completed plan file remains active: {relative_path}")
 
 def _check_tool_package_specs(problems: list[str]) -> None:
+    import yaml
+
+    from bridge.toolkit.contracts import ImplementationState, ToolPackageSpecV2
+    from bridge.toolkit.registry import ToolRegistry
+
     for path in sorted((ROOT / "src/bridge/tool_packages/specs").glob("*.yaml")):
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
         tool_id = str(payload.get("tool_id", ""))

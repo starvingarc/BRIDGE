@@ -395,7 +395,7 @@ def _request(
     return ToolRequestV2(
         request_id="request-p0-03",
         tool_id="P0-03",
-        tool_version="0.4.1",
+        tool_version="0.6.0",
         output_dir=output_dir or (tmp_path / "output"),
         object_inputs=refs,
     )
@@ -431,7 +431,12 @@ def test_p0_03_declares_aggregation_and_optional_expression_contracts() -> None:
     assert isinstance(spec, ToolPackageSpecV2)
     assert spec.implementation_state is ImplementationState.IMPLEMENTED
     assert len(REQUIRED_ROLES) == 11
-    assert len(ROLE_MODELS) == 12
+    assert set(ROLE_MODELS) == set(REQUIRED_ROLES) | {
+        "target_regional_method_spec",
+        "reference_similarity_input",
+        "saved_reference_similarity_run",
+    }
+    assert ROLE_SCHEMAS["saved_reference_similarity_run"] == "bridge://schemas/tool-run/v0.2"
     assert ROLE_SCHEMAS["target_regional_method_spec"].endswith("/v0.1")
     assert ROLE_SCHEMAS["cell_state_evidence_profile"].endswith("/v0.3")
     assert ROLE_MODELS["state_role_map"][1] is SharedStateRoleMap
@@ -517,7 +522,9 @@ def test_valid_run_publishes_only_three_normalized_ratio_types(
         "regional_fidelity_fraction",
         "whole_product_target_region_fraction",
     }
-    assert set(run.result["input_sha256_by_role"]) == set(ROLE_MODELS)
+    assert set(run.result["input_sha256_by_role"]) == set(ROLE_MODELS) - {
+        "reference_similarity_input", "saved_reference_similarity_run"
+    }
     assert run.result["input_sha256_by_role"]["target_regional_method_spec"] is None
     assert run.result["method_artifact"] is None
 
@@ -1013,7 +1020,7 @@ def test_v1_request_is_refused_with_a_typed_failure(tmp_path: Path) -> None:
     request = ToolRequest(
         request_id="request-v1",
         tool_id="P0-03",
-        tool_version="0.4.1",
+        tool_version="0.6.0",
         output_dir=tmp_path,
     )
     eligibility = adapter.check_eligibility(request, spec)
@@ -1081,7 +1088,7 @@ def test_sparse_reference_matrix_renders_without_inventing_cells(
         profile=profile,
         output_dir=tmp_path / "sparse-render",
         run_id=run.run_id,
-        tool_version="0.4.1",
+        tool_version="0.5.0",
     )
     assert prepared.payloads["target_regional_reference-fingerprint.png"].startswith(
         b"\x89PNG"
@@ -1150,7 +1157,7 @@ def test_large_visualization_uses_table_fallback_without_losing_results(
         profile=profile,
         output_dir=tmp_path / "oversized-render",
         run_id=run.run_id,
-        tool_version="0.4.1",
+        tool_version="0.5.0",
     )
 
     assert prepared.payloads["target_regional_product-roles.png"].startswith(b"\x89PNG")
@@ -1191,14 +1198,14 @@ def test_svg_render_is_isolated_from_process_global_matplotlib_state(
             profile=profile,
             output_dir=tmp_path / "first-render",
             run_id=run.run_id,
-            tool_version="0.4.1",
+            tool_version="0.5.0",
         )
         matplotlib.rcParams["svg.hashsalt"] = "other-tool-second"
         second = prepare_target_regional_visualizations(
             profile=profile,
             output_dir=tmp_path / "second-render",
             run_id=run.run_id,
-            tool_version="0.4.1",
+            tool_version="0.5.0",
         )
     finally:
         matplotlib.rcParams["svg.hashsalt"] = original_hashsalt

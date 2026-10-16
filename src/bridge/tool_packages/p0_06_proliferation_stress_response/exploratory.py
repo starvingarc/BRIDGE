@@ -82,6 +82,32 @@ def _summary(program, method, genes, missing, ambiguous, scores, n, reason):
     )
 
 
+def native_scanpy_scores(adata, targets, *, score_name, params):
+    """Shared native execution for cycle and source-bound descriptive programs."""
+    scanpy = _require_module("scanpy")
+    scanpy.tl.score_genes(
+        adata, targets, ctrl_size=params.scanpy_ctrl_size,
+        n_bins=params.scanpy_n_bins, ctrl_as_ref=params.scanpy_ctrl_as_ref,
+        random_state=params.random_seed, use_raw=False, layer=None,
+        score_name=score_name, copy=False,
+    )
+    return np.asarray(adata.obs[score_name], dtype=float)
+
+
+def native_ulm_scores(adata, net, *, params):
+    decoupler = _require_module("decoupler")
+    output = decoupler.mt.ulm(
+        data=adata, net=pd.DataFrame(net), tmin=params.decoupler_tmin,
+        layer=None, raw=False, empty=False, verbose=False,
+    )
+    activities = output[0] if isinstance(output, tuple) else adata.obsm["score_ulm"]
+    if not isinstance(activities, pd.DataFrame) or not activities.index.is_unique:
+        raise ValueError("ULM output must identify observations")
+    if set(activities.index) != set(adata.obs_names):
+        raise ValueError("ULM observation set changed")
+    return activities.reindex(adata.obs_names)
+
+
 def measure_exploratory_process(
     *,
     source: ExploratoryProcessInput,
@@ -158,21 +184,9 @@ def measure_exploratory_process(
             reason = resolution_reasons[program]
         else:
             try:
-                scanpy = _require_module("scanpy")
                 column = f"scanpy_{program}"
-                scanpy.tl.score_genes(
-                    adata,
-                    targets_by_program[program],
-                    ctrl_size=params.scanpy_ctrl_size,
-                    n_bins=params.scanpy_n_bins,
-                    ctrl_as_ref=params.scanpy_ctrl_as_ref,
-                    random_state=random_seed,
-                    use_raw=False,
-                    layer=None,
-                    score_name=column,
-                    copy=False,
-                )
-                scores = np.asarray(adata.obs[column], dtype=float)
+                scores = native_scanpy_scores(adata, targets_by_program[program],
+                                             score_name=column, params=params)
             except ProcessMethodError as exc:
                 reason = exc.reason_code
             except Exception:
@@ -202,27 +216,7 @@ def measure_exploratory_process(
     ]
     if net:
         try:
-            decoupler = _require_module("decoupler")
-            output = decoupler.mt.ulm(
-                data=adata,
-                net=pd.DataFrame(net),
-                tmin=params.decoupler_tmin,
-                layer=None,
-                raw=False,
-                empty=False,
-                verbose=False,
-            )
-            activities = (
-                output[0] if isinstance(output, tuple) else adata.obsm["score_ulm"]
-            )
-            if (
-                not isinstance(activities, pd.DataFrame)
-                or not activities.index.is_unique
-            ):
-                raise ValueError("ULM output must identify observations")
-            if set(activities.index) != set(adata.obs_names):
-                raise ValueError("ULM observation set changed")
-            activities = activities.reindex(adata.obs_names)
+            activities = native_ulm_scores(adata, net, params=params)
         except ProcessMethodError as exc:
             ulm_reason = exc.reason_code
         except Exception:

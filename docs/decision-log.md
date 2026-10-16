@@ -181,7 +181,7 @@ retains their exact provenance. An interpretation is not a verified report,
 scientific validation or public-export approval. Aggregate results remain
 controlled biological data even after identifiers are removed. Public-safe
 acceptance evidence is retained in the
-[Web validation history](validation/web_preview_20260905.md); private provenance
+[Web validation history](https://github.com/starvingarc/BRIDGE/blob/d3d69363c50541fb34320f703db2995edb27105e/docs/validation/web_preview_20260905.md); private provenance
 receipts remain outside the repository.
 
 ## 2026-09-08: Bound Product-intent Sharing To Scientific-input Drafts
@@ -199,7 +199,7 @@ intent. Any candidate remains reviewable and source-backed; confirmation is not
 scientific freezing, biological validation or public-export approval. The current
 runtime still sends intake readiness only. Implementation and public-safe
 acceptance evidence for the draft-specific
-projection remain in the [Web validation history](validation/web_preview_20260905.md)
+projection remain in the [Web validation history](https://github.com/starvingarc/BRIDGE/blob/d3d69363c50541fb34320f703db2995edb27105e/docs/validation/web_preview_20260905.md)
 and Git history.
 
 
@@ -258,7 +258,7 @@ eliminates independently authored code/map copies, not semantic uncertainty:
 literal checks and passage accounting are not entailment, experimental execution
 or biological validation. Bounded raw responses remain private. Public-safe
 installed model/browser
-evidence is retained in the [Web validation history](validation/web_preview_20260905.md)
+evidence is retained in the [Web validation history](https://github.com/starvingarc/BRIDGE/blob/d3d69363c50541fb34320f703db2995edb27105e/docs/validation/web_preview_20260905.md)
 and construction chronology remains in Git.
 
 ## 2026-09-09: Permit Add-only Repair Of Missing Protocol Citations
@@ -354,3 +354,262 @@ CapybaraBrain task card; sealed inputs remain isolated. Neither catalog presence
 nor graph admission establishes execution, independent validation, training or
 calibration permission, or product qualification. Frozen historical runs retain
 their original policies and are not relabeled.
+
+## 2026-09-23 — Technical-view evidence without invented biological independence
+
+A selected RNA view may support descriptive measurements even when independent
+biological units are unknown. MeasurementSpec v0.3 therefore binds an exact
+DataViewBinding, a whole-view technical aggregate, unknown independence and null
+independent replicate count; its status cannot become frozen. Existing v0.1/v0.2
+models and schemas remain unchanged. MeasurementResultV2 is reused.
+
+Saved P003 coefficients enter the normal evidence chain only through an explicit
+source-checked projection with original producer, artifact and input/reference
+hashes. It does not rerun matrices or alter the original native result. New P006
+exploratory output uses the honest unit; old receipts and five native values are
+preserved without silent rebinding. P008 adds a versioned receipt accepting the
+new spec; its gate/profile/summary semantics and P009 scientific admission
+policy do not change. Shared RNA remains one dependent family. No product-role,
+developmental-window, threshold, formal score or clinical claim is authorized.
+
+## 2026-09-23 — Explicit source-defined program coverage
+
+P006 adds a versioned source-bound exploratory input and result union while
+preserving prior cycle contracts and native values. Exact resource bytes and
+selected membership are bound before native Scanpy/ULM execution. The input must
+choose complete-only or observed-subset coverage; the latter is authorized only
+for clearly labeled candidate descriptions with full missing/actual gene lists.
+Ambiguous identifiers and insufficient executable membership remain unavailable.
+No activation, product-quality or safety threshold is introduced. This decision
+does not freeze a ProgramSpec, developmental window or ScoreContract. The current
+product context is midbrain dopaminergic progenitor/precursor research, not a
+requirement for mature dopaminergic expression or absence of cycling cells.
+
+
+## 2026-10-08 — Bind proposed interpretations and input coverage to their evidence
+
+The evidence-bound extension in PR #55 keeps model-authored support, limitation,
+contradiction and missing-evidence relations as unverified propositions. Every
+relation names a supplied citation, rationale and applicability. Interpretation
+v1.2 and report context/snapshot v0.5 preserve the graph identity, explanation
+version and input revision; later evidence cannot silently qualify an earlier
+explanation. User-visible interpretation graphs and report disclosures consume
+those bindings. Missing graph binding and real-model/report acceptance remain
+open review gates; this decision does not assert that the extension is released.
+
+Input coverage is exact membership on the confirmed feature axis, not expression,
+cell identity or biological absence. Only allowlisted membership facts and their
+semantics reach the model; private upload hashes, input revisions and matrix/column
+paths remain local. Nonempty stored queries require a coverage snapshot, while
+incomplete checks retain explicit unknown states. Raw measurements and historical
+artifacts are not rewritten by review or repair.
+
+Review reasons may use up to 1,200 characters; a longer explanation still has to
+satisfy the same citation and semantic checks. Narrow consistency reviews use low
+reasoning effort only for the supported DeepSeek model family at the official
+endpoint. Generation, repair and other gateways retain their existing effort.
+Unavailable or invalid review results block admission; lower effort is not weaker
+acceptance. Continuation of an unresolved draft requires new explicit approval
+and matching source/draft/non-budget bindings, without resetting prior usage.
+
+P0-06 0.11.1 separates a scientific input fingerprint from execution-attempt
+identity and binds native candidate definitions to their observed coverage. This
+prevents a repeated request from overwriting the identity of an earlier outcome;
+it does not change the measurement formulas or establish scientific qualification.
+The [version-bound record](validation/interpretation_evidence_20261008.md) defines
+what was checked and the remaining literature, reader and scientific gates.
+
+
+## 2026-10-08 — Block publication of unbound interpretation drafts
+
+A reviewed explanation with evidence relations or feature queries must bind a
+unique verified current evidence graph before a new v1.2 version is published.
+If that binding is unavailable or ambiguous, retain the private draft and expose
+`interpretation_graph_binding_unavailable`; do not save an explanation that the
+report would subsequently hide. Historical explanation objects keep their
+existing schemas. Native report sources continue matching the graph's exact
+producer receipt; same-name historical executions remain skippable, while missing
+current sources block the report with an explicit diagnostic.
+
+
+## 2026-10-08 — Share the research-report read limit
+
+The evidence view reads verified P0-10 research reports with the existing 8 MB
+report-reader limit. Ordinary graph records retain their 2 MB limit. A real
+2.33 MB report exposed the mismatch; stream-limit regressions and actual browser
+inspection verify the bounded change. The saved-case extension passed scoped
+model/report/download/browser/restart acceptance; broader literature, human-reader
+and scientific qualification gates remain independent.
+
+
+## 2026-10-12 — Adopt the BRIDGE product direction
+
+The product owner approved the direction recorded in the
+[BRIDGE product design](../plans/bridge-product-design.md). BRIDGE is the
+application section of the ventral-midbrain atlas paper and is first an internal
+laboratory tool. Research workspaces stay user-defined containers whose typed
+objects (protocols, samples, datasets, assessments, comparisons, plans) drive a
+culture-wall home, a 3D developmental tree built from the atlas and a protocol
+score that links reagent windows to the differentiation chain.
+
+Analysis gains an exploratory tier: with user consent the Agent may install or
+write tools in an isolated sandbox. Exploratory results remain labelled and do
+not enter formal assessment conclusions; registered tools remain the formal tier.
+Shared memory requires user confirmation. Neither tier nor memory may change
+references, thresholds or measurement definitions.
+
+Quantitative assessment is introduced as a versioned, atlas-anchored chain of
+conditional fractions (pluripotency exit, neural induction, midbrain positioning,
+floor-plate specification, DA fate; graft-only DA subtype), displayed as radar
+and funnel views. Their product, the target-cell fraction, is the only summary
+number; weighted totals and traffic-light grades remain prohibited. Boost/Boost+
+and RC17 become comparison objects only, still excluded from training,
+calibration and references.
+
+This entry records an approved direction. The existing AGENTS, PRD and product
+principles remain in force until the implementing changes update them; nothing
+here is implemented, validated or deployed.
+
+
+## 2026-10-12 — Treat the differentiation chain as raw measurement and split ownership
+
+The [research objects](../plans/research-objects.md) contract defines protocols, runs,
+samples, atlas assessments, leads and confirmation actions for milestone M1. The
+differentiation chain is five conditional fractions with numerators and denominators
+and their product; it is versioned raw measurement, not a `domain_score`, so the
+existing score rules stay unchanged. PRD 6.6 now allows ring, radar and funnel views
+of these fractions while still prohibiting weighted totals, ranking and traffic-light
+grades. Boost/Boost+ and RC17 enter the comparison queue as comparison objects only.
+Frontend and backend write scopes are recorded in that contract.
+
+## 2026-10-13 — Map fast first and fix the chain-v1 demo rules
+
+The query encoder behind the current developmental tree cannot be recovered, so
+standard mapping starts with a fast v0 (Scanpy ingest, nearest reference neighbours,
+tree position taken from those neighbours) labelled with its method and reference
+versions, while a projectable reference model is retrained to replace it. Pre-graft
+samples use the scRNA reference only; post-graft samples use the snRNA reference.
+
+The chain-v1 demo rules are operational and versioned: level 1 counts the CNS neural
+lineage including glia and excludes neural crest and perivascular-like cells; level 3
+counts the candidate floor-plate lineage from current labels, shown as candidate and
+paired with marker colouring on the tree; level 0 waits for a calibration that needs
+pluripotent positive controls; level 4 shows DA programme evidence until fate
+probabilities are recomputed with a DA terminal state. The single headline number
+switches by stage: candidate floor-plate lineage fraction for progenitor-stage
+products, DA fraction for Stage IV and post-graft samples. Details are in
+[BRIDGE product design](../plans/bridge-product-design.md) §§3.4, 6.1–6.2 and 7.
+Nothing here is implemented, calibrated or scientifically validated yet.
+
+## 2026-10-13 — Build along the user journey and accept on preset public protocols
+
+Workbench functions are now ordered by the path a wet-lab user takes, from protocol
+entry to post-graft outcome, and each is finished before the next starts. A function
+counts as done only when it runs on real data for three preset public protocols
+(GSE204796, Boost/Boost+ from E-MTAB-14729, STEM-PD D16 from GSE200610), seeded into
+an ordinary research of a demonstration account through the public interfaces. The
+workbench becomes the single path: QC, evidence graphs and reports move in from the
+conversation workspace. The old five-domain score is no longer shown and there is no
+weighted total; the differentiation chain with ring, radar and funnel views is the
+quantitative assessment. A run on the developmental tree is drawn as a flow along the
+tree's own branches instead of a path through the weighted centre of its labels.
+The order and acceptance are in [User journey and roadmap](../plans/user-journey.md).
+
+## 2026-10-14 — Open experiments on their protocol flow, with sampling points and a sample panel
+
+The product owner chose a wet-lab path through the workbench: an incubator card
+opens straight onto its protocol flow; samples sit as points under the flow's
+day axis and open a side panel with the sample's analyses (mapping, QC and
+records). The developmental tree is the visualisation of the mapping analysis,
+shown small in the panel and full size on demand, not the frame of a run's
+results; the all-runs tree moves under comparison. QC charts are redrawn in the
+browser from the per-cell table, keeping the tool's figures as originals. The
+UI no longer says "round": cards are titled by protocol, version and, for a
+repeated run, cell line and start date; confirming a protocol will record the
+experiment in a follow-up change. Registration order of analyses is shown as
+order, never as adoption. Details: [user journey](../plans/user-journey.md) ②.
+
+## 2026-10-14 — Track workbench functions by journey stage on GitHub
+
+The workbench roadmap is organised by the order a wet-lab researcher works:
+A prepare protocols, B record experiments, C read one sample, D compare,
+E explain and draft the next version, F reports and outputs, G after
+grafting, and X platform and acceptance. `plans/user-journey.md` is the
+single source for each function's status, issue and order; GitHub has one
+milestone per stage and a `roadmap` label on each function issue, with a
+pinned overview issue whose task lists update as issues close. The overall
+project stages remain in `docs/ROADMAP.md`. The product owner also chose
+the left rail (research switcher; incubator, comparison and materials; an
+experiment list) and to generate and read reports where they arise, on the
+experiment and comparison pages, rather than in the rail. Superseded issues
+#126, #127 and #136 were closed with their replacements named, and the
+delivered #134 and #135 were closed.
+
+## 2026-10-15 — Doublets inside QC, cell cycle as its own sample tab
+
+Scrublet doublet candidates are shown inside the QC tab, only when the
+assessment produced candidates: count and share (a small non-zero share
+reads "<0.1%", never 0) and the score distribution with candidates coloured.
+A threshold belongs to one capture, so it is drawn only when the sample is a
+single capture, together with Scrublet's simulated doublet score outline;
+several captures are listed with their own thresholds. Cell-cycle scoring is
+a separate tab that appears once a scoring is registered: the S or G2/M
+share, phase counts, the sample's own UMAP (from the cell atlas analysis,
+joined by observation id) coloured by phase or either score with hover
+readouts, and the per-cell S × G2/M scatter, whose axes cover the middle
+99% of cells with the rest drawn on the edge as hollow points. At the
+product owner's request the sample tabs carry little explanatory text: no
+reading guide, no per-cell table preview or not-assessed list, and the
+library-complexity scatter is removed; downloads sit in the footer. The
+data declaration gains an optional capture question; an unknown capture
+sends nothing and doublets are simply not assessed. Details:
+[user journey](../plans/user-journey.md) ③a.
+
+## 2026-10-15 — Demo protocols open as confirmed protocol flows
+
+The public demo research shows four papers as five dishes: Xu/Chen, Boost,
+Boost+ (a labelled second version of Boost), STEM-PD and SphereDiff. Each
+protocol is curated from its paper's Methods into the factors that drive
+differentiation, with doses and day windows; base media, coatings and
+dissociation enzymes stay off the flow. The versions are confirmed, so a
+card opens straight on its flow. Dose steps of one factor share a lane.
+Gaps in the sources stay blank: STEM-PD days 16–18 and the SphereDiff
+recipe. Details: [user journey](../plans/user-journey.md) §2.
+
+## 2026-10-15 — Signing in opens the incubator
+
+After signing in, the workbench opens the incubator of the research used
+last in this browser, or else the most recently updated one, so the
+protocol dishes are the first thing seen. The research list is no longer
+a landing page that draws researches as dishes; it is reached from the
+rail's 所有研究 until a navigation page is designed. A user without any
+research still sees the list's empty state. The synthetic deployment
+test research is to be removed from the demo account.
+
+## 2026-10-15 — The original text opens on demand
+
+Opening a protocol shows only its flow. The original document opens beside
+it from a reagent's details (在原文中查看, scrolled to that reagent) or from
+the review checklist of a draft (打开原文), is read the first time it is
+opened, and closes again with 收起. The source-review item of a draft can
+still be ticked only after the text has been shown.
+
+## 2026-10-15 — Doublets and the cell cycle belong to QC
+
+The sample panel keeps three tabs (mapping, QC, records). QC always has a
+doublet section: the Scrublet result when there is one, otherwise the
+reason; a sample declared without a capture batch can add it there, which
+runs its standard analysis again through the sample workflow and keeps the
+earlier results in the records. The cell cycle, with the sample's UMAP and
+the S × G2/M scatter, is a section of QC rather than a tab of its own.
+
+## 2026-10-15 — Several batches on one day
+
+Samples of the same day are that day's batches and share one marker on
+the day axis (D18 ×2). It opens on all batches side by side: one QC table,
+count, gene and mitochondrial distributions drawn per batch as shares of
+its own cells, and cell-cycle phases and mapping per batch; a switcher
+opens one batch's usual panel. Batches are analysed separately and are not
+merged here; a merged UMAP needs batch integration and belongs with the
+multi-time-point view (#186). Each public demo file is declared as one
+capture, named by its accession, so doublets are detected per capture.

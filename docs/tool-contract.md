@@ -116,6 +116,24 @@ not a complete figure validation.
 
 The versioned JSON contracts in `src/bridge/resources/schemas/` are the language-neutral interface for Agent implementations. Pydantic models in `src/bridge/toolkit/contracts.py` and package-owned model modules are the Python sources used to generate those schemas.
 
+`measurement-spec/v0.3` describes a whole selected technical view, not a
+biological unit: `analysis_unit_kind=whole_view_technical_aggregate`,
+`independence_group_kind=null`, `biological_independence=unknown`,
+`n_independent_biological_replicates=null`, `status=descriptive_only`, with an
+exact `DataViewBinding`. It reuses `MeasurementResultV2`. P003 saved-source
+projection records original producer, receipt/result/input/reference hashes and
+label/profile mapping while naming the projection as its measurement producer.
+P006 new exploratory output retains its five native metrics with a view-bound
+spec. Neither operation rewrites old results.
+
+P008 receipt `/v0.3` admits these specs without changing gate/profile/summary
+semantics. P009 accepts old `/v0.2` and new `/v0.3` receipts with exact source
+hashes. Old schemas remain byte-identical. Graph admission is not scientific
+validation or formal scoring. Read full MeasurementResultV2 from the checksummed
+measurement artifacts: the frozen ToolRunV2 measurement list serializes legacy
+summary fields only.
+See the [technical-view validation boundary](validation/technical_view_evidence.md).
+
 For v0.2 implemented packages, the registry resolves only the package's declared adapter reference. The adapter implements the two-method `ToolPackageAdapter` protocol at the runtime seam. Returned runs must preserve request, tool version, implementation state and environment bindings. Successful and partial runs require both a non-null result and the exact registered result-schema reference declared by the package; every non-null result is validated with JSON Schema Draft 2020-12. Adapter/import/runtime failures from CLI `validate` or `run` are structured errors with exit code 4. The shared seam itself adds no scientific capability. P0-01 through P0-12 are executable engineering candidates; execution does not freeze a method, state, threshold, score or release claim.
 
 P0-08 consumes only versioned upstream evidence objects. It applies Data Readiness, Model Robustness and Prior Applicability before selecting `not_assessed`, `insufficient`, `limited` or `sufficient` in the registered precedence order. It never reruns scientific analysis, emits a `MeasurementResult`, or makes a domain score available. Its module-specific input/result schemas and complete field contract are documented in the [P0-08 Tool Card](../src/bridge/tool_packages/cards/P0-08.md).

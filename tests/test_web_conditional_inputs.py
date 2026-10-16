@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 
 from bridge.web.inputs import Selection
-from test_web_service import client
+from web_support import client
 from test_web_inputs import context_upload, choice, approve
 from test_p0_07_product_comparison_stability import _payloads, SCHEMAS
 from test_p0_12_graft_assessment import _objects
@@ -42,7 +42,7 @@ def comparison(client, tmp_path, mutation=None):
         role = "product_evidence_bundle" if key.startswith("bundle-") else key
         identifier = register(service, state, "P0-07", "legacy_comparison", role, SCHEMAS[role], payload)
         objects.append({"role": role, "input_id": identifier})
-    service.save(state)
+    service.sessions.save(state)
     return service, state, Selection.model_validate(choice("P0-07", "legacy_comparison", objects)), aid
 
 

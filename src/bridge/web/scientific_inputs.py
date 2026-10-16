@@ -5,6 +5,8 @@ from copy import deepcopy
 import hashlib
 from importlib.resources import files
 import json
+import os
+from pathlib import Path
 from typing import Literal
 
 from fastapi import HTTPException
@@ -16,9 +18,10 @@ from bridge.tool_packages._configurable_contracts import (
 )
 from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
 from bridge.tool_packages.p0_02_cell_state.reference import load_packaged_vocabulary
+from bridge.tool_packages.p0_02_cell_state.scientific_review import load_development_review, development_review_sha256
 from bridge.tool_packages.p0_03_target_regional.models import TargetRegionalAssessmentSpec
 from bridge.tool_packages.p0_04_developmental_compatibility.models import DevelopmentStateMap
-from .inputs import InputBody, ObjectChoice, Selection, checked_bytes
+from .inputs import InputBody, ObjectChoice, Selection, verify_checked_file
 
 
 class SupportedChoice(InputBody):
@@ -84,9 +87,162 @@ def ref(identifier, version="0.1.0"):
     return {"object_id": identifier, "object_version": version}
 
 
+SCIENTIFIC_ROOTS = {
+    "P0-03": ("product_definition_card", "state_role_map", "target_regional_assessment_spec", "measurement_spec"),
+    "P0-04": ("product_definition_card", "development_state_map", "development_window_spec", "measurement_spec"),
+    "P0-05": ("product_definition_card", "state_role_map", "off_target_assessment_spec", "biological_unit_attestation_receipt"),
+    "P0-06": ("product_definition_card", "development_window_spec", "program_spec",
+              "process_method_spec", "protocol_ir", "measurement_spec", "biological_unit_attestation_receipt"),
+}
+
+# The paths are deployment-owned; these published identities and digests only
+# allow the two reviewed source files to enter an approved case.
+DIRECTED_PROGRAM_RESOURCES = (
+    ("PLURI", "cf32f7cee11034e669d331e028b85f071d0babeb27ed7d547dca1d048d4114a0",
+     "source:pluri-original-csv", "Hu-2020-Table-S1", "HU-2020", "hu_pluripotency_csv",
+     "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7260443/supplementaryFiles",
+     "CC-BY-NC-ND-4.0", "PROC-PLURI", "HU-2020-TABLE-S1"),
+    ("DISSOC", "8c9dcbda7c2e797d70071f23f645581727892f49a15602a5dfda1e8cc7dbde17",
+     "source:dissoc-original-csv", "a623cd950e18191ad69a5b2c0fab343248893f81",
+     "OFLANAGAN-2019", "oflanagan_core_csv",
+     "https://raw.githubusercontent.com/kieranrcampbell/scrnaseq-digestion-paper/a623cd950e18191ad69a5b2c0fab343248893f81/data/deliverables/coregene_df-FALSE-v3.csv",
+     "redistribution-unconfirmed-private-only", "PROC-DISSOC", "OFLANAGAN-2019-CORE"),
+)
+
+
+def _admitted_directed_inputs(state, roots_by_id, tool_version):
+    """Include dispatched plans that were cancelled before a tool receipt existed."""
+    admitted = {row["plan_id"] for assessment in
+                [*state.get("_assessment_history", []), state.get("_assessment") or {}]
+                for row in assessment.get("admissions", [])
+                if (row.get("tool_id"), row.get("mode_id")) == ("P0-06", "directed_programs")}
+    plans = [state.get("_plan"), *(row.get("plan") for row in state.get("_plan_history", []))]
+    attempted = set()
+    for plan in plans:
+        if not isinstance(plan, dict) or plan.get("plan_id") not in admitted:
+            continue
+        for step in plan.get("steps", []):
+            if step.get("tool_id") != "P0-06" or not step.get("approved_request_json"):
+                continue
+            request = json.loads(step["approved_request_json"])
+            if request.get("tool_version") != tool_version:
+                continue
+            for ref in request.get("object_inputs", []):
+                record = roots_by_id.get(ref.get("input_id"))
+                if (ref.get("role") == "directed_program_input" and record is not None
+                        and ref.get("sha256") == record["sha256"]
+                        and ref.get("schema_ref") == record["schema_ref"]):
+                    attempted.add(ref["input_id"])
+    return attempted
+
+
 class ScientificInputs:
     def __init__(self, service):
         self.service = service
+
+    def register_program_input(self, state, upload_id, view, qc_id, qc_receipt):
+        """Pin one configured official resource and its exact QC view before scope approval."""
+        from bridge.tool_packages._structured_runtime import read_regular_bytes
+        from bridge.tool_packages.p0_06_proliferation_stress_response.candidate_programs import (
+            CandidateProgramSelection, ExploratoryProgramInput, ProgramResourceBinding,
+        )
+        from .sessions import write_file
+
+        configured = os.environ.get("BRIDGE_P006_PROGRAM_RESOURCE_PATH")
+        expected = os.environ.get("BRIDGE_P006_PROGRAM_RESOURCE_SHA256")
+        if not configured or expected != "bc465ea8f94009689abdff725ffa16bbd9a38a7d13a876d046727fae49f61f2c":
+            raise ValueError("program_resource_not_configured")
+        source = Path(configured)
+        if not source.is_absolute() or any(part.is_symlink() for part in (source, *source.parents)):
+            raise ValueError("program_resource_path_invalid")
+        raw = read_regular_bytes(source)
+        if len(raw) > 2 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != expected:
+            raise ValueError("program_resource_integrity_mismatch")
+        # Only a server-configured resource can enter the private session; no browser path is accepted.
+        target = self.service.directory(state["id"]) / "resources" / ("hallmark-" + expected + ".json")
+        if target.exists():
+            from .inputs import verify_checked_file
+            verify_checked_file(self.service, state, target, expected)
+        else:
+            write_file(target, raw)
+        resource = ProgramResourceBinding(resource_ref="source:msigdb-hallmark-human-2026-1",
+            resource_version="2026.1.Hs", source_family_id="MSIGDB-HALLMARK", path=target,
+            sha256=expected,
+            source_url="https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2026.1.Hs/h.all.v2026.1.Hs.json",
+            license_ref="CC-BY-4.0", format="msigdb_hallmark_json")
+        inputs = self.service.inputs
+        qc = inputs.verify(state, state["_input_objects"][qc_id])
+        if qc["selected_data_view"] != view or view["parent_asset_id"] != upload_id:
+            raise ValueError("program_qc_view_mismatch")
+        asset = inputs.selected_asset(state, "P0-06", upload_id)
+        if asset.checksum != view["sha256"]:
+            raise ValueError("program_asset_view_mismatch")
+        run, _ = inputs.producer_objects(state, qc_receipt, "P0-01", set())
+        programs = [CandidateProgramSelection(program_id=program_id, source_gene_set=gene_set)
+                    for program_id, gene_set in (
+                        ("PROC-ROS", "HALLMARK_REACTIVE_OXYGEN_SPECIES_PATHWAY"),
+                        ("PROC-UPR", "HALLMARK_UNFOLDED_PROTEIN_RESPONSE"),
+                        ("PROC-APOPTOSIS", "HALLMARK_APOPTOSIS"),
+                        ("PROC-HYPOXIA", "HALLMARK_HYPOXIA"))]
+        value = ExploratoryProgramInput(object_version="0.2.0",
+            input_id="exploratory-programs:assessment-" + digest({"view": view, "resource": expected})[:24],
+            source_family_id=state["_uploads"][upload_id]["source_family_id"],
+            data_view=view, gene_symbol_column=asset.metadata.get("gene_symbol_column"),
+            resource=resource, programs=programs, gene_coverage_policy="observed_subset",
+            created_at=run.created_at)
+        return inputs.add_derived_object(state, tool_id="P0-06", mode_id="exploratory_programs",
+            role="exploratory_program_input", schema_ref="bridge://schemas/exploratory-process-input/v0.2",
+            payload=value.model_dump(mode="json"), dependencies=[qc_id],
+            file_dependencies=[{"path": str(target), "sha256": expected}])
+
+    def register_directed_program_inputs(self, state, upload_id, view, qc_id, qc_receipt):
+        """Register configured, hash-pinned source candidates; never accept a browser path."""
+        from bridge.tool_packages._structured_runtime import read_regular_bytes
+        from bridge.tool_packages.p0_06_proliferation_stress_response.candidate_programs import (
+            DirectedProgramInput, DirectedProgramSelection, DirectedResourceBinding,
+        )
+        from .sessions import write_file
+
+        inputs = self.service.inputs
+        qc = inputs.verify(state, state["_input_objects"][qc_id])
+        if qc["selected_data_view"] != view or view["parent_asset_id"] != upload_id:
+            raise ValueError("program_qc_view_mismatch")
+        asset = inputs.selected_asset(state, "P0-06", upload_id)
+        if asset.checksum != view["sha256"]:
+            raise ValueError("program_asset_view_mismatch")
+        run, _ = inputs.producer_objects(state, qc_receipt, "P0-01", set())
+        identifiers = []
+        for (name, expected, resource_ref, version, family, format_, url, license_ref,
+             program_id, source_gene_set) in DIRECTED_PROGRAM_RESOURCES:
+            configured = os.environ.get(f"BRIDGE_P006_{name}_RESOURCE_PATH")
+            if not configured:
+                continue
+            source = Path(configured)
+            if not source.is_absolute() or any(part.is_symlink() for part in (source, *source.parents)):
+                raise ValueError("program_resource_path_invalid")
+            raw = read_regular_bytes(source)
+            if len(raw) > 2 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != expected:
+                raise ValueError("program_resource_integrity_mismatch")
+            target = self.service.directory(state["id"]) / "resources" / (name.lower() + "-" + expected + ".csv")
+            if target.exists():
+                verify_checked_file(self.service, state, target, expected)
+            else:
+                write_file(target, raw)
+            resource = DirectedResourceBinding(resource_ref=resource_ref, resource_version=version,
+                source_family_id=family, path=target, sha256=expected, source_url=url,
+                license_ref=license_ref, format=format_)
+            value = DirectedProgramInput(object_version="0.3.0",
+                input_id="directed-program:assessment-" + digest({"view": view, "resource": expected})[:24],
+                source_family_id=state["_uploads"][upload_id]["source_family_id"],
+                data_view=view, gene_symbol_column=asset.metadata.get("gene_symbol_column"),
+                resource=resource, programs=[DirectedProgramSelection(program_id=program_id,
+                    source_gene_set=source_gene_set)], gene_coverage_policy="observed_subset",
+                created_at=run.created_at)
+            identifiers.append(inputs.add_derived_object(state, tool_id="P0-06", mode_id="directed_programs",
+                role="directed_program_input", schema_ref="bridge://schemas/exploratory-process-input/v0.3",
+                payload=value.model_dump(mode="json"), dependencies=[qc_id],
+                file_dependencies=[{"path": str(target), "sha256": expected}]))
+        return identifiers
 
     def _facts(self, state, aid):
         self.service.controls.require_ready(state)
@@ -99,8 +255,13 @@ class ScientificInputs:
         if not facts["target_cell_type"] or not facts["target_stage"] or facts["assay"] == "unknown":
             raise ValueError("scientific_intent_required")
         upload = state["_uploads"][aid]
-        checked_bytes(self.service, state, self.service.directory(state["id"]) / "uploads" / (aid + ".h5ad"),
-                      upload["sha256"], limit=self.service.settings.upload_limit)
+        verify_checked_file(
+            self.service,
+            state,
+            self.service.directory(state["id"]) / "uploads" / (aid + ".h5ad"),
+            upload["sha256"],
+            limit=self.service.settings.max_upload_bytes,
+        )
         return facts
 
     def _catalog(self, state):
@@ -108,23 +269,25 @@ class ScientificInputs:
         biological_raw = resource.joinpath("biological_review_draft.yaml").read_bytes()
         product_raw = resource.joinpath("product_context_review_draft.yaml").read_bytes()
         biological, product = yaml.safe_load(biological_raw), yaml.safe_load(product_raw)
+        review = load_development_review("1.1.0")
         vocabulary = load_packaged_vocabulary()
-        if biological["vocabulary_ref"] != vocabulary.vocabulary_id:
+        if review.vocabulary_ref != vocabulary.vocabulary_id:
             raise ValueError("scientific_vocabulary_mismatch")
         known = {(label.level, label.state_id) for label in vocabulary.labels}
         defaults = biological["card_defaults"]
         sources = []
-        for row in biological["state_reviews"]:
-            if (row["level"], row["state_id"]) not in known:
+        for row in review.state_reviews:
+            level = row.state_id.split(":", 1)[0]
+            if (level, row.state_id) not in known:
                 raise ValueError("scientific_source_state_mismatch")
             sources.append({
-                "source_id": "state-review:" + row["state_id"], "version": biological["version"],
-                "state_id": row["state_id"], "label_level": row["level"], "definition": row["definition"],
+                "source_id": "state-review:" + row.state_id, "version": review.object_version,
+                "state_id": row.state_id, "label_level": level, "definition": row.definition,
                 "anatomy_scope": defaults["anatomy_scope"], "developmental_scope": defaults["developmental_scope"],
-                "derivation": row.get("derivation_summary", defaults["derivation_summary"]),
-                "review_status": row.get("review_status", defaults["review_status"]),
-                "limitations": row.get("review_blockers", defaults["review_blockers"]),
-                "source_refs": row.get("source_ids", defaults["source_ids"]),
+                "derivation": row.rationale, "review_status": review.status,
+                "decision": row.decision, "parent_state_id": row.parent_state_id,
+                "default_product_role": row.default_product_role,
+                "limitations": row.limitations, "source_refs": row.source_ids,
             })
         spec = load_measurement_spec(self.service.settings.cell_state_measurement_spec_ref)
         if spec is None:
@@ -136,7 +299,8 @@ class ScientificInputs:
             reference_state = "available" if resources else "not_configured"
         except (ValueError, OSError, KeyError):
             reference_state = "unavailable"
-        binding = {"biological": hashlib.sha256(biological_raw).hexdigest(),
+        binding = {"biological": development_review_sha256("1.1.0"),
+                   "legacy_biological": hashlib.sha256(biological_raw).hexdigest(),
                    "product": hashlib.sha256(product_raw).hexdigest(),
                    "vocabulary": digest(vocabulary.model_dump(mode="json")),
                    "measurement": digest(spec.model_dump(mode="json")),
@@ -144,7 +308,8 @@ class ScientificInputs:
         return {
             "sources": sources, "vocabulary_id": vocabulary.vocabulary_id,
             "vocabulary_version": vocabulary.version,
-            "source_review_state": biological["status"], "execution_allowed": product["execution_allowed"],
+            "source_review_state": review.status, "scientific_qualification": review.scientific_qualification,
+            "execution_allowed": product["execution_allowed"],
             "reference_state": reference_state,
         }, binding, spec
 
@@ -167,6 +332,7 @@ class ScientificInputs:
                 "rules": [
                     "Propose only source-backed candidate choices for explicit user review; omissions remain unresolved.",
                     "A state definition supports a candidate, not a validated product role. Preserve pending review.",
+                    "A complete source review is not product-role approval. parent_only and unavailable states cannot be target, adjacent, off-target or regional identities.",
                     "Culture duration is not fetal age. No time series, independence, pooling or measurements may be invented.",
                     "Use propose_scientific_inputs. Leave unsupported regional/development choices empty.",
                     "Choose one label_level: ALL role, development and regional state IDs must have that same level. Never combine L1 and L2 in one candidate.",
@@ -183,6 +349,14 @@ class ScientificInputs:
             source = available.get(choice.state_id)
             if source is None or choice.source_ids != [source["source_id"]]:
                 raise ValueError("scientific_source_not_supported")
+            if source["decision"] != "evaluate":
+                if (isinstance(choice, RoleChoice) and choice.product_role != "role_unresolved"
+                        or isinstance(choice, DevelopmentChoice) and choice.stage_role != "unresolved"):
+                    raise ValueError("scientific_source_identity_unavailable")
+        if any(available[state_id]["decision"] != "evaluate"
+               for state_id in candidate.regional_denominator_state_ids
+               if state_id in available):
+            raise ValueError("scientific_source_identity_unavailable")
         selected = {row.state_id for row in candidate.roles}
         if not set(candidate.regional_denominator_state_ids).issubset(selected):
             raise ValueError("regional_choice_requires_reviewable_role")
@@ -191,7 +365,7 @@ class ScientificInputs:
             raise ValueError("regional_target_role_required")
 
     def propose(self, state, aid, candidate, expected_binding=None):
-        from .app import uid
+        from .sessions import uid
         facts = self._facts(state, aid)
         catalog, catalog_binding, _ = self._catalog(state)
         binding = self._binding(state, aid, catalog_binding)
@@ -204,7 +378,8 @@ class ScientificInputs:
         if facts["independent_cultures"] is None:
             unknowns.append("independence_unknown")
         if not catalog["execution_allowed"] or catalog["source_review_state"] != "approved":
-            unknowns.append("scientific_source_review_pending")
+            unknowns.append("state_role_review_required" if catalog["source_review_state"] == "complete"
+                            else "scientific_source_review_pending")
         if catalog["reference_state"] != "available":
             unknowns.append("reference_configuration_unavailable")
         if not candidate.regional_target_state_ids:
@@ -219,7 +394,7 @@ class ScientificInputs:
                             for tool in ("P0-03", "P0-04", "P0-05", "P0-06")],
                  "_binding": binding, "_input_revision": state["_input_revision"]}
         draft["digest"] = digest(draft)
-        self.service.message(state, "assistant", "科学输入候选已整理。请核对来源、角色与未知项；确认只生成草稿对象，不代表完成生物学审阅，也不会运行分析。")
+        self.service.message(state, "assistant", "科学输入候选已整理。请核对来源、角色与未知项；确认只生成草稿对象，不代表完成生物学审阅，也不会运行分析。", source="server_template")
         draft["message_id"] = state["messages"][-1]["id"]
         for old in state.get("_scientific_drafts", []):
             if old["upload_id"] == aid and old["status"] == "pending":
@@ -306,10 +481,165 @@ class ScientificInputs:
         return selection.model_copy(update={"asset_ids": [scope.upload_id],
             "object_inputs": [ObjectChoice(role="exploratory_process_input", input_id=object_id)]})
 
+    def assessment_blockers(self, state, scope, allowed):
+        """Expose every missing caller-owned root without changing package eligibility."""
+        if (allowed.tool_id, allowed.mode_id) not in {
+                ("P0-03", "default"), ("P0-04", "default"),
+                ("P0-05", "hard_count_accounting")}:
+            return []
+        inputs = self.service.inputs
+        selected = scope.binding["selections"].get(allowed.tool_id, {})
+        contract, mode = inputs.contract_mode(allowed.tool_id, allowed.mode_id)
+        counts = {role.role: sum(row["role"] == role.role for row in selected.get("object_inputs", []))
+                  for role in mode.roles}
+        assets = mode.asset_input or contract.asset_input
+        if (all(counts[role.role] >= role.min_count for role in mode.roles)
+                and len(selected.get("asset_ids", [])) >= (assets.min_count if assets else 0)):
+            return []
+        choices = {row["role"]: row["input_id"] for row in selected.get("object_inputs", [])}
+        shared = {row["role"]: row["input_id"] for row in
+                  scope.binding["selections"].get("P0-03", {}).get("object_inputs", [])}
+        if allowed.tool_id != "P0-03":
+            for role in ("product_definition_card", "state_role_map"):
+                choices.setdefault(role, shared.get(role))
+        blockers = ["scientific_resource_required:" + role for role in SCIENTIFIC_ROOTS[allowed.tool_id]
+                    if not choices.get(role)]
+        if not choices.get("product_case") and scope.binding["intake"]["facts"].get("sampling_context") not in {
+                "pretransplant_preparation", "process_sample"}:
+            blockers.append("biological_source_unit_required")
+        try:
+            pool = inputs.assessment_pool(state, scope)
+        except (ValueError, OSError, KeyError):
+            return blockers
+        reviews = {"state_role_map": ("review_state", {"reviewed", "frozen"}, "state_role_review_required"),
+                   "target_regional_assessment_spec": ("status", {"frozen"}, "regional_definition_review_required"),
+                   "development_state_map": ("review_state", {"reviewed", "frozen"}, "development_state_review_required"),
+                   "development_window_spec": ("review_state", {"confirmed"}, "development_window_review_required")}
+        for role in SCIENTIFIC_ROOTS[allowed.tool_id]:
+            identifier = choices.get(role)
+            if not identifier:
+                continue
+            record = pool.get(identifier)
+            if record is None:
+                blockers.append("scientific_resource_outside_scope")
+                continue
+            if role not in reviews:
+                continue
+            try:
+                value = inputs.verify(state, record)
+            except (ValueError, OSError, KeyError):
+                blockers.append("scientific_resource_invalid:" + role)
+                continue
+            field, accepted, reason = reviews[role]
+            if value.get(field) not in accepted:
+                blockers.append(reason)
+            if role == "development_window_spec" and (
+                    not value.get("reviewer_ref") or not value.get("confirmed_at")):
+                blockers.append("development_window_review_required")
+        return sorted(set(blockers))
+
+    def spatial_link_gaps(self, state, scope, allowed):
+        """Optional visual prerequisites remain pending under normal scope/budget rules."""
+        if (self.service.settings.spatial_reference_manifest_path is None
+                or (allowed.tool_id, allowed.mode_id) != ('P0-02', None)):
+            return []
+        view = scope.binding.get('data_view')
+        if view is None:
+            return ['spatial_link_qc_view_required']
+        try:
+            return self.service.spatial_contexts.source_gaps(state, view)
+        except (ValueError, OSError, KeyError, HTTPException):
+            return ['spatial_link_source_verification_required']
+
     def assessment_selection(self, state, scope, allowed, selection):
         """Join selected reviewed roots to exact QC/P0-02 producer objects."""
+        if (allowed.tool_id in {"P0-03", "P0-04", "P0-05"}
+                and allowed.mode_id == "saved_cell_state_context"):
+            roots = [(key, row) for key, row in scope.binding["resources"].items()
+                     if row.get("label") == "saved_cell_state_run"
+                     and row["schema_ref"] == "bridge://schemas/tool-run/v0.1"]
+            if len(roots) != 1:
+                raise ValueError("canonical_saved_cell_state_required")
+            identifier, record = roots[0]
+            saved = self.service.inputs.verify(state, record)
+            if (saved["request"]["tool_id"] != "P0-02"
+                    or saved["result"]["input_data_view"] != scope.binding["data_view"]):
+                raise ValueError("saved_cell_state_scope_mismatch")
+            role_choices = [row for row in selection.object_inputs
+                            if allowed.tool_id == "P0-03"
+                            and row.role in {"state_role_map", "product_definition_card"}]
+            return selection.model_copy(update={"asset_ids": [],
+                "object_inputs": [ObjectChoice(role="saved_cell_state_run", input_id=identifier), *role_choices]})
         if (allowed.tool_id, allowed.mode_id) == ("P0-06", "exploratory_process"):
             return self._exploratory_selection(state, scope, selection)
+        if (allowed.tool_id, allowed.mode_id) == ("P0-06", "exploratory_programs"):
+            roots = [(key, row) for key, row in scope.binding["resources"].items()
+                     if row["schema_ref"] == "bridge://schemas/exploratory-process-input/v0.2"]
+            if len(roots) != 1:
+                raise ValueError("canonical_program_input_required")
+            identifier, record = roots[0]
+            payload = self.service.inputs.verify(state, record)
+            if payload["data_view"] != scope.binding["data_view"]:
+                raise ValueError("program_scope_view_mismatch")
+            return selection.model_copy(update={"asset_ids": [scope.upload_id],
+                "object_inputs": [ObjectChoice(role="exploratory_program_input", input_id=identifier)]})
+        if (allowed.tool_id, allowed.mode_id) == ("P0-06", "directed_programs"):
+            roots = [(key, row) for key, row in scope.binding["resources"].items()
+                     if row["schema_ref"] == "bridge://schemas/exploratory-process-input/v0.3"]
+            roots_by_id = dict(roots)
+            bound = scope.binding["selections"].get("P0-06", {})
+            frozen = ([row["input_id"] for row in bound.get("object_inputs", [])
+                       if row["role"] == "directed_program_input"]
+                      if bound.get("mode_id") == "directed_programs" else [])
+            offered = [row.input_id for row in selection.object_inputs
+                       if row.role == "directed_program_input"]
+            if frozen and offered and frozen != offered:
+                raise ValueError("directed_source_selection_changed")
+            selected = frozen or offered
+            if selected:
+                if len(selected) != 1 or selected[0] not in roots_by_id:
+                    raise ValueError("canonical_directed_program_input_required")
+                identifier = selected[0]
+            else:
+                # Terminal attempts are not silently retried, including failed
+                # or partially available methods. A new explicit selection and
+                # approval is required to retry the same immutable input.
+                from bridge.toolkit.contracts import ToolRunV2
+                from .inputs import checked_bytes, strict_json
+                version = next(spec.version for spec in self.service.registry.list()
+                               if spec.tool_id == "P0-06")
+                attempted = _admitted_directed_inputs(state, roots_by_id, version)
+                for receipt in state.get("_tool_runs", []):
+                    if (receipt["file"] in state.get("_invalidated_receipts", {})
+                            or receipt["tool_id"] != "P0-06"
+                            or receipt["state"] not in {"succeeded", "partial", "failed", "skipped", "not_implemented"}):
+                        continue
+                    payload = strict_json(checked_bytes(self.service, state,
+                        self.service.directory(state["id"]) / "receipts" / receipt["file"],
+                        receipt["sha256"]), 128 * 1024 * 1024)
+                    run = ToolRunV2.model_validate(payload) if "object_inputs" in payload["request"] else None
+                    if run is None or run.tool_version != version or run.execution_state.value != receipt["state"]:
+                        continue
+                    for input_ref in run.request.object_inputs:
+                        record = roots_by_id.get(input_ref.input_id)
+                        if (input_ref.role == "directed_program_input" and record is not None
+                                and input_ref.sha256 == record["sha256"]
+                                and input_ref.schema_ref == record["schema_ref"]):
+                            attempted.add(input_ref.input_id)
+                remaining = [key for key, _ in roots if key not in attempted]
+                if not remaining:
+                    raise ValueError("directed_program_source_required")
+                # Stable scientific order is explicit in the reviewed resource
+                # table, never inferred from opaque object IDs or list position.
+                by_set = {self.service.inputs.verify(state, roots_by_id[key])["programs"][0]["source_gene_set"]: key
+                          for key in remaining}
+                identifier = next(by_set[source_gene_set] for *_, source_gene_set in DIRECTED_PROGRAM_RESOURCES
+                                  if source_gene_set in by_set)
+            payload = self.service.inputs.verify(state, roots_by_id[identifier])
+            if payload["data_view"] != scope.binding["data_view"]:
+                raise ValueError("program_scope_view_mismatch")
+            return selection.model_copy(update={"asset_ids": [scope.upload_id],
+                "object_inputs": [ObjectChoice(role="directed_program_input", input_id=identifier)]})
         routes = {("P0-03", "default"), ("P0-04", "default"),
                   ("P0-05", "hard_count_accounting"), ("P0-06", "method_runtime_source_bound")}
         if (allowed.tool_id, allowed.mode_id) not in routes:
@@ -319,9 +649,10 @@ class ScientificInputs:
         counts = {role.role: sum(row.role == role.role for row in selection.object_inputs) for role in mode.roles}
         assets = mode.asset_input or contract.asset_input
         if (all(counts[role.role] >= role.min_count for role in mode.roles)
-                and len(selection.asset_ids) >= (assets.min_count if assets else 0)):
-            # Explicit complete manual inputs retain their existing package contract.
-            # This factory fills genuine omissions; it is not a new review policy.
+                and len(selection.asset_ids) >= (assets.min_count if assets else 0)
+                and allowed.tool_id not in {"P0-03", "P0-05"}):
+            # Product assessments must check the same frozen roots and QC view
+            # even when the caller supplied every required object explicitly.
             return selection
         facts = self._facts(state, scope.upload_id)
         pool = inputs.assessment_pool(state, scope)
@@ -339,13 +670,7 @@ class ScientificInputs:
                 if row["role"] == "development_window_spec"]
             if len(shared_window) == 1:
                 choices["development_window_spec"] = shared_window[0]
-        required = {
-            "P0-03": ("product_definition_card", "state_role_map", "target_regional_assessment_spec", "measurement_spec"),
-            "P0-04": ("product_definition_card", "development_state_map", "development_window_spec", "measurement_spec"),
-            "P0-05": ("product_definition_card", "state_role_map", "off_target_assessment_spec", "biological_unit_attestation_receipt"),
-            "P0-06": ("product_definition_card", "development_window_spec", "program_spec",
-                      "process_method_spec", "protocol_ir", "measurement_spec", "biological_unit_attestation_receipt"),
-        }[allowed.tool_id]
+        required = SCIENTIFIC_ROOTS[allowed.tool_id]
         for role in required:
             if role not in choices:
                 raise ValueError("scientific_resource_required:" + role)
@@ -549,13 +874,14 @@ class ScientificInputs:
             if self._binding(state, draft["upload_id"], binding) != draft["_binding"]:
                 return "scientific_draft_stale"
             if not catalog["execution_allowed"] or catalog["source_review_state"] != "approved":
-                return "scientific_source_review_pending"
+                return ("state_role_review_required" if catalog["source_review_state"] == "complete"
+                        else "scientific_source_review_pending")
         except (ValueError, OSError, KeyError, HTTPException):
             return "scientific_draft_invalid_or_stale"
         return None
 
     def _objects(self, state, draft, catalog, spec):
-        from .app import now
+        from .sessions import now
         candidate = ScienceCandidate.model_validate(draft["candidate"])
         key = draft["id"]
         definition_ref, role_ref = ref("product-definition:" + key), ref("state-role-map:" + key)

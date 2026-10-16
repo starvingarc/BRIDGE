@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 协作流程
+    url: https://github.com/starvingarc/BRIDGE/blob/main/CONTRIBUTING.md
+    about: 先阅读任务认领、PR 和验收规范。
+  - name: 私下报告安全或隐私问题
+    url: https://github.com/starvingarc/BRIDGE/blob/main/SECURITY.md
+    about: 按安全政策联系仓库所有者；不要在 Issue 或 PR 中披露漏洞细节。

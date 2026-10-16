@@ -903,6 +903,29 @@ class SourceObjectBinding(FrozenModel):
         return self
 
 
+class SourceObjectBindingV3(SourceObjectBinding):
+    schema_ref: Literal[
+        "bridge://schemas/product-case/v0.1",
+        "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
+        "bridge://schemas/domain-gate-input/v0.1",
+        "bridge://schemas/measurement-spec/v0.2",
+        "bridge://schemas/measurement-spec/v0.3",
+        "bridge://schemas/qc-readiness-profile/v0.2",
+        "bridge://schemas/measurement-result/v0.2",
+        "bridge://schemas/evidence-validation-record/v0.1",
+        "bridge://schemas/prior-applicability-record/v0.1",
+        "bridge://schemas/evidence-sensitivity-record/v0.1",
+    ]
+
+    @model_validator(mode="after")
+    def role_and_schema_agree(self) -> Self:
+        if self.role == "measurement_spec" and self.schema_ref == (
+            "bridge://schemas/measurement-spec/v0.3"
+        ):
+            return self
+        return super().role_and_schema_agree()
+
+
 class MeasurementEvidenceStateCount(FrozenModel):
     measured: int = Field(ge=0)
     inferred: int = Field(ge=0)
@@ -1125,7 +1148,15 @@ class EvidenceSufficiencyRunResultV2(EvidenceSufficiencyRunResult):
         return self
 
 
+class EvidenceSufficiencyRunResultV3(EvidenceSufficiencyRunResultV2):
+    """Receipt supporting technical-view specs; gate/profile semantics unchanged."""
+
+    result_version: Literal["0.3.0"]
+    source_object_bindings: list[SourceObjectBindingV3] = Field(min_length=2)
+
+
 PUBLIC_SCHEMA_MODELS = {
+    "bridge://schemas/evidence-sufficiency-run-result/v0.3": EvidenceSufficiencyRunResultV3,
     "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.1": ReasonCodeCatalog,
     "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2": (
         ReasonCodeCatalogV2

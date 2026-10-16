@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="0 0 420 420" role="img" aria-labelledby="dish-title dish-description">
+<title id="dish-title">未开始</title><desc id="dish-description">An empty culture dish symbolizing a not-yet-started protocol. Decorative conceptual illustration, not microscopy or a measurement.</desc>
+<defs>
+<style>
+@media (prefers-color-scheme: dark) {
+ .well-center {stop-color:#253d47} .well-edge {stop-color:#111f29}
+ .rim-center {stop-color:#c4d8db} .rim-edge {stop-color:#38535d}
+ .glass-rim {stroke:#78969f} .glass-highlight {stroke:#b1cbd0}
+}
+</style>
+<radialGradient id="well" cx="40%" cy="33%" r="76%"><stop class="well-center" offset="0" stop-color="#fcfeff"/><stop class="well-edge" offset="1" stop-color="#dcecf2"/></radialGradient>
+<radialGradient id="rim" cx="35%" cy="25%" r="80%"><stop class="rim-center" offset="0" stop-color="#ffffff"/><stop offset=".65" stop-color="#bed6df"/><stop class="rim-edge" offset="1" stop-color="#789caa"/></radialGradient>
+<radialGradient id="blue" cx="30%" cy="20%" r="84%"><stop offset="0" stop-color="#ffffff"/><stop offset=".31" stop-color="#def5fe"/><stop offset=".68" stop-color="#a1c9dd"/><stop offset="1" stop-color="#88adc9"/></radialGradient>
+<radialGradient id="violet" cx="26%" cy="19%" r="83%"><stop offset="0" stop-color="#ffffff"/><stop offset=".25" stop-color="#ebe8ff"/><stop offset=".68" stop-color="#c0b2e7"/><stop offset="1" stop-color="#9883ce"/></radialGradient>
+<radialGradient id="amber" cx="29%" cy="20%" r="83%"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#fff3db"/><stop offset=".7" stop-color="#efcba4"/><stop offset="1" stop-color="#d8ac7b"/></radialGradient>
+<linearGradient id="water" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7fdff"/><stop offset=".5" stop-color="#cceaf6"/><stop offset="1" stop-color="#9fcce0"/></linearGradient>
+<radialGradient id="tissue" cx="45%" cy="43%" r="65%"><stop offset="0" stop-color="#f7f4fe"/><stop offset=".58" stop-color="#e4e2f2"/><stop offset="1" stop-color="#cddfe6"/></radialGradient>
+<filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="10"/></filter>
+<clipPath id="well-clip"><circle cx="210" cy="210" r="161"/></clipPath>
+</defs>
+<ellipse cx="216" cy="239" rx="170" ry="163" fill="#517686" opacity=".18" filter="url(#shadow)"/>
+<circle cx="210" cy="210" r="182" fill="url(#rim)" stroke="#8eafb7" stroke-width="2"/>
+<circle cx="210" cy="210" r="175" fill="#f7fcfe" stroke="#faffff" stroke-width="4" opacity=".91"/>
+<circle cx="210" cy="210" r="168" fill="url(#well)" stroke="#96bac6" stroke-width="2"/>
+<g clip-path="url(#well-clip)"><circle cx="210" cy="210" r="82" fill="#e4f0f3" opacity=".33" stroke="#9cbcc4" stroke-opacity=".50" stroke-width="2" stroke-dasharray="3 12"/><circle cx="210" cy="210" r="44" fill="#f7fbfd" opacity=".65"/><path d="M188 210 H232 M210 188 V232" stroke="#8caeb9" stroke-width="4" stroke-linecap="round" opacity=".68"/></g>
+<circle cx="210" cy="210" r="163" fill="none" stroke="#faffff" stroke-width="4" opacity=".88"/>
+<circle cx="210" cy="210" r="176" fill="none" class="glass-rim" stroke="#9bbbc2" stroke-width="1.7" opacity=".83"/>
+<path d="M61 157 A163 163 0 0 1 325 95" fill="none" class="glass-highlight" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity=".72"/>
+<path d="M332 308 A166 166 0 0 1 108 338" fill="none" stroke="#8fb8c3" stroke-width="3" stroke-linecap="round" opacity=".34"/>
+<ellipse cx="152" cy="93" rx="85" ry="17" fill="white" opacity=".11" transform="rotate(-24 152 93)"/>
+</svg>

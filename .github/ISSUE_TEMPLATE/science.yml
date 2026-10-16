@@ -1,0 +1,42 @@
+name: 科学方法／资源问题
+description: 澄清测量方法、reference、知识来源或科学验证缺口。
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: 工程能运行不等于科学验证通过。这里只记录允许共享的资源身份与证据摘要，不上传受控数据。
+  - type: textarea
+    id: question
+    attributes:
+      label: 科学问题与适用范围
+      description: 对应哪个 PRD 评估域或工具？期望支持什么解释，当前不能回答什么？
+    validations:
+      required: true
+  - type: textarea
+    id: resources
+    attributes:
+      label: 方法与资源身份
+      description: 相关工具、MeasurementSpec、reference 或知识版本，允许共享的来源链接、校验值、许可／访问限制；缺失写“未知”，不填写私有路径。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 已有证据与缺口
+      description: 说明真实观察、对照和未验证项；也可明确“尚无数据”。区分缺失与阴性、工程检查与科学资格。
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: 需要确认的决定与完成标准
+      description: 是来源澄清、资源准备、合同修改还是科学验证？列出待负责人确认的问题和可接受的证据。
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已搜索相关任务；仅提供获准共享的摘要，不含真实样本、受限资源文件、内部路径或私有回执。
+          required: true

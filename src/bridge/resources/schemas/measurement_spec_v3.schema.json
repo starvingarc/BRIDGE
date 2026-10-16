@@ -1,0 +1,383 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/measurement-spec/v0.3",
+  "additionalProperties": false,
+  "description": "Descriptive technical-view contract; never a biological replicate.",
+  "properties": {
+    "analysis_unit": {
+      "const": "selected_data_view",
+      "default": "selected_data_view",
+      "title": "Analysis Unit",
+      "type": "string"
+    },
+    "analysis_unit_kind": {
+      "const": "whole_view_technical_aggregate",
+      "default": "whole_view_technical_aggregate",
+      "title": "Analysis Unit Kind",
+      "type": "string"
+    },
+    "applicable_contexts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Contexts",
+      "type": "array"
+    },
+    "applicable_product_cards": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Applicable Product Cards",
+      "type": "array"
+    },
+    "assay": {
+      "title": "Assay",
+      "type": "string"
+    },
+    "biological_independence": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Biological Independence",
+      "type": "string"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "denominator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Denominator"
+    },
+    "direction": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Direction"
+    },
+    "exclusion_rules": {
+      "additionalProperties": true,
+      "title": "Exclusion Rules",
+      "type": "object"
+    },
+    "independence_group_kind": {
+      "default": null,
+      "title": "Independence Group Kind",
+      "type": "null"
+    },
+    "input_contract": {
+      "additionalProperties": true,
+      "title": "Input Contract",
+      "type": "object"
+    },
+    "measurement_spec_id": {
+      "title": "Measurement Spec Id",
+      "type": "string"
+    },
+    "minimum_data": {
+      "additionalProperties": true,
+      "title": "Minimum Data",
+      "type": "object"
+    },
+    "missing_behavior": {
+      "title": "Missing Behavior",
+      "type": "string"
+    },
+    "n_independent_biological_replicates": {
+      "default": null,
+      "title": "N Independent Biological Replicates",
+      "type": "null"
+    },
+    "numerator": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Numerator"
+    },
+    "observation_unit_kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "cell",
+            "nucleus"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Observation Unit Kind"
+    },
+    "prior_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prior Refs",
+      "type": "array"
+    },
+    "raw_metric_definition": {
+      "additionalProperties": true,
+      "title": "Raw Metric Definition",
+      "type": "object"
+    },
+    "reference_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reference Refs",
+      "type": "array"
+    },
+    "release_manifest_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Release Manifest Ref"
+    },
+    "scientific_question": {
+      "title": "Scientific Question",
+      "type": "string"
+    },
+    "status": {
+      "const": "descriptive_only",
+      "default": "descriptive_only",
+      "title": "Status",
+      "type": "string"
+    },
+    "tool_refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tool Refs",
+      "type": "array"
+    },
+    "uncertainty_method": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uncertainty Method"
+    },
+    "validation_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Validation Ref"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "measurement_spec_id",
+    "version",
+    "scientific_question",
+    "assay",
+    "input_contract",
+    "raw_metric_definition",
+    "missing_behavior",
+    "data_view"
+  ],
+  "title": "MeasurementSpecV3",
+  "type": "object"
+}

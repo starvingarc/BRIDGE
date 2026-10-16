@@ -1,0 +1,26 @@
+{
+  "$defs": {
+    "NativeWholeProductContextProfile": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2"
+    },
+    "OffTargetControlProfileV2": {
+      "$ref": "bridge://schemas/off-target-control-profile/v0.2"
+    },
+    "OffTargetHardCountProfileV3": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.3"
+    }
+  },
+  "$id": "bridge://schemas/off-target-control-result/v0.4",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/OffTargetControlProfileV2"
+    },
+    {
+      "$ref": "#/$defs/OffTargetHardCountProfileV3"
+    },
+    {
+      "$ref": "#/$defs/NativeWholeProductContextProfile"
+    }
+  ],
+  "title": "OffTargetControlResultV4"
+}

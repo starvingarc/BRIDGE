@@ -258,6 +258,28 @@ class ToolRegistry:
             validate_upstream_qc(asset)
         except ValueError as exc:
             reasons.append(getattr(exc, "reason_code", "qc_profile_invalid"))
+        if request.measurement_spec_ref == "ATLAS-ingest-quick-v0.1":
+            from bridge.tool_packages.p0_02_cell_state.quick_atlas_runtime import parameter_reasons
+            reasons.extend(parameter_reasons(request))
+            if _output_path_invalid(request.output_dir):
+                reasons.append("output_path_invalid")
+            return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=sorted(set(reasons)))
+
+        if request.measurement_spec_ref == 'EXPRESSION-exploration-v0.1':
+            from bridge.tool_packages._expression_contracts import ExpressionAnalysis
+            try:
+                options = ExpressionAnalysis.model_validate(request.parameters)
+                if options.contrast and asset.matrix_semantics != 'raw_counts':
+                    reasons.append('contrast_requires_raw_counts')
+                if asset.matrix_semantics not in {'raw_counts', 'normalized_expression'}:
+                    reasons.append('expression_semantics_required')
+                if asset.matrix_semantics == 'normalized_expression' and options.exploration.normalized_scale != 'log1p':
+                    reasons.append('normalized_scale_required')
+            except ValueError:
+                reasons.append('expression_parameters_invalid')
+            if _output_path_invalid(request.output_dir):
+                reasons.append('output_path_invalid')
+            return EligibilityResult(tool_id=request.tool_id, eligible=not reasons, reason_codes=sorted(set(reasons)))
         from bridge.tool_packages.p0_02_cell_state.measurement_specs import load_measurement_spec
 
         measurement_spec = load_measurement_spec(request.measurement_spec_ref)
@@ -352,6 +374,13 @@ class ToolRegistry:
         if request.tool_id == "P0-02":
             from bridge.tool_packages.p0_02_cell_state.executor import run_cell_state_evidence
 
+            if request.measurement_spec_ref == "ATLAS-ingest-quick-v0.1":
+                from bridge.tool_packages.p0_02_cell_state.quick_atlas_runtime import run_quick_atlas_mapping
+                return run_quick_atlas_mapping(request, spec)
+
+            if request.measurement_spec_ref == 'EXPRESSION-exploration-v0.1':
+                from bridge.tool_packages.p0_02_cell_state.expression_runtime import run_expression_analysis
+                return run_expression_analysis(request, spec)
             return run_cell_state_evidence(request, spec)
         raise RuntimeError(f"No executor registered for implemented tool {request.tool_id}")
 
@@ -404,9 +433,13 @@ class ToolRegistry:
             return self._validate_adapter_result(
                 result, request, recorded, load_schema(recorded.result_schema_ref))
         legacy_native = {
+            ("P0-02", "0.8.0"): "ENV-P0-CORE-v0.2",
+            ("P0-02", "0.7.0"): "ENV-P0-CORE-v0.2",
+            ("P0-02", "0.6.2"): "ENV-P0-CORE-v0.2",
             ("P0-01", "0.1.5"): "ENV-P0-CORE-v0.1",
             ("P0-02", "0.5.5"): "ENV-P0-CORE-v0.2",
             ("P0-02", "0.6.0"): "ENV-P0-CORE-v0.2",
+            ("P0-02", "0.6.1"): "ENV-P0-CORE-v0.2",
         }
         native_key = (request.tool_id, getattr(result, "tool_version", None))
         if type(result) is ToolRun and type(request) is ToolRequest and native_key in legacy_native:
@@ -416,6 +449,17 @@ class ToolRegistry:
                 raise ValueError("Historical Tool Package receipt mismatch")
             return result
         legacy = {
+            ("P0-06", "0.11.0"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.3"),
+            ("P0-03", "0.5.0"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/target-regional-result/v0.1"),
+            ("P0-03", "0.4.2"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/target-regional-result/v0.1"),
+            ("P0-06", "0.8.2"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.1"),
+            ("P0-06", "0.9.0"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.1"),
+            ("P0-04", "0.5.1"): ("ENV-DEVELOPMENT-PY-v0.2", "bridge://schemas/developmental-compatibility-result/v0.3"),
+            ("P0-05", "0.6.0"): ("ENV-P0-CORE-v0.1", "bridge://schemas/off-target-control-result/v0.1"),
+            ("P0-05", "0.7.1"): ("ENV-P0-CORE-v0.1", "bridge://schemas/off-target-control-result/v0.3"),
+            ("P0-05", "0.7.0"): ("ENV-P0-CORE-v0.1", "bridge://schemas/off-target-control-result/v0.2"),
+            ("P0-08", "0.5.1"): ("ENV-EVIDENCE-v0.2", "bridge://schemas/evidence-sufficiency-run-result/v0.2"),
+            ("P0-09", "0.5.1"): ("ENV-EVIDENCE-v0.2", "bridge://schemas/evidence-compiler-result/v0.2"),
             ("P0-10", "0.4.1"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
             ("P0-06", "0.8.1"): ("ENV-CELLSTATE-PY-v0.1", "bridge://schemas/proliferation-stress-response-result/v0.1"),
             ("P0-10", "0.4.2"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
@@ -423,6 +467,11 @@ class ToolRegistry:
             ("P0-10", "0.4.4"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
             ("P0-10", "0.4.5"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
             ("P0-10", "0.4.6"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.7"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.8"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.4.9"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.5.0"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
+            ("P0-10", "0.5.1"): ("ENV-EVIDENCE-v0.3", "bridge://schemas/claim-verification-result/v0.1"),
         }
         # Historical receipts are immutable; only explicitly supported releases are admitted.
         key = (request.tool_id, getattr(result, "tool_version", None))
@@ -728,7 +777,7 @@ class ToolRegistry:
     ) -> ToolRunV2:
         # The versioned research statement contract selects the research result;
         # it cannot be selected by an adapter's self-reported schema alone.
-        if (spec.tool_id == "P0-10" and spec.version in {"0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7"}
+        if (spec.tool_id == "P0-10" and spec.version in {"0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0", "0.5.1", "0.6.0"}
                 and any(ref.role == "statement_registry"
                         and ref.schema_ref == "bridge://schemas/research-statement-registry/v0.2"
                         for ref in request.object_inputs)

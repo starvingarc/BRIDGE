@@ -12,6 +12,7 @@ output_schema_ref: bridge://schemas/tool-run/v0.2
 result_schema_ref: bridge://schemas/product-comparison-stability-profile/v0.2
 adapter_ref: bridge.tool_packages.p0_07_product_comparison_stability.adapter:adapter
 method_ids:
+  - METHOD-PYDESEQ2
   - METHOD-BRIDGE-COMPARABILITY-GATE
   - METHOD-BRIDGE-DESIGN-AND-CONFOUNDING-CHECK
   - METHOD-BRIDGE-RAW-METRIC-DELTA

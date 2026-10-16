@@ -1,4 +1,4 @@
-from test_web_service import client
+from web_support import client
 from test_web_conditional_inputs import comparison
 from test_web_inputs import approve
 

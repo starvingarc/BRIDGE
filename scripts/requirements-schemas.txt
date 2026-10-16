@@ -1,0 +1,5 @@
+# Keep the rendering version fixed so byte checks are reproducible.
+pydantic==2.12.5
+PyYAML>=6,<7
+jsonschema>=4.23,<5
+regex>=2025.7,<2027

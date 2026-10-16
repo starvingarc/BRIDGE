@@ -819,6 +819,22 @@ class OffTargetHardCountProfileV1(FrozenModel):
         return self
 
 
+class OffTargetHardCountProfileV2(OffTargetHardCountProfileV1):
+    """Current producer identity; all frozen count/projection rules are inherited."""
+
+    object_version: Literal["0.2.0"]
+    profile_version: Literal["0.2.0"]
+    tool_version: Literal["0.7.1"]
+
+
+class OffTargetHardCountProfileV3(OffTargetHardCountProfileV2):
+    """Keep count semantics while recording the actual executing producer."""
+
+    object_version: Literal["0.3.0"]
+    profile_version: Literal["0.3.0"]
+    tool_version: str = Field(min_length=1)
+
+
 class OffTargetControlResultV1(
     RootModel[OffTargetControlProfileV2 | OffTargetHardCountProfileV1]
 ):
@@ -832,6 +848,8 @@ PUBLIC_SCHEMA_MODELS = {
     "bridge://schemas/off-target-control-profile/v0.1": OffTargetControlProfile,
     "bridge://schemas/off-target-control-profile/v0.2": OffTargetControlProfileV2,
     "bridge://schemas/off-target-hard-count-profile/v0.1": OffTargetHardCountProfileV1,
+    "bridge://schemas/off-target-hard-count-profile/v0.2": OffTargetHardCountProfileV2,
+    "bridge://schemas/off-target-hard-count-profile/v0.3": OffTargetHardCountProfileV3,
     "bridge://schemas/off-target-control-result/v0.1": OffTargetControlResultV1,
     **PUBLIC_METHOD_SCHEMA_MODELS,
 }

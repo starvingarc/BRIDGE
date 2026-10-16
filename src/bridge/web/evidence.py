@@ -16,7 +16,7 @@ from bridge.toolkit.contracts import (
     ToolRun,
 )
 
-from .inputs import checked_bytes, strict_json
+from .inputs import checked_bytes, integrity_limit, strict_json, verify_checked_file
 
 PROFILE_SCHEMA = "bridge://schemas/cell-state-evidence-profile/v0.3"
 LEGACY_PROFILE_SCHEMA = "bridge://schemas/cell-state-evidence-profile/v0.2"
@@ -219,8 +219,13 @@ def _project_legacy(inputs, state, receipt, input_id, record):
         or asset.checksum != upload["sha256"] or asset.assay != profile.assay
     ):
         raise ValueError("legacy_upload_binding_invalid")
-    checked_bytes(inputs.service, state, asset.path, asset.checksum,
-                  limit=inputs.service.settings.upload_limit)
+    verify_checked_file(
+        inputs.service,
+        state,
+        asset.path,
+        asset.checksum,
+        limit=inputs.service.settings.max_upload_bytes,
+    )
 
     composition_state = profile.composition.get("state")
     if composition_state not in {"shadow", "not_assessed", "unavailable", "unknown", "missing"}:
@@ -299,15 +304,33 @@ def _project_legacy(inputs, state, receipt, input_id, record):
     }}
 
 
-def _check_summary_limit(summary):
+def _check_summary_limit(summary, *, limit=None):
+    if limit is None:
+        limit = MAX_SUMMARY_BYTES
     encoded = json.dumps(
         summary,
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
     ).encode()
-    if len(encoded) > MAX_SUMMARY_BYTES:
+    if len(encoded) > limit:
         raise _SummaryLimit()
+
+
+def _assessment_result_limit(tool_id, result):
+    if result.get("runtime_mode") == "saved_cell_state_context":
+        # Whole-view fine states retain both their count/denominator rows and
+        # independently citable measurements. The combined projection can exceed
+        # 64 KiB; its allowlisted rows remain bounded by MAX_ROWS.
+        if (tool_id in {"P0-03", "P0-05"}
+                and isinstance(result.get("whole_product_composition"), list)):
+            return 128 * 1024
+        return 64 * 1024
+    if (tool_id == "P0-09" and result.get("query_name") == "get_case_evidence_subgraph"
+            and type(result.get("returned_node_count")) is int
+            and 0 <= result["returned_node_count"] <= 100):
+        return 64 * 1024
+    return MAX_SUMMARY_BYTES
 
 
 def _exact_nonnegative_int(value):
@@ -381,6 +404,22 @@ def _project_qc(inputs, state, receipt, input_id, record):
     run_payload, run, payload, profile = _verified_qc_profile(
         inputs, state, receipt, record
     )
+    return project_qc_summary(run, payload, run_payload=run_payload), {
+        "E0": {
+            "input_id": input_id,
+            "receipt_file": record["receipt_file"],
+            "receipt_sha256": record["receipt_sha256"],
+            "artifact_id": record["artifact_id"],
+            "artifact_sha256": record["sha256"],
+        }
+    }
+
+
+def project_qc_summary(run, payload, *, run_payload=None):
+    """Shared validated QC summary for session and sample result readers."""
+    profile = QCReadinessProfileV2.model_validate(payload)
+    if run_payload is None:
+        run_payload = run.model_dump(mode="json")
     assay = payload.get("assay")
     input_level = payload.get("input_level")
     if assay not in QC_ASSAYS or input_level not in QC_INPUT_LEVELS:
@@ -479,15 +518,7 @@ def _project_qc(inputs, state, receipt, input_id, record):
         "domain_score": profile.domain_score,
     }
     _check_summary_limit(summary)
-    return summary, {
-        "E0": {
-            "input_id": input_id,
-            "receipt_file": record["receipt_file"],
-            "receipt_sha256": record["receipt_sha256"],
-            "artifact_id": record["artifact_id"],
-            "artifact_sha256": record["sha256"],
-        }
-    }
+    return summary
 
 
 def _cell_state_context(inputs, state):
@@ -549,6 +580,9 @@ _ASSESSMENT_FIELDS = {
     "runtime_mode", "interpretation_scope", "state_review_status", "independence_state",
     "n_independent_replicates", "n_features", "program_summaries", "program_id", "method_id", "score_unit",
     "observed_gene_count", "declared_gene_count", "mean", "median", "lower_quantile", "upper_quantile",
+    "signature_scope", "gene_coverage_fraction", "source_gene_set", "gene_symbols_sha256",
+    "direction_definition", "unresolved_member_count",
+    "missing_genes", "ambiguous_genes",
     "cell_cycle", "phase_counts", "S", "G2M", "G1", "s_g2m_fraction", "mean_s_score", "mean_g2m_score",
     "profiles", "domain_id", "evidence_sufficiency_state", "eligibility", "source_execution_state",
     "metric_name", "raw_value", "interval", "interval_confidence_level", "unknown_scope",
@@ -558,11 +592,44 @@ _ASSESSMENT_FIELDS = {
     "observation_unit", "producer_composition", "records", "state", "view", "source_id",
     "support_basis", "accounting_basis", "accounting_state", "mass_state", "primary_denominator_id",
 }
-_ASSESSMENT_IDENTIFIERS = {"program_id", "method_id", "label", "source_id", "primary_denominator_id"}
+_ASSESSMENT_FIELDS.update({"primary_composition", "auxiliary_composition", "marker_observations",
+    "channel", "expected_window_match", "target_fraction", "non_target_fraction",
+    "role_judgement_state", "state_id", "definition_decision", "identity_state",
+    "positive_genes", "counter_genes", "source_ids", "gene_detection"})
+_ASSESSMENT_FIELDS.update({"whole_product_composition", "data_view", "record_id", "record_kind", "display_name",
+    "level", "parent_state_id", "resolution_state", "whole_product_denominator",
+    "whole_product_fraction", "parent_denominator", "parent_fraction", "scientific_status",
+    "source_definition_decisions"})
+_ASSESSMENT_IDENTIFIERS = {"program_id", "method_id", "source_gene_set", "label", "source_id", "primary_denominator_id"}
+_ASSESSMENT_IDENTIFIERS.update({"display_name", "record_id", "parent_state_id", "state_id", "positive_genes", "counter_genes", "source_ids"})
+_PROGRAM_FAMILIES_BY_SET = {
+    "HU-2020-TABLE-S1": "pluripotency_like",
+    "OFLANAGAN-2019-CORE": "dissociation_heat_shock",
+    "HALLMARK_REACTIVE_OXYGEN_SPECIES_PATHWAY": "oxidative_stress",
+    "HALLMARK_UNFOLDED_PROTEIN_RESPONSE": "unfolded_protein_response",
+    "HALLMARK_APOPTOSIS": "apoptosis_related",
+    "HALLMARK_HYPOXIA": "hypoxia",
+}
 
 
 def _assessment_aggregate(value, key=""):
     if isinstance(value, dict):
+        if key == "source_definition_decisions":
+            if len(value) > MAX_ROWS:
+                raise _SummaryLimit()
+            if any(not re.fullmatch(r"L[12]:[A-Za-z0-9_]+", state_id)
+                   or decision not in {"evaluate", "parent_only", "unavailable"}
+                   for state_id, decision in value.items()):
+                raise ValueError("unsafe_state_definition_decision")
+            return dict(value)
+        if key == "gene_detection":
+            if len(value) > MAX_ROWS:
+                raise _SummaryLimit()
+            if any(not isinstance(gene, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", gene)
+                   for gene in value):
+                raise ValueError("unsafe_gene_identifier")
+            return {gene: _assessment_aggregate({name: row[name] for name in
+                ("count", "denominator", "state") if name in row}) for gene, row in value.items()}
         return {name: _assessment_aggregate(item, name) for name, item in value.items()
                 if name in _ASSESSMENT_FIELDS}
     if isinstance(value, list):
@@ -591,6 +658,13 @@ def _assessment_aggregate(value, key=""):
     raise ValueError("unsupported_result")
 
 
+def _directed_program_summary(result):
+    # Count unresolved source members without exposing the private membership list.
+    return {**result, "program_summaries": [
+        {**program, "unresolved_member_count": len(program["unresolved_members"])}
+        for program in result["program_summaries"]]}
+
+
 def _assessment_hard_count(result):
     """Keep canonical hard accounting literal; private labels are aliased for the model."""
     from bridge.tool_packages.p0_05_off_target_control.models import OffTargetHardCountAccounting
@@ -608,6 +682,16 @@ def _assessment_query(result):
         return "N-" + hashlib.sha256(value.encode()).hexdigest()[:16]
     claims = {(row["object_id"], row["object_version"]): row.get("properties", {})
               for row in result["nodes"] if row["node_type"] == "Claim"}
+    eligible_directions = {}
+    for node in result["nodes"]:
+        if node["node_type"] != "ReconciliationRecord":
+            continue
+        properties = node.get("properties", {})
+        direction = properties.get("direction")
+        if properties.get("eligibility") != "eligible" or direction not in {"supports", "contradicts"}:
+            continue
+        for evidence_ref in properties.get("included_evidence_refs", []):
+            eligible_directions.setdefault(evidence_ref, set()).add(direction)
     summary = {key: result[key] for key in ("query_name", "graph_version", "returned_node_count",
         "returned_edge_count", "truncated", "omitted_node_count", "omitted_edge_count")}
     summary["graph_alias"] = alias(result["graph_id"])
@@ -635,9 +719,21 @@ def _assessment_query(result):
                 ("state", "requirement_key", "channel_role", "reason_codes", "required_modality")},
                 "experiment_required": properties.get("required_experiment") is not None})
         elif node["node_type"] == "EvidenceRecord":
+            evidence_ref = f"{properties['evidence_id']}@{properties['evidence_version']}"
+            directions = eligible_directions.get(evidence_ref, set())
+            source_verified = (node.get("record_mode") == "owned"
+                and node.get("graph_id") == result["graph_id"]
+                and node.get("graph_version") == result["graph_version"]
+                and all(properties.get(key) for key in ("tool_run_ref", "measurement_result_ref",
+                                                     "measurement_spec_ref", "provenance_refs"))
+                and properties.get("tool_run_execution_state") in {"succeeded", "partial"})
             summary["records"].append({**row, **{key: properties.get(key) for key in
                 ("domain_id", "evidence_state", "value", "unit", "metric_id",
                  "numerator", "denominator", "applicability", "relation")},
+                "source_verification_state": "verified" if source_verified else "unavailable",
+                "source_execution_state": properties.get("tool_run_execution_state"),
+                "eligibility": ("eligible" if properties.get("relation") in directions
+                                else "not_eligible"),
                 "interval": ({key: properties["interval"].get(key) for key in
                     ("lower", "upper", "confidence_level")} if properties.get("interval") else None),
                 "family_alias": alias(json.dumps(properties["evidence_family_ref"], sort_keys=True))})
@@ -710,7 +806,9 @@ def _assessment_model_query(summary, opaque):
         projection_state = ("literal_null" if row["value"] is None else
                             "numeric" if type(row["value"]) in {int, float} else "withheld")
         projected["records"].append({**base(row), **{key: row[key] for key in
-            ("evidence_state", "numerator", "denominator", "applicability", "relation", "interval")},
+            ("evidence_state", "numerator", "denominator", "applicability", "relation", "interval",
+             "source_verification_state", "source_execution_state") if key in row},
+            "eligibility": row.get("eligibility", "not_eligible"),
             **({"metric_name": row["metric_id"]} if known else {"metric_alias": opaque(row["metric_id"])}),
             "metric_semantics_state": "available" if known else "unavailable",
             "value": row["value"] if projection_state != "withheld" else None,
@@ -727,11 +825,98 @@ def _assessment_model_query(summary, opaque):
     return projected
 
 
+_CITATION_REF_VERSION = 1
+_MISSING_CITATION_STATES = {"missing", "unknown", "unavailable", "not_assessed", "not_estimable"}
+_OBSERVATION_CITATION_STATES = {"measured", "inferred", "prior_only", "negative", "alert"}
+
+
+def _citation_role(record, *, graph_record=False):
+    state = record.get("evidence_state")
+    if state in _MISSING_CITATION_STATES:
+        return "missing"
+    if graph_record:
+        if record.get("eligibility") == "eligible":
+            return {"supports": "support", "contradicts": "opposition"}.get(record.get("relation"))
+        if (record.get("source_verification_state") == "verified"
+                and record.get("source_execution_state") in {"succeeded", "partial"}
+                and record.get("evidence_tier") in {"exploratory", "shadow"}
+                and record.get("lifecycle_state") == "active"
+                and record.get("applicability") == "applicable"
+                and record.get("evidence_state") in _OBSERVATION_CITATION_STATES
+                and type(record.get("value")) in {int, float}
+                and math.isfinite(record["value"])):
+            return "observation"
+        return None
+    if (record.get("claim_ref") is not None
+            and record.get("applicability") == "applicable"):
+        bound = {"supports": "support", "contradicts": "opposition"}.get(record.get("relation"))
+        if bound is not None:
+            return bound
+    if state in _OBSERVATION_CITATION_STATES:
+        return "observation"
+    return None
+
+
+def _citation_ref(evidence_alias, kind, record_alias):
+    return f"{evidence_alias}#{kind}:{record_alias}@{_CITATION_REF_VERSION}"
+
+
+def assessment_citation_roles(evidence):
+    """Return stable record references by scientific citation role."""
+    roles = {"support": set(), "observation": set(), "opposition": set(), "missing": set()}
+    for row in evidence:
+        if row.get("state") != "available":
+            continue
+        for item in row.get("measurements", []):
+            role = _citation_role(item)
+            if role and isinstance(item.get("alias"), str):
+                roles[role].add(_citation_ref(row["alias"], "measurement", item["alias"]))
+        for item in row.get("summary", {}).get("records", []):
+            role = _citation_role(item, graph_record=True)
+            if role and isinstance(item.get("alias"), str):
+                roles[role].add(_citation_ref(row["alias"], "record", item["alias"]))
+    return roles
 
 
 
-def assessment_portrait(evidence, candidates):
+
+
+def assessment_portrait(evidence, candidates, *, current_plan_ids=(), modes_by_receipt=None,
+                        order_by_receipt=None):
     """Arrange verified values by their producer contract; never rescore or classify programs."""
+    current_plan_ids = set(current_plan_ids)
+    modes_by_receipt = modes_by_receipt or {}
+    order_by_receipt = order_by_receipt or {}
+    def latest(tool, *, modes=None):
+        matching = []
+        for position, item in enumerate(evidence):
+            if item["tool_id"] != tool:
+                continue
+            mode = (modes_by_receipt.get(item.get("provenance", {}).get("receipt_sha256"))
+                    or item.get("mode_id") or item.get("summary", {}).get("runtime_mode"))
+            if modes is None or mode in modes:
+                matching.append((position, item))
+        if not matching:
+            return None
+        current = [(position, item) for position, item in matching
+                   if item.get("provenance", {}).get("plan_id") in current_plan_ids]
+        return max(current or matching, key=lambda pair: (
+            order_by_receipt.get(pair[1].get("provenance", {}).get("receipt_sha256"), pair[0]),
+            pair[0]))[1]
+    def latest_program(source_gene_set):
+        matching = []
+        for position, item in enumerate(evidence):
+            if (item["tool_id"] == "P0-06" and
+                    any(row.get("source_gene_set") == source_gene_set
+                        for row in item.get("summary", {}).get("program_summaries", []))):
+                matching.append((position, item))
+        if not matching:
+            return None
+        current = [(position, item) for position, item in matching
+                   if item.get("provenance", {}).get("plan_id") in current_plan_ids]
+        return max(current or matching, key=lambda pair: (
+            order_by_receipt.get(pair[1].get("provenance", {}).get("receipt_sha256"), pair[0]),
+            pair[0]))[1]
     axes = []
     definitions = (
         ("cell_state", "细胞状态", "P0-02"),
@@ -742,7 +927,10 @@ def assessment_portrait(evidence, candidates):
         ("process", "增殖与应激", "P0-06"),
     )
     for identifier, title, tool in definitions:
-        row = next((item for item in reversed(evidence) if item["tool_id"] == tool), None)
+        row = (latest(tool, modes={"method_runtime_source_bound"})
+               or latest(tool, modes={"exploratory_programs"})
+               or latest(tool, modes={"exploratory_process"})) if identifier == "process" else (
+                   latest(tool, modes={None, "default"}) if tool == "P0-03" else latest(tool))
         reasons = sorted({reason for item in candidates if item["tool_id"] == tool
                           for reason in item["blockers"]})
         summary = row.get("summary", {}) if row else {}
@@ -760,11 +948,19 @@ def assessment_portrait(evidence, candidates):
                             if row and row["state"] == "available" else
                             [row["reason_code"]] if row else reasons or ["no_scope_evidence"]),
             "evidence_aliases": [row["alias"]] if row else [], "summary": summary}
+        if identifier in {"target_identity", "regional_identity"}:
+            context = latest("P0-03", modes={"reference_similarity_exploratory",
+                                             "saved_reference_similarity_projection"})
+            # Similarity is inspectable context, never a substitute for identity measurements.
+            axis["context_evidence_aliases"] = (
+                [context["alias"]] if context and context["state"] == "available" else [])
+            if identifier == "target_identity":
+                roles = latest("P0-03", modes={"saved_cell_state_context"})
+                if roles and roles["state"] == "available":
+                    axis["context_evidence_aliases"].append(roles["alias"])
         if identifier == "process":
-            cycle = next((item for item in reversed(evidence) if item["tool_id"] == "P0-06"
-                          and item["state"] == "available"
-                          and item["summary"].get("runtime_mode") == "exploratory_process"
-                          and item["summary"].get("cell_cycle")), None)
+            cycle = latest("P0-06", modes={"exploratory_process"})
+            families_by_set = _PROGRAM_FAMILIES_BY_SET
             axis["families"] = []
             for family_id, family_title in (
                 ("pluripotency_like", "多能性样程序"), ("cell_cycle", "细胞周期"),
@@ -774,10 +970,26 @@ def assessment_portrait(evidence, candidates):
                 family = {"id": family_id, "title": family_title, "state": "unavailable",
                     "reason_codes": ["reviewed_family_mapping_unavailable"],
                     "summary": {}, "evidence_aliases": []}
-                if family_id == "cell_cycle" and cycle:
+                if family_id == "cell_cycle" and cycle and cycle["state"] != "available":
+                    family.update(reason_codes=[cycle.get("reason_code", "source_unavailable")],
+                                  evidence_aliases=[cycle["alias"]])
+                elif family_id == "cell_cycle" and cycle and cycle.get("summary", {}).get("cell_cycle"):
                     measured = cycle["summary"]["cell_cycle"]
                     family.update(state="measured" if measured["assessment_state"] == "available" else "unavailable",
                         reason_codes=measured["reason_codes"], summary=measured, evidence_aliases=[cycle["alias"]])
+                elif family_id in families_by_set.values():
+                    source_set = next(key for key, value in families_by_set.items() if value == family_id)
+                    source = latest_program(source_set)
+                    if source and source["state"] == "available":
+                        matching = [item for item in source.get("summary", {}).get("program_summaries", [])
+                                    if item.get("source_gene_set") == source_set]
+                        family.update(state="measured" if any(item.get("assessment_state") == "available"
+                                                             for item in matching) else "unavailable",
+                            reason_codes=sorted({reason for item in matching for reason in item.get("reason_codes", [])}),
+                            summary={"program_summaries": matching}, evidence_aliases=[source["alias"]])
+                    elif source:
+                        family.update(reason_codes=[source.get("reason_code", "source_unavailable")],
+                                      evidence_aliases=[source["alias"]])
                 axis["families"].append(family)
         axes.append(axis)
     return axes
@@ -786,16 +998,18 @@ def assessment_portrait(evidence, candidates):
 def assessment_model_evidence(evidence):
     """Rebuild this provider purpose from explicit fields and ephemeral join aliases."""
     import secrets
-    bindings = {"evidence": {}, "references": {}}
+    bindings = {"evidence": {}, "references": {}, "citation_roles": {}}
     aliases = {}
-    def opaque(value, kind="references"):
-        key = (kind, value)
+    def opaque(value, kind="references", *, citable=False):
+        key = (kind, value, citable)
         if key not in aliases:
-            aliases[key] = ("E-" if kind == "evidence" else "R-") + secrets.token_hex(16)
+            # Only record-level citations enter the E namespace. Context joins
+            # and result containers must not look like admissible evidence.
+            aliases[key] = ("E-" if citable else "R-") + secrets.token_hex(16)
             bindings[kind][aliases[key]] = value
         return aliases[key]
     join_fields = {"alias", "source_alias", "graph_alias", "family_alias", "source", "target"}
-    summary_fields = _ASSESSMENT_FIELDS | {
+    summary_fields = (_ASSESSMENT_FIELDS - {"gene_symbols_sha256"}) | {
         "query_name", "graph_version", "returned_node_count", "returned_edge_count",
         "truncated", "omitted_node_count", "omitted_edge_count", "graph_alias",
         "records", "requirements", "nodes", "edges", "alias", "node_type",
@@ -803,12 +1017,74 @@ def assessment_model_evidence(evidence):
         "type", "source", "target"}
     def aggregate(value, key=""):
         if isinstance(value, dict):
-            return {name: aggregate(item, name) for name, item in value.items() if name in summary_fields}
+            if key in {"gene_detection", "source_definition_decisions"}:
+                return {opaque(identifier): aggregate(row) for identifier, row in value.items()}
+            projected = {name: aggregate(item, name) for name, item in value.items() if name in summary_fields}
+            if key == "program_summaries":
+                # Public, reviewed semantics supplement opaque source identities;
+                # never forward arbitrary program/method labels from the input.
+                family = _PROGRAM_FAMILIES_BY_SET.get(value.get("source_gene_set"))
+                if family:
+                    projected["program_family"] = family
+                method = {"PROC-SCORE-SCANPY": "Scanpy score_genes",
+                          "PROC-SCORE-DECOUPLER": "decoupler ULM"}.get(value.get("method_id"))
+                if method:
+                    projected["method_name"] = method
+            return projected
         if isinstance(value, list):
             return [aggregate(item, key) for item in value]
-        if isinstance(value, str) and (key in join_fields or key in _ASSESSMENT_IDENTIFIERS):
+        if isinstance(value, str) and (key in join_fields or key in _ASSESSMENT_IDENTIFIERS
+                or key in {"missing_genes", "ambiguous_genes"}):
             return opaque(value)
         return value
+    def cite(projected, source, evidence_alias, kind, *, graph_record=False):
+        role = _citation_role(source, graph_record=graph_record)
+        record_alias = source.get("alias")
+        if role is None or not isinstance(record_alias, str):
+            return
+        alias = opaque(_citation_ref(evidence_alias, kind, record_alias), "evidence", citable=True)
+        projected.update(citation_alias=alias, citation_role=role,
+                         citation_ref_version=_CITATION_REF_VERSION)
+        bindings["citation_roles"][alias] = role
+    def native_detection_covered(row):
+        observations = row["summary"].get("marker_observations")
+        if not isinstance(observations, list) or not observations:
+            return set()
+        measurements = {}
+        prefix = "native_gene_detection_"
+        for item in row["measurements"]:
+            name = item.get("metric_name", "")
+            if not isinstance(name, str) or not name.startswith(prefix):
+                continue
+            gene = name[len(prefix):]
+            if (not gene or gene in measurements or item.get("source_alias") != row["alias"]
+                    or item.get("measurement_class") != "gate_input_measurement"):
+                return set()
+            measurements[gene] = item
+        if not measurements:
+            return set()
+        covered = set(measurements)
+        for marker in observations:
+            detected = marker.get("gene_detection")
+            if (not isinstance(detected, dict)
+                    or set(detected) != set(marker.get("positive_genes", [])) | set(marker.get("counter_genes", []))):
+                return set()
+            for gene, observation in detected.items():
+                item = measurements.get(gene)
+                if (item is None or observation.get("state") != "measured"
+                        or item.get("numerator") != observation.get("count")
+                        or item.get("denominator") != observation.get("denominator")
+                        or item.get("unit") != "fraction"
+                        or not isinstance(item.get("raw_value"), (int, float))
+                        or not isinstance(item.get("denominator"), int)
+                        or item["denominator"] <= 0
+                        or not math.isclose(item["raw_value"], item["numerator"] / item["denominator"],
+                                            rel_tol=0, abs_tol=1e-12)):
+                    covered.discard(gene)
+        return covered
+    native_p005 = [row for row in evidence if row.get("state") == "available"
+                   and row.get("tool_id") == "P0-05"
+                   and row.get("summary", {}).get("runtime_mode") == "saved_cell_state_context"]
     result = []
     for row in evidence:
         projected = {"alias": opaque(row["alias"], "evidence")}
@@ -818,6 +1094,31 @@ def assessment_model_evidence(evidence):
         if row["state"] == "available":
             projected["summary"] = (_assessment_model_query(row["summary"], opaque)
                 if "query_name" in row["summary"] else aggregate(row["summary"]))
+            for source, public in zip(
+                    row["summary"].get("records", []),
+                    projected["summary"].get("records", [])):
+                cite(public, source, row["alias"], "record", graph_record=True)
+            if projected["summary"]:
+                defaults = {}
+                for group in ("claims", "requirements", "reconciliations", "records",
+                              "composition", "primary_composition", "auxiliary_composition",
+                              "whole_product_composition", "marker_observations", "program_summaries"):
+                    items = projected["summary"].get(group, [])
+                    if len(items) < 2:
+                        continue
+                    shared = {key: value for key, value in items[0].items()
+                              if key not in {"alias", "claim_alias", "family_alias",
+                                             "citation_alias", "citation_role"}
+                              and all(key in item and item[key] == value for item in items)}
+                    compact = [{key: value for key, value in item.items() if key not in shared}
+                               for item in items]
+                    if shared and len(json.dumps({"defaults": shared, "rows": compact})) < len(json.dumps(items)):
+                        projected["summary"][group] = compact
+                        defaults[group] = shared
+                if defaults:
+                    projected["summary"]["record_defaults"] = defaults
+                    projected["summary"]["record_defaults_semantics"] = (
+                        "Absent row fields inherit group defaults; explicit null overrides defaults.")
             projected["measurements"] = []
             for item in row["measurements"]:
                 measurement = aggregate({key: value for key, value in item.items()
@@ -828,7 +1129,55 @@ def assessment_model_evidence(evidence):
                     measurement["source_alias"] = opaque(item["source_alias"], "evidence")
                 if "measurement_class" in item:
                     measurement["measurement_class"] = item["measurement_class"]
+                cite(measurement, item, row["alias"], "measurement")
                 projected["measurements"].append(measurement)
+            if (row.get("tool_id") in {"P0-03", "P0-04"}
+                    and row["summary"].get("runtime_mode") == "saved_cell_state_context"):
+                omitted = {}
+                for field in ("primary_composition", "auxiliary_composition", "whole_product_composition"):
+                    for source in native_p005:
+                        if (row["summary"].get(field)
+                                and row["summary"][field] == source["summary"].get(field)):
+                            projected["summary"].pop(field, None)
+                            omitted[field] = opaque(source["alias"], "evidence")
+                            break
+                covered = native_detection_covered(row)
+                if covered:
+                    # Keep missing/unknown or mismatched detection rows literal;
+                    # only identical measured values can use canonical citations.
+                    covered_aliases = {opaque(gene) for gene in covered}
+                    for marker in projected["summary"]["marker_observations"]:
+                        remaining = {gene: value for gene, value in marker.get("gene_detection", {}).items()
+                                     if gene not in covered_aliases}
+                        if remaining:
+                            marker["gene_detection"] = remaining
+                        else:
+                            marker.pop("gene_detection", None)
+                    omitted["marker_observations.gene_detection"] = (
+                        "canonical_measurements_with_measured_detection_state")
+                if omitted:
+                    projected["projection_omissions"] = omitted
+            if projected["measurements"]:
+                # The provider needs each value and citation, not 100 copies of
+                # the same source and null interval metadata.
+                common = ("measurement_class", "source_alias", "source_execution_state",
+                          "score_state", "domain_score", "interval", "interval_confidence_level",
+                          "unknown_scope", "citation_ref_version")
+                if len(projected["measurements"]) > 1:
+                    common += ("unit", "denominator", "numerator", "evidence_state", "citation_role")
+                defaults = {key: projected["measurements"][0][key] for key in common
+                            if all(key in item and item[key] == projected["measurements"][0][key]
+                                   for item in projected["measurements"])}
+                if defaults:
+                    projected["measurement_defaults"] = defaults
+                    projected["measurement_defaults_semantics"] = (
+                        "Absent measurement fields inherit these defaults; explicit null overrides defaults.")
+                    for measurement in projected["measurements"]:
+                        for key in defaults:
+                            measurement.pop(key)
+                for measurement in projected["measurements"]:
+                    if "citation_alias" in measurement:
+                        measurement.pop("alias", None)
         result.append(projected)
     return result, bindings
 
@@ -910,23 +1259,17 @@ def _project_candidate(inputs, state, receipt, input_id, record):
 def assessment_evidence(inputs, state, assessment):
     """Read canonical ToolRuns on demand; no duplicate result store and no raw cell rows."""
     from bridge.toolkit.contracts import ToolRunV2, MeasurementResultV2
-    plans = {row["plan_id"] for row in assessment["admissions"]}
     pinned = {}
     for record in assessment.get("scope", {}).get("binding", {}).get("resources", {}).values():
         if record.get("source") == "tool_output":
             key = (record.get("receipt_file"), record.get("receipt_sha256"), record.get("producer_tool_id"))
             pinned.setdefault(key, []).append(record)
-    receipts = state.get("_tool_runs", [])
-    # Current admissions stay first. Reused evidence is explicitly scope-bound,
-    # never every old result in the session, and never a new execution or vote.
-    admitted = [row for row in receipts if row.get("plan_id") in plans]
-    reused = [row for row in receipts if row.get("plan_id") not in plans
-              and row["file"] not in state.get("_invalidated_receipts", {})
-              and (row["file"], row["sha256"], row["tool_id"]) in pinned]
+    receipts = inputs.evidence_sources(state).assessment_receipts(
+        assessment.get("scope", {}).get("binding", {}).get("resources", {}),
+        assessment["admissions"],
+    )
     projected, bindings = [], {}
-    for receipt in [*admitted, *reused]:
-        if receipt["state"] not in {"succeeded", "partial"}:
-            continue
+    for receipt in receipts:
         alias = "E-" + receipt["sha256"][:16]
         try:
             for record in pinned.get((receipt["file"], receipt["sha256"], receipt["tool_id"]), []):
@@ -936,7 +1279,14 @@ def assessment_evidence(inputs, state, assessment):
             inputs.service.registry.validate_historical_result(run, run.request)
             root = inputs.service.directory(state["id"]) / "runs"
             for artifact in run.artifacts:
-                checked_bytes(inputs.service, state, artifact.path, artifact.sha256, root=root)
+                verify_checked_file(
+                    inputs.service,
+                    state,
+                    artifact.path,
+                    artifact.sha256,
+                    root=root,
+                    limit=integrity_limit(inputs.service, artifact.path),
+                )
             result = raw.get("result") or {}
             if receipt["tool_id"] == "P0-02":
                 registered = _registered_profile(state, receipt)
@@ -951,9 +1301,19 @@ def assessment_evidence(inputs, state, assessment):
                     raise ValueError("canonical_cell_state_profile_required")
                 summary, _ = projector(inputs, state, receipt, *registered)
             else:
+                if (receipt["tool_id"] == "P0-06" and result.get("object_version") == "0.2.0"
+                        and result.get("runtime_mode") == "exploratory_programs"):
+                    result = _directed_program_summary(result)
                 summary = (_assessment_query(result) if "query_name" in result else
                     _assessment_hard_count(result) if "accounting" in result and receipt["tool_id"] == "P0-05"
                     else _assessment_aggregate(result))
+            # Browser navigation is separate from scientific snapshots and model
+            # context so existing interpretation/report hashes remain stable.
+            navigation = {"tool_run_ref": {"object_id": "tool-run:" + run.run_id, "object_version": run.tool_version},
+                          "measurements": {}, "measurement_artifacts": {}, "graph_nodes": {}}
+            if "query_name" in result:
+                navigation["graph_nodes"] = {projected["alias"]: original["node_id"]
+                    for original, projected in zip(result["nodes"], summary["nodes"])}
             measurements = []
             canonical = [artifact for artifact in run.artifacts if artifact.kind == "measurement_result_v2"]
             for artifact in canonical:
@@ -972,18 +1332,30 @@ def assessment_evidence(inputs, state, assessment):
                         "score_state", "domain_score", "source_execution_state")}),
                     "source_alias": alias, "artifact_sha256": artifact.sha256,
                 })
+                navigation["measurements"]["M-" + artifact.sha256[:16]] = {
+                    "object_id": item.measurement_id, "object_version": "0.2.0"}
+                navigation["measurement_artifacts"]["M-" + artifact.sha256[:16]] = {
+                    "object_id": artifact.artifact_id, "object_version": run.tool_version}
             if not canonical:
-                for item in raw.get("measurements", []):
-                    measurements.append({"measurement_class": "legacy_tool_measurement",
-                        **{key: item[key] for key in ("raw_value", "numerator", "denominator",
-                                                     "evidence_state", "score_state", "domain_score")
-                           if key in item and (key != "raw_value" or item[key] is None or type(item[key]) in {int, float})}})
+                for index, item in enumerate(raw.get("measurements", [])):
+                    measurement_projection = {key: item[key] for key in (
+                        "metric_name", "raw_value", "numerator", "denominator", "unit", "interval",
+                        "interval_confidence_level", "unknown_scope", "evidence_state", "score_state",
+                        "domain_score", "source_execution_state")
+                        if key in item and (key != "raw_value" or item[key] is None
+                                            or type(item[key]) in {int, float})}
+                    token = hashlib.sha256(json.dumps(
+                        {"index": index, "measurement": measurement_projection},
+                        sort_keys=True, separators=(",", ":"),
+                    ).encode()).hexdigest()[:16]
+                    measurements.append({"alias": "M-" + token,
+                        "measurement_class": "legacy_tool_measurement", **measurement_projection})
             artifact_ids, source, dependencies = _assessment_display_artifacts(inputs, state, run, receipt)
             row = {"alias": alias, "state": "available", "tool_id": receipt["tool_id"],
                 "tool_version": run.tool_version, "execution_state": receipt["state"],
                 "domain_score": None, "score_state": result.get("score_state", "unavailable"),
                 "summary": summary, "measurements": measurements,
-                "interpretation_scope": "exploratory" if result.get("runtime_mode") == "exploratory_process" else "registered_tool_result",
+                "interpretation_scope": "exploratory" if result.get("runtime_mode") in {"exploratory_process", "exploratory_programs", "saved_cell_state_context"} else "registered_tool_result",
                 "artifact_ids": artifact_ids, "dependencies": dependencies,
                 "provenance": {"receipt_sha256": receipt["sha256"], "plan_id": receipt["plan_id"], **source}}
             if "query_name" in summary:
@@ -996,10 +1368,16 @@ def assessment_evidence(inputs, state, assessment):
                     except _SummaryLimit:
                         summary["display_omitted_" + field] = len(summary[field])
                         summary[field] = []
-            _check_summary_limit(row)
+            # Native context includes per-gene observations plus independently
+            # citable measurements. Keep this new mode bounded without dropping
+            # real observations or expanding historical result limits.
+            _check_summary_limit(row, limit=_assessment_result_limit(receipt["tool_id"], result))
             projected.append(row)
             bindings[alias] = {"receipt_file": receipt["file"], "receipt_sha256": receipt["sha256"],
-                               "plan_id": receipt["plan_id"]}
+                               "plan_id": receipt["plan_id"], "navigation": navigation}
+        except _SummaryLimit:
+            projected.append({"alias": alias, "state": "unavailable", "tool_id": receipt["tool_id"],
+                              "reason_code": "result_summary_limit"})
         except (ValueError, OSError, KeyError, TypeError):
             projected.append({"alias": alias, "state": "unavailable", "tool_id": receipt["tool_id"],
                               "reason_code": "canonical_result_invalid"})

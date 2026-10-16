@@ -1,0 +1,530 @@
+{
+  "$defs": {
+    "BiologicalContext": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/BiologicalContext"
+    },
+    "DataViewBinding": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/DataViewBinding"
+    },
+    "EvidenceRelation": {
+      "additionalProperties": false,
+      "properties": {
+        "applicability": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Applicability",
+          "type": "string"
+        },
+        "evidence_alias": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Evidence Alias",
+          "type": "string"
+        },
+        "rationale": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "relation": {
+          "enum": [
+            "supports",
+            "limits",
+            "contradicts",
+            "missing_for"
+          ],
+          "title": "Relation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_alias",
+        "relation",
+        "rationale",
+        "applicability"
+      ],
+      "title": "EvidenceRelation",
+      "type": "object"
+    },
+    "FeatureCoverageItem": {
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Identifier",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "present",
+            "not_found",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier",
+        "state"
+      ],
+      "title": "FeatureCoverageItem",
+      "type": "object"
+    },
+    "FeatureCoverageSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "feature_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feature Count"
+        },
+        "identifier_column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Identifier Column"
+        },
+        "input_revision": {
+          "minimum": 0,
+          "title": "Input Revision",
+          "type": "integer"
+        },
+        "matrix_location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Matrix Location"
+        },
+        "object_version": {
+          "const": "1.0.0",
+          "default": "1.0.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/FeatureCoverageItem"
+          },
+          "maxItems": 96,
+          "title": "Results",
+          "type": "array"
+        },
+        "semantics": {
+          "const": "exact_identifier_membership_not_expression_or_biological_absence",
+          "default": "exact_identifier_membership_not_expression_or_biological_absence",
+          "title": "Semantics",
+          "type": "string"
+        },
+        "upload_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Upload Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "upload_sha256",
+        "input_revision",
+        "matrix_location",
+        "identifier_column",
+        "complete",
+        "results"
+      ],
+      "title": "FeatureCoverageSnapshot",
+      "type": "object"
+    },
+    "InterpretationGraphRef": {
+      "additionalProperties": false,
+      "properties": {
+        "graph_id": {
+          "minLength": 1,
+          "title": "Graph Id",
+          "type": "string"
+        },
+        "graph_manifest_sha256": {
+          "$ref": "bridge://schemas/research-report-context/v0.4#/properties/graph_manifest_sha256"
+        },
+        "graph_version": {
+          "$ref": "bridge://schemas/research-report-context/v0.4#/properties/graph_version"
+        }
+      },
+      "required": [
+        "graph_id",
+        "graph_version",
+        "graph_manifest_sha256"
+      ],
+      "title": "InterpretationGraphRef",
+      "type": "object"
+    },
+    "LiteratureSnapshot": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/LiteratureSnapshot"
+    },
+    "LiteratureUse": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/LiteratureUse"
+    },
+    "ResearchExplanationV12": {
+      "additionalProperties": false,
+      "properties": {
+        "competing_explanation": {
+          "title": "Competing Explanation",
+          "type": "string"
+        },
+        "discriminating_check": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Discriminating Check"
+        },
+        "evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Aliases",
+          "type": "array"
+        },
+        "evidence_relations": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRelation"
+          },
+          "maxItems": 24,
+          "title": "Evidence Relations",
+          "type": "array"
+        },
+        "expected_observation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Observation"
+        },
+        "feature_queries": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Feature Queries",
+          "type": "array"
+        },
+        "literature_support": {
+          "items": {
+            "$ref": "#/$defs/LiteratureUse"
+          },
+          "maxItems": 3,
+          "title": "Literature Support",
+          "type": "array"
+        },
+        "missing_evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Evidence Aliases",
+          "type": "array"
+        },
+        "opposing_evidence_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Opposing Evidence Aliases",
+          "type": "array"
+        },
+        "statement": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "evidence_aliases",
+        "competing_explanation",
+        "discriminating_check"
+      ],
+      "title": "ResearchExplanationV12",
+      "type": "object"
+    },
+    "ResearchExplanationVersion": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/ResearchExplanationVersion"
+    },
+    "ResearchExplanationVersionV11": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/ResearchExplanationVersionV11"
+    },
+    "ResearchExplanationVersionV12": {
+      "additionalProperties": false,
+      "properties": {
+        "biological_context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BiologicalContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence_snapshot_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Evidence Snapshot Sha256",
+          "type": "string"
+        },
+        "feature_coverage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FeatureCoverageSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "graph_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InterpretationGraphRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/ResearchExplanationV12"
+          },
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "input_revision": {
+          "minimum": 0,
+          "title": "Input Revision",
+          "type": "integer"
+        },
+        "literature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LiteratureSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "object_version": {
+          "const": "1.2.0",
+          "default": "1.2.0",
+          "title": "Object Version",
+          "type": "string"
+        },
+        "predecessor_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predecessor Sha256"
+        },
+        "qualification": {
+          "const": "proposed_explanation",
+          "default": "proposed_explanation",
+          "title": "Qualification",
+          "type": "string"
+        },
+        "scope_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Scope Digest",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scope_digest",
+        "input_revision",
+        "hypotheses",
+        "evidence_snapshot_sha256",
+        "version",
+        "content_sha256",
+        "created_at",
+        "feature_coverage",
+        "graph_ref"
+      ],
+      "title": "ResearchExplanationVersionV12",
+      "type": "object"
+    },
+    "ResearchProductFacts": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/ResearchProductFacts"
+    },
+    "VersionedObjectRef": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/$defs/VersionedObjectRef"
+    }
+  },
+  "$id": "bridge://schemas/research-report-context/v0.5",
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/audience"
+    },
+    "candidate_development": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/candidate_development"
+    },
+    "composition_mapping": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/composition_mapping"
+    },
+    "confirmed_product_facts": {
+      "$ref": "#/$defs/ResearchProductFacts"
+    },
+    "context_id": {
+      "title": "Context Id",
+      "type": "string"
+    },
+    "context_sha256": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/context_sha256"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "data_view_source_ref": {
+      "title": "Data View Source Ref",
+      "type": "string"
+    },
+    "explanation_qualification": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/explanation_qualification"
+    },
+    "explanation_versions": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "1.0.0": "#/$defs/ResearchExplanationVersion",
+            "1.1.0": "#/$defs/ResearchExplanationVersionV11",
+            "1.2.0": "#/$defs/ResearchExplanationVersionV12"
+          },
+          "propertyName": "object_version"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ResearchExplanationVersion"
+          },
+          {
+            "$ref": "#/$defs/ResearchExplanationVersionV11"
+          },
+          {
+            "$ref": "#/$defs/ResearchExplanationVersionV12"
+          }
+        ]
+      },
+      "title": "Explanation Versions",
+      "type": "array"
+    },
+    "facts_qualification": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/facts_qualification"
+    },
+    "graph_id": {
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "graph_manifest_sha256": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/graph_manifest_sha256"
+    },
+    "graph_version": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/graph_version"
+    },
+    "input_revision": {
+      "title": "Input Revision",
+      "type": "string"
+    },
+    "intake_source_ref": {
+      "title": "Intake Source Ref",
+      "type": "string"
+    },
+    "object_version": {
+      "const": "0.5.0",
+      "default": "0.5.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "process_means": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/process_means"
+    },
+    "product_case_ref": {
+      "$ref": "#/$defs/VersionedObjectRef"
+    },
+    "public_export_eligibility": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/public_export_eligibility"
+    },
+    "scientific_validation": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/scientific_validation"
+    },
+    "sources": {
+      "$ref": "bridge://schemas/research-report-context/v0.4#/properties/sources"
+    }
+  },
+  "required": [
+    "context_id",
+    "input_revision",
+    "graph_id",
+    "graph_version",
+    "graph_manifest_sha256",
+    "product_case_ref",
+    "confirmed_product_facts",
+    "intake_source_ref",
+    "data_view",
+    "data_view_source_ref",
+    "sources",
+    "context_sha256"
+  ],
+  "title": "ResearchReportContextV05",
+  "type": "object"
+}

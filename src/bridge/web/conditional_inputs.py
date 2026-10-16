@@ -100,8 +100,9 @@ def _reason_label(reason):
 
 
 class ConditionalInputs:
-    def __init__(self, service):
+    def __init__(self, service, *, check_cohort=None):
         self.service = service
+        self.check_cohort = check_cohort
 
     def _record(self, state, identifier, visited=None):
         visited = set() if visited is None else visited
@@ -122,6 +123,16 @@ class ConditionalInputs:
             return self.service.inputs.verify(state, record)
         except (ValueError, OSError, KeyError, TypeError):
             raise ValueError("source_integrity_failed") from None
+
+    def verified_object(self, state, identifier):
+        """Resolve one registered comparison input without exposing private locators."""
+        return self._record(state, identifier)
+
+    def _validate_cohort(self, state, selection, binding):
+        if binding is not None:
+            if self.check_cohort is None:
+                raise HTTPException(409, "conditional_cohort_binding_stale")
+            self.check_cohort(state, selection, binding)
 
     def _matching_preparation(self, state, case):
         preparation = case.get("originating_preparation_id")
@@ -348,14 +359,15 @@ class ConditionalInputs:
         if type(expected_revision) is not int or expected_revision != state.get("_input_revision", 0):
             raise HTTPException(409, "conditional_revision_mismatch")
 
-    def propose(self, state, selection: Selection, expected_revision: int):
-        from .app import uid
+    def propose(self, state, selection: Selection, expected_revision: int, *, cohort_binding=None):
+        from .sessions import uid
         self._ready(state, expected_revision)
         selection = Selection.model_validate(selection.model_dump(mode="json"))
         if selection.tool_id not in TOOLS:
             raise HTTPException(422, "unsupported_conditional_tool")
         if len(state.get("_conditional_history", [])) >= 128:
             raise HTTPException(409, "conditional_history_limit")
+        self._validate_cohort(state, selection, cohort_binding)
         evaluation = self._evaluate(state, selection)
         try:
             binding = self._binding(state, selection, evaluation)
@@ -364,8 +376,10 @@ class ConditionalInputs:
         event = {"event": "proposed", "id": uid(), "session_id": state["id"],
                  "input_revision": expected_revision, "selection": selection.model_dump(mode="json"),
                  "binding": binding, "evaluation": evaluation}
+        if cohort_binding is not None:
+            event["cohort_binding"] = deepcopy(cohort_binding)
         self._append_event(state, event)
-        self.service.save(state)
+        self.service.sessions.save(state)
         return self._public_proposal(state, event)
 
     @staticmethod
@@ -398,6 +412,7 @@ class ConditionalInputs:
         if state["_input_revision"] != revision:
             raise HTTPException(409, "conditional_selection_stale")
         selection = Selection.model_validate(event["selection"])
+        self._validate_cohort(state, selection, event.get("cohort_binding"))
         evaluation = self._evaluate(state, selection)
         try:
             binding = self._binding(state, selection, evaluation)
@@ -443,7 +458,7 @@ class ConditionalInputs:
         if changed:
             self.service.input_changed(state)
         else:
-            self.service.save(state)
+            self.service.sessions.save(state)
         return self._public_proposal(state, event)
 
     def selected_blocker(self, state, tool_id):
@@ -486,9 +501,10 @@ class ConditionalInputs:
         evaluation = self._evaluate(state, selection)
         if status != "cancelled":
             try:
+                self._validate_cohort(state, selection, event.get("cohort_binding"))
                 if state["_input_revision"] != revision or self._binding(state, selection, evaluation) != event["binding"]:
                     status = "stale"
-            except (ValueError, OSError, KeyError):
+            except (HTTPException, ValueError, OSError, KeyError):
                 status = "stale"
         evaluation["execution_available"] = evaluation["execution_available"] and status in {"pending", "confirmed"}
         status_labels = {"pending": "待确认", "confirmed": "已确认，仍需单独批准计划",
@@ -496,6 +512,7 @@ class ConditionalInputs:
         return {"id": event["id"], "digest": event["digest"], "status": status,
                 "status_label": status_labels[status],
                 "input_revision": state["_input_revision"], "label": "产品比较选择" if selection.tool_id == "P0-07" else "移植后证据选择",
+                **({"cohort_binding": deepcopy(event["cohort_binding"])} if "cohort_binding" in event else {}),
                 **evaluation}
 
     def public(self, state):

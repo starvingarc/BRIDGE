@@ -7,14 +7,14 @@
 | Date | 2026-08-07 |
 | Analysis unit | `product case x domain x MeasurementSpec` |
 | Runtime / scientific state | `implemented` / `candidate` |
-| Current result | `bridge://schemas/evidence-sufficiency-run-result/v0.2` |
+| Current result | `bridge://schemas/evidence-sufficiency-run-result/v0.3` |
 | Per-domain handoff | `bridge://schemas/evidence-sufficiency-profile/v0.2` |
 | Visualization data | `bridge://schemas/evidence-sufficiency-visualization-data/v0.1` |
 | Detailed runtime contract | [P0-08 Tool Card](../../src/bridge/tool_packages/cards/P0-08.md) |
 
 ## 0. 当前实现绑定（候选）
 
-P0-08 已实现为确定性候选工具，当前包版本以 [Tool Card](../../src/bridge/tool_packages/cards/P0-08.md) 为准。工具使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。公开结果合同仍为 `bridge://schemas/evidence-sufficiency-run-result/v0.2`；每个域另输出一个符合 `bridge://schemas/evidence-sufficiency-profile/v0.2` 的 canonical 单对象 JSON，作为 P0-09-ready producer handoff，组合 wrapper 仅是 `noncanonical_convenience_projection`。checksummed ProductCase 与 QC 选中数据视图的案例边界校验，不改变 gate rule、结果状态或科学解释。候选 gate rule 与 reason-code catalog 使用 `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析，也不生成新的 `MeasurementResult`。
+P0-08 已实现为确定性候选工具，当前包版本以 [Tool Card](../../src/bridge/tool_packages/cards/P0-08.md) 为准。工具使用 `ToolRequestV2` 的带 checksum 本地结构化对象输入和模块本地 adapter。当前公开结果合同为 `bridge://schemas/evidence-sufficiency-run-result/v0.3`；每个域另输出一个符合 `bridge://schemas/evidence-sufficiency-profile/v0.2` 的 canonical 单对象 JSON，作为 P0-09-ready producer handoff，组合 wrapper 仅是 `noncanonical_convenience_projection`。checksummed ProductCase 与 QC 选中数据视图的案例边界校验，不改变 gate rule、结果状态或科学解释。候选 gate rule 与 reason-code catalog 使用 `object_version=0.2.0`，历史 v0.1 资源和 Schema 保持字节不变。实现只折叠已生成的上游记录，不读取表达矩阵、不重跑单细胞分析，也不生成新的 `MeasurementResult`。
 
 这是一项工程可执行性进展，不是科学确认。`ENV-EVIDENCE-v0.2` 明确声明确定性门控和 Matplotlib 静态渲染依赖；所有已选内部方法记录仍为 `formal_eligible=false`。当前没有批准的 P0 ScoreContract，因此任何运行仍必须保持 `domain_score=null`、`score_state=unavailable`。
 
@@ -34,19 +34,22 @@ Evidence Sufficiency 判断某个域的分析结果是否具有足够证据支�
 
 本模块不生成综合置信分、产品总等级、临床疗效、安全性、potency、GMP 放行或绝对产品排名。`Data Grade` 在本任务中统一改称 `Data Readiness`。
 
+当前注册 `default` 模式；输入使用 `ToolRequestV2`，不接受表达资产、任意参数或
+顶层 measurement_spec_ref。域级 MeasurementSpec 通过版本化对象角色提供。
+
 ## 2. 输入合同
 
 每次门控至少读取：
 
 - 已确认的 `ProductCase`、`ProductDefinitionCard`、assay、sampling context 和数据角色。
-- 对应域和版本的 `MeasurementSpecV2`，以及存在时的 `ScoreContract`。
+- 对应域和版本的 `MeasurementSpecV2` 或技术视图 `MeasurementSpecV3`，以及存在时的 `ScoreContract`。
 - `QCReadinessProfileV2`、输入数据视图、分母、基因覆盖和检出能力记录。
 - 域级 `MeasurementResultV2`、uncertainty、missing behavior、上游 ToolRun provenance 和 Evidence IDs。
 - Tool/Environment/Task Card 状态及 benchmark、source holdout、modality holdout 和校准记录。
 - reference、prior、ontology 和 knowledge snapshot 的版本与适用范围。
 - reference、preprocessing、annotation、assay、方法和下采样敏感性结果。
 
-系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本、Schema、精确源字节 SHA-256 和 provenance；这些字段在顶层 `source_object_bindings` 中无路径重现，并全部进入 deterministic run identity。只要 DomainGateInput 声明 ProductCase 或 QC context，请求就必须提供同一份 checksummed ProductCase；pointer 的对象 ID、case version 和 provenance-reference 集合必须与其一致，ProductDefinition pointer 也必须匹配。QCReadinessProfileV2 必须提供 selected data view，且 sample/preparation、biological-unit manifest、checksum 和 assay 与 ProductCase 一致。ProductCase 中的 source MeasurementSpec 只描述上游来源，不要求等于各域的 MeasurementSpecV2。自身 Schema 无版本字段的 `QCReadinessProfileV2` 和 `MeasurementResultV2` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.2.0`；MeasurementResultV2 的 `measurement_spec_version` 必须等于对应域 MeasurementSpecV2 `version`。
+系统不得从文件名、路径、accession 或实验室名称推断缺失合同。任一输入记录必须绑定对象版本、Schema、精确源字节 SHA-256 和 provenance；这些字段在顶层 `source_object_bindings` 中无路径重现，并全部进入 deterministic run identity。只要 DomainGateInput 声明 ProductCase 或 QC context，请求就必须提供同一份 checksummed ProductCase；pointer 的对象 ID、case version 和 provenance-reference 集合必须与其一致，ProductDefinition pointer 也必须匹配。QCReadinessProfileV2 必须提供 selected data view，且 sample/preparation、biological-unit manifest、checksum 和 assay 与 ProductCase 一致。ProductCase 中的 source MeasurementSpec 只描述上游来源，不要求等于各域的 MeasurementSpec。自身 Schema 无版本字段的 `QCReadinessProfileV2` 和 `MeasurementResultV2` 在本 adapter 中只接受 `StructuredInputRef.object_version=0.2.0`；MeasurementResultV2 的 `measurement_spec_version` 必须等于对应域 MeasurementSpec `version`。
 
 资格检查还必须把对象内部声明交叉绑定：MeasurementSpec 所列每个工具都必须在 QC 中获得显式或通用的 `eligible`/`conditional` 正向许可；缺失、`unknown` 或任何其他状态均拒绝运行。required validation 必须由 `validation_ref` 指向并落在 `applicable_contexts`；required prior 的 `prior_ref` 必须出现在 MeasurementSpec 的 `prior_refs` 或 `reference_refs`。`prior_requirement=not_required` 不得同时绑定 required prior，required sensitivity record 的 kind 也必须出现在 `required_sensitivity_kinds`。这些矛盾复用 `domain_input_measurement_spec_mismatch` 并在生成科学 profile 前 fail closed。
 
@@ -171,7 +174,7 @@ measurement_evidence_state_counts
 created_at / deterministic_run_ref
 ```
 
-顶层 `EvidenceSufficiencyRunResultV2.source_object_bindings` 对本次每个 `StructuredInputRef` 恰有一个 path-free binding：request-local input ID、role、logical object ID、object version、Schema ID 和 exact source SHA-256。每个 `EvidenceSufficiencyProfileV2` 同时以稳定序号文件名单独输出，作为 P0-09-ready canonical handoff；多 profile wrapper 仅用于便利浏览。P0-09 对 v0.2 的接受和比较逻辑在其独立 PR 中实现，当前不放宽 formal family-proof 阻断。案例级 `CaseEvidenceReadinessSummaryV2` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence-state 的 domain-profile reference 数量、`score_state` 数量和阻塞原因列表。同一个 MeasurementResult 跨域复用时会在每个 profile 各计一次，不能解释为独立证据数、投票或权重。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
+顶层 `EvidenceSufficiencyRunResultV3.source_object_bindings` 对本次每个 `StructuredInputRef` 恰有一个 path-free binding：request-local input ID、role、logical object ID、object version、Schema ID 和 exact source SHA-256。每个 `EvidenceSufficiencyProfileV2` 同时以稳定序号文件名单独输出，作为 P0-09-ready canonical handoff；多 profile wrapper 仅用于便利浏览。P0-09 canonical-run 模式接受历史 run-result v0.2 和当前 v0.3；独立 per-domain profile 仍为 v0.2，formal family-proof 阻断不变。案例级 `CaseEvidenceReadinessSummaryV2` 包含各域 `sufficient/limited/insufficient/not_assessed` 数量、八种 MeasurementResult evidence-state 的 domain-profile reference 数量、`score_state` 数量和阻塞原因列表。同一个 MeasurementResult 跨域复用时会在每个 profile 各计一次，不能解释为独立证据数、投票或权重。`blocking_reasons` 只能包含 reason catalog 中 severity=`blocking` 的代码；合同或科学记录缺失只进入 `missing_requirements`，不得同时冒充 blocking。不得生成 overall grade、总分、排行榜或“通过/失败产品”标签。
 
 ## 8. 运行环境
 

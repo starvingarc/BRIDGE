@@ -1,0 +1,305 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/$defs/DataViewBinding"
+    },
+    "ProductRole": {
+      "enum": [
+        "target",
+        "acceptable_adjacent",
+        "known_off_target",
+        "role_unresolved"
+      ],
+      "title": "ProductRole",
+      "type": "string"
+    },
+    "SavedRoleRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "product_role": {
+          "$ref": "#/$defs/ProductRole"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason Code"
+        },
+        "record_id": {
+          "title": "Record Id",
+          "type": "string"
+        },
+        "source_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "state_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "State Id"
+        }
+      },
+      "required": [
+        "record_id",
+        "state_id",
+        "count",
+        "denominator",
+        "product_role",
+        "source_refs",
+        "reason_code"
+      ],
+      "title": "SavedRoleRecord",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/saved-target-role-profile/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "auxiliary_composition": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/auxiliary_composition"
+    },
+    "auxiliary_producer_ref": {
+      "title": "Auxiliary Producer Ref",
+      "type": "string"
+    },
+    "created_at": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/created_at"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "derivation": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/derivation"
+    },
+    "domain_score": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/domain_score"
+    },
+    "evidence_family_id": {
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "expected_window_match": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/expected_window_match"
+    },
+    "hierarchy_artifact_sha256": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/hierarchy_artifact_sha256"
+    },
+    "hierarchy_profile_ref": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/hierarchy_profile_ref"
+    },
+    "hierarchy_view_binding": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/hierarchy_view_binding"
+    },
+    "independence_state": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/independence_state"
+    },
+    "limitations": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/limitations"
+    },
+    "marker_observations": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/marker_observations"
+    },
+    "n_independent_replicates": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/n_independent_replicates"
+    },
+    "non_target_fraction": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/non_target_fraction"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "original_figure_refs": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/original_figure_refs"
+    },
+    "original_producer_ref": {
+      "title": "Original Producer Ref",
+      "type": "string"
+    },
+    "primary_composition": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/primary_composition"
+    },
+    "product_definition_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Product Definition Ref"
+    },
+    "product_definition_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Product Definition Sha256"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "reference_state_portrait": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/reference_state_portrait"
+    },
+    "regional_fidelity_fraction": {
+      "default": null,
+      "title": "Regional Fidelity Fraction",
+      "type": "null"
+    },
+    "role_counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/ProductRole"
+      },
+      "title": "Role Counts",
+      "type": "object"
+    },
+    "role_judgement_state": {
+      "enum": [
+        "complete",
+        "partial",
+        "not_assessed"
+      ],
+      "title": "Role Judgement State",
+      "type": "string"
+    },
+    "role_records": {
+      "items": {
+        "$ref": "#/$defs/SavedRoleRecord"
+      },
+      "title": "Role Records",
+      "type": "array"
+    },
+    "runtime_mode": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/runtime_mode"
+    },
+    "score_state": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/score_state"
+    },
+    "source_definition_decisions": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/source_definition_decisions"
+    },
+    "source_receipt_sha256": {
+      "title": "Source Receipt Sha256",
+      "type": "string"
+    },
+    "source_review_sha256": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/source_review_sha256"
+    },
+    "state_role_map_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "State Role Map Ref"
+    },
+    "state_role_map_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "State Role Map Sha256"
+    },
+    "target_fraction": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Fraction"
+    },
+    "tool_id": {
+      "const": "P0-03",
+      "default": "P0-03",
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "whole_product_composition": {
+      "$ref": "bridge://schemas/native-cell-state-context-profile/v0.2#/properties/whole_product_composition"
+    }
+  },
+  "required": [
+    "tool_version",
+    "profile_id",
+    "data_view",
+    "source_receipt_sha256",
+    "original_producer_ref",
+    "auxiliary_producer_ref",
+    "evidence_family_id",
+    "primary_composition",
+    "auxiliary_composition",
+    "marker_observations",
+    "reference_state_portrait",
+    "original_figure_refs",
+    "role_judgement_state",
+    "limitations",
+    "created_at",
+    "whole_product_composition",
+    "hierarchy_profile_ref",
+    "hierarchy_artifact_sha256",
+    "hierarchy_view_binding",
+    "source_review_sha256",
+    "source_definition_decisions",
+    "role_records",
+    "role_counts",
+    "state_role_map_ref",
+    "state_role_map_sha256",
+    "product_definition_ref",
+    "product_definition_sha256"
+  ],
+  "title": "SavedTargetRoleProfile",
+  "type": "object"
+}

@@ -190,3 +190,11 @@ it("keeps unsupported protocol dates empty with an explicit review note", async 
   expect(await screen.findByText("起止时间未获引用原文明确支持，已留空待核对。")).toBeInTheDocument();
   expect(screen.queryByText("D22–D28")).not.toBeInTheDocument();
 });
+
+it("labels restored legacy facts as previously confirmed rather than newly entered", async () => {
+  const {value, props} = setup();
+  value.autofill.field_sources.culture_day = {kind:"confirmed",source_ids:[],quote:""};
+  render(<ProductIntake {...props} />);
+  expect(await screen.findByText("既有已确认值 · 原始出处未保存")).toBeVisible();
+  expect(screen.queryByText("您已填写")).not.toBeInTheDocument();
+});

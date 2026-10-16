@@ -1,3 +1,4 @@
+import { researcherText, reasonLabel } from "../researcherLabels";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { ConditionalDraft, Session } from "../types";
@@ -25,12 +26,12 @@ export function ConditionalInputs({ session, busy, onSession, onError }: {
   return <details className="scientific-draft" aria-label="产品比较与移植后证据">
     <summary>产品比较与移植后证据</summary>
     <p>{directory.access_boundary}</p>
-    {[directory.comparison, directory.graft].map((group) => <section key={group.label}>
-      <h3>{group.label}</h3>
-      {group.reasons.map((reason) => <p key={reason}>{reason}</p>)}
+    {[directory.comparison, directory.graft].map((group) => <section key={researcherText(group.label)}>
+      <h3>{researcherText(group.label)}</h3>
+      {group.reasons.map((reason) => <p key={reasonLabel(reason)}>{reasonLabel(reason)}</p>)}
       {group.entries.map((entry) => <div className="science-choice" key={entry.id}>
-        <strong>{entry.label}</strong><p>{entry.category_label}</p>
-        {entry.reasons.map((reason) => <p key={reason}>{reason}</p>)}
+        <strong>{researcherText(entry.label)}</strong><p>{entry.category_label}</p>
+        {entry.reasons.map((reason) => <p key={reasonLabel(reason)}>{reasonLabel(reason)}</p>)}
         <button disabled={disabled || !entry.execution_available}
           onClick={() => void perform(() => api.proposeConditionalInputs(
             session.id, entry.diagnostics.selection, directory.input_revision))}>
@@ -38,9 +39,9 @@ export function ConditionalInputs({ session, busy, onSession, onError }: {
         </button>
       </div>)}
     </section>)}
-    {directory.selections.map((draft) => <section key={draft.id} aria-label={draft.label}>
-      <h3>{draft.label}</h3><p>{draft.status_label}</p>
-      {draft.reasons.map((reason) => <p key={reason}>{reason}</p>)}
+    {directory.selections.map((draft) => <section key={draft.id} aria-label={researcherText(draft.label)}>
+      <h3>{researcherText(draft.label)}</h3><p>{researcherText(draft.status_label)}</p>
+      {draft.reasons.map((reason) => <p key={reasonLabel(reason)}>{reasonLabel(reason)}</p>)}
       {draft.status === "pending" ? <button disabled={disabled || !draft.execution_available}
         onClick={() => void decide(draft, "confirm")}>确认所选输入</button> : null}
       {draft.status === "confirmed" ? <button disabled={disabled || !draft.execution_available}

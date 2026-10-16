@@ -18,9 +18,10 @@ QuestionField = Literal[
     "product_name", "product_family", "target_cell_type", "target_stage",
     "sampling_context", "independent_cultures", "assay", "matrix_location",
     "count_semantics", "source_family_id", "sample_id_column",
-    "capture_id_column", "gene_symbol_column", "assessment_focus",
+    "capture_id_column", "gene_symbol_column", "assessment_focus", "sample_context", "capture_id",
 ]
 ENUM_OPTIONS = {
+    "sample_context": {"pre_graft", "post_graft"},
     "product_family": {"hpsc_mda", "other"},
     "sampling_context": {"pretransplant_preparation", "process_sample"},
     "assay": {"scRNA-seq", "snRNA-seq"},
@@ -114,6 +115,8 @@ class Clarifications:
         return self.service.intake.current_facts(state, aid).model_dump(mode="json")
 
     def current(self, state, card):
+        if card.get("sample_id"):
+            return self.service.sample_questions.current(state, card)
         upload = state["_uploads"].get(card["upload_id"])
         if not upload or upload["sha256"] != card["_binding"]["sha256"]:
             return False
@@ -132,6 +135,7 @@ class Clarifications:
 
     def context(self, state):
         return [{"upload_id": card["upload_id"], "state": card["status"],
+                 **({"sample_id": card["sample_id"]} if card.get("sample_id") else {}),
                  "fields": [question["field"] for question in card["questions"]]}
                 for card in self.public(state)[-12:]]
 
@@ -141,13 +145,18 @@ class Clarifications:
                 for identifier in [card["message_id"], *card.get("_answer_message_ids", [])]}
 
     def stage(self, state, body, *, force=False):
-        from .app import uid
+        from .sessions import uid
         self.initialize(state)
         aid = body.upload_id
         if aid not in state["_uploads"]:
             raise HTTPException(404, "upload_not_found")
+        focus = state.get("_sample_workflow_active") or state.get("_sample_turn")
+        if focus and focus["upload_id"] == aid:
+            return self.service.sample_questions.stage(state, body, focus, force=force)
         facts = self.facts(state, aid)
         fields = [question.field for question in body.questions]
+        if any(field in {"sample_context", "capture_id"} for field in fields):
+            raise HTTPException(422, "clarification_sample_context_required")
         if not force:
             for card in reversed(state["_clarifications"]):
                 if (card["upload_id"] == aid and self.current(state, card)
@@ -179,7 +188,7 @@ class Clarifications:
         card = {"id": uid(), "upload_id": aid, "status": "pending", "questions": questions,
                 "answers": [], "input_revision": state["_input_revision"]}
         card["digest"] = digest([state["id"], card, state["_uploads"][aid]["sha256"]])
-        self.service.message(state, "assistant", "请核对下面的问题；可以选择选项、补充说明或保留未知。提交答案不会启动分析。")
+        self.service.message(state, "assistant", "请核对下面的问题；可以选择选项、补充说明或保留未知。提交答案不会启动分析。", source="server_template")
         card["message_id"] = state["messages"][-1]["id"]
         card["_proposal"] = body.model_dump(mode="json")
         card["_values"] = values
@@ -209,6 +218,8 @@ class Clarifications:
         fields = [item.field for item in body.answers]
         if len(fields) != len(set(fields)) or set(fields) != set(questions):
             raise HTTPException(422, "clarification_answers_mismatch")
+        if card.get("sample_id"):
+            return self.service.sample_questions.answer(state, card, body)
         aid = card["upload_id"]
         before = self.facts(state, aid)
         values = deepcopy(before)
@@ -261,7 +272,7 @@ class Clarifications:
                 card["_binding"]["facts"][field].append(value)
         if focus is not None:
             state.setdefault("_assessment_focus", {})[aid] = focus
-        self.service.message(state, "user", "\n".join(summaries))
+        self.service.message(state, "user", "\n".join(summaries), source="user_input")
         card.setdefault("_answer_message_ids", []).append(state["messages"][-1]["id"])
         state["status"], state["error"] = "idle", None
 
@@ -276,6 +287,9 @@ class Clarifications:
         if state.get("pending_input_change"):
             raise HTTPException(409, "input_review_required")
         proposal = QuestionSet.model_validate(card["_proposal"])
-        fresh = self.stage(state, proposal, force=True)
+        if card.get("sample_id"):
+            fresh = self.service.sample_questions.stage(state, proposal, card, force=True)
+        else:
+            fresh = self.stage(state, proposal, force=True)
         card["status"] = "superseded"
         return fresh
