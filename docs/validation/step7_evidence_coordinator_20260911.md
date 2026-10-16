@@ -229,6 +229,161 @@ qualification remain explicitly unfinished. Final complete CI and merge
 identities are recorded on [PR #99](https://github.com/starvingarc/BRIDGE/pull/99).
 No existing service, private sample, locked evaluation or deployment was changed.
 
+## Source-bound program continuation — 2026-09-26
+
+PR #8 adds scope-frozen pending-source selection without treating an explicit
+native evidence addition as a correction to historical measurements. Actual
+corrections still invalidate dependent results. Sufficiency and graph append use
+separate proposals and execution approvals; automatic future-receipt binding
+within a combined scope has not been implemented.
+
+The saved public-data Web case completed both registered sufficiency and graph
+append for the dissociation source without rerunning P006. Graph v5 inherits v4
+and contains 81 evidence records, including two pluripotency and two dissociation
+observations. The latter retain null values and unavailable states: the signed
+signature is unsuitable for the unsigned Scanpy score, and ambiguous gene
+identifiers prevent estimation by ULM. All four remain exploratory; missing is
+not negative evidence. Historical graph and pluripotency receipts remain valid.
+
+Bounded checks: 22 provider/action-schema cases passed; five existing target,
+developmental, composition and producer-input cases passed after removing a
+local variable that shadowed the reference constructor; three append/correction
+and candidate-selection regressions passed. Source review and a separate read
+of controlled saved receipts/graph confirmed the reported engineering boundary.
+These are not a full-suite result. Exact-head CI belongs to PR #8.
+
+A real-model query completed, but a subsequent explanation was rejected for two
+unavailable support/observation citations. JSON outbound schemas were found to
+omit the per-turn citation and action enums already present in native tool
+schemas. The JSON path now reuses that implementation; the existing wire test
+first reproduced the mismatch, then 17 targeted cases passed. This test set
+overlaps the 22 cases above and is not an additional independent total.
+
+After that fix, one explicit resume reused the original approval and remaining
+model budget. It finished with `explanation_complete`, one interpretation
+version and zero additional tool runs. The earlier citation rejection remains in
+history. The accepted explanation cites four available measurements but concerns
+neural identity, omitting the requested dissociation limitations and using no
+missing-evidence citations. Thus citation/structure admission passed; content
+completeness did not. No budget-increasing retry of that scope was performed.
+
+A subsequent bounded diagnosis confirmed that the current model projection held
+all four program measurements, their values/nulls and missingness reasons. The
+two rejected citations were current missing records placed in the support field,
+not invented or historical aliases. The internal action model required at least
+one available citation per item and could not represent a standalone limitation.
+
+Commits `5c79733` through `faca896` retain reviewed public program/method labels
+and add a strict missing-only explanation form. Its primary/opposing arrays are
+empty, its missing array is nonempty, and prediction/check fields are null.
+Dialog, assessment cards and reports label it as a limitation rather than a
+hypothesis. Role validation remains strict; neither numeric values nor rejected
+citations are rewritten. Both report gates still require an observation-backed
+item overall. Persisted fields, public schemas and historical hashes are unchanged.
+
+Focused checks passed: seven projection cases; ten action-schema/rendering cases;
+three report schema/history/rendering cases; seven citation/admission/handoff
+cases; one UI limitation/source-link case. These scoped groups are not a full-suite
+claim. The new gap constraints and mixed report handoff reproduced their failures
+before the fixes. One concentrated read-only review found the remaining report
+resume guard; its correction retains the role/snapshot checks and rejects gap-only
+handoff. Static repository checks passed. Final real-model content acceptance and
+exact-head CI remain separate requirements.
+
+The revised explanation path was exercised once against the same saved v5 case
+using the five changed runtime files from `533b6a7`: one real-model turn, zero tool
+runs, `explanation_complete`, and one immutable interpretation version containing
+two items. The pluripotency item bound both available measurements with unchanged
+values and distinct method units. The dissociation item bound both missing records,
+preserved their two run-specific reason codes and explicitly distinguished null
+from low/zero/negative. A separate controller read confirmed the saved content and
+the 2-support/0-missing versus 0-support/2-missing split. No raw matrix, source
+calculation or graph rebuild was repeated. This closes the missing-only citation
+representation defect, not general scientific verification of generated prose.
+
+Scientific review of the saved response found no blocking claim for this feature:
+its suggestion of future method-direction consistency is explicitly untested, not
+an observed agreement or same-scale comparison. It nevertheless uses overly certain
+wording and a poor translation of Scanpy in one sentence. These are retained as
+non-blocking response-quality limitations, not silently corrected in the immutable
+record. Method scores remain distinct; no formal test or scientific qualification
+was established. Explanation-content acceptance is complete for this scoped defect;
+At acceptance time PR #8 remained Draft pending final exact-head CI and authorized
+integration; the PR records the subsequent CI and merge outcome.
+
+The later report-handoff guard fix in `faca896` was verified by the focused
+regression above, not by this real call: report continuation was not authorized
+in that scope and the running service was not restarted with that change.
+
+The temporary acceptance service was stopped. Neither this record nor graph
+admission establishes a five-domain acceptance, scientific qualification, merge
+or deployment. Private receipts, paths and model responses are not included in
+the repository.
+
+## Single-product engineering closeout — 2026-10-04
+
+**Scope and version.** Source `1a2e03fb` completed a bounded continuation of one
+authorized saved single-product case in an isolated private copy. The original
+service and storage were not changed. Existing measurement, graph and source
+receipts were reused. Final source `95452201` additionally repairs read-only
+citation navigation in bounded graph exports; re-reading the completed case
+preserved all four report hashes and its snapshot. This closes the engineering
+chain, not PRD 6.9's independent wet-lab
+reader acceptance, scientific qualification, general model reliability or deployment.
+
+| Check | Observed result |
+|---|---|
+| Five-domain portrait | Cell state, target/region, development, whole-product composition and proliferation/stress remain visible. Target/region limitations and all seven program states remain explicit; no formal score is produced. |
+| Canonical values | 228 saved measurements matched canonical values, numerators, denominators, units and evidence/score states. Whole-product partitions conserve the full denominator, avoid parent/child double counting and retain unassigned roles as null. |
+| Explanation and report | The first fixed-version scope accepted a three-item explanation on its third bounded model turn after rejecting one citation error and one malformed action. Explicit continuation ran only P0-10 and completed the report. |
+| Name-only correction | The actual Web form staged and confirmed the change. Only P0-10 dependencies were affected; confirmation advanced the input revision without any tool execution. |
+| Corrected report | A second scope accepted its explanation in one model turn. Explicit continuation ran only P0-10. Both reports use the same graph version; the corrected report has the new input revision/name and a distinct snapshot hash. |
+| Online/offline binding | HTML, JSON, CSV and SVG matched their registered bytes and shared the exact snapshot, input revision and graph binding. The report context includes the accepted immutable explanation version. Multiple snapshots on one input revision were checked by snapshot identity, not by assuming a single report per revision. |
+| Citation navigation | Actual browser clicks locate both a measured gene observation and an unavailable target observation in the admitted graph version. When the bounded export omits measurement nodes, navigation joins the exact canonical file and measurement refs in the complete same-version record set. Missing, mismatched or ambiguous bindings remain unresolved. |
+| History | All four prior report formats required historical acknowledgement after correction. A browser acknowledgement reopened the original HTML bytes with unchanged SHA-256. Original input/storage files and historical copied uploads, receipts and run artifacts were unchanged. |
+
+**Repairs demonstrated by this case.** Saved whole-product composition summaries
+exceeded the former per-result allowance, hiding valid observations. Their
+bounded allowance is now specific to the saved composition mode. Lossless model
+projection shares identical arrays and fields, preserves missing/mismatched rows,
+and includes inherited citation roles in the allowed citation set. The separate
+model-context ceiling remains 128 KiB and uses the compact UTF-8 wire encoding.
+The configured switchable model's JSON adapter now reserves its existing output
+budget for the final action. No public schema, scientific measurement or approval
+rule changed. Operator details are in [Web configuration](../web-preview.md).
+
+Earlier attempts are retained as failures: overlarge evidence, output truncation,
+an inherited-citation adapter defect and invalid model actions. One temporary
+observation probe also failed before being corrected; that attempt is not counted
+as a model failure. No guard was bypassed and no rejected interpretation was
+silently repaired into an accepted record. A read-only graph query made during
+diagnosis was retained; neither it nor report generation recalculated a matrix.
+
+**Evidence and limits.** The changed evidence/provider paths passed 143 focused
+checks in `test_web_evidence.py`, `test_web_provider.py` and
+`test_research_skills.py`, including projection reconstruction and explicit-null
+citation override cases. Graph navigation passed 34 frontend checks and the frontend production build (existing React act and chunk-size warnings remain). The real-case projection's available/missing citation
+sets exactly matched its binding map. A broader run was interrupted before
+completion and is not reported as passing; the PR records final lightweight
+repository checks and the cloud-CI outcome separately.
+
+Browser checks covered result expansion, keyboard activation, narrow-screen
+layout, method-specific units, report reading, the correction form and historical
+access, and both numerical and unavailable citation navigation. The existing PR #24 figure/spatial checks are reused where frontend and
+source bindings did not change. The measurements and cited numerical statements
+were reconciled, but generated prose is still unverified: one explanation loosely
+called an unavailable partition a candidate component, and another grouped
+oxidative-stress, UPR and hypoxia wording imprecisely. These original statements
+remain in the versioned record. Their presence prevents a claim of fully reviewed
+scientific prose or a qualified, publication-ready report. The deterministic
+observations and distinct method units remain available for review.
+
+Private inputs, model configuration, transcripts, screenshots and receipts remain
+in the authorized environment. Independent wet-lab review of interpretation and
+reader usability, broader model/configuration coverage and the existing scientific
+qualification plan remain open. These are explicit remaining gates, not an
+unbounded restatement that the implemented engineering chain is still missing.
+
 ## Remaining scientific work
 
 The 25 source-state cards, product-role/developmental-window decisions,

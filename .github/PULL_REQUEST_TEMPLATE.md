@@ -1,34 +1,31 @@
-## Biological question
+## 目标与范围
 
-<!-- What product-evaluation question does this change address? -->
+<!-- 关联 Issue：Refs #123；仅当全部验收完成才写 Closes #123。小型文档修正可无 Issue。 -->
 
-## Data and controls
+- 关联 Issue／PRD／模块：
+- 本次变化及非目标：
 
-<!-- List the data role, reference, OOD/negative controls and locked/sealed boundary. -->
+## 接口与兼容性
 
-## Biological findings
+<!-- 无接口变化写“不适用”。有变化则说明输入／输出、单位／来源、失败语义、版本兼容、有效与拒绝示例；链接合同，不复制整份 Schema。 -->
 
-<!-- Report observed results. Distinguish negative, missing, unknown and unavailable evidence. -->
+## 验证与风险
 
-## Meaning for product evaluation
+<!-- 列出准确提交、工作区状态、环境／依赖版本、命令、结果和验证范围；复用已有证据说明其适用性。GitHub 仅做轻量静态检查，功能测试可在本地或受控服务器执行。云端不可用时记录同提交的替代静态检查；明确未运行／仍在运行项及原因，不把云端未运行写成通过。 -->
 
-<!-- State what can now be interpreted and what remains unsupported. -->
+- 已验证：
+- 未验证／剩余风险：
+- 文档、计划与后续事项：
 
-## Remaining uncertainty
+## 科学影响（仅科学语义变更填写）
 
-<!-- Record unresolved states, missing evidence and the next scientific test. -->
+<!-- 纯工程／文档写“不适用”。 -->
+<!-- 科学问题；数据/reference/对照及版本；真实观察；对产品评估的含义；仍不能回答的问题。区分工程验证、真实运行和科学资格，保留 sealed/competitor-isolated 边界。原始证据留在授权环境，仅写获准共享摘要。 -->
 
-## Interface contract
+## 提交检查
 
-<!-- If an interface changes, record all applicable items below. Write not_applicable explicitly. -->
+- [ ] 变更范围单一，未覆盖他人成果；已运行受影响的必要检查并说明未验证项。
+- [ ] 未包含凭据、部署配置、服务器内部路径、真实用户数据或私有运行材料。
+- [ ] 合同、稳定文档和验收项一致；未完成的必要验收保持 Draft 或明确请求维护者处理。
 
-- CLI and Python SDK entrypoint:
-- Inputs: field, type, required/optional state, unit, source and checksum:
-- Structured outputs and artifact manifests:
-- Eligibility, refusal behavior and stable reason codes:
-- Minimal valid and refused examples:
-- Contract and compatibility versioning:
-
-## Engineering record
-
-<!-- Summarize changed files, reproducible checks and any unverified engineering risk. -->
+<!-- 审查流程见 CONTRIBUTING.md。合并不代表部署，也不代表科学资格。 -->

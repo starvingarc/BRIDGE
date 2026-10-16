@@ -2,7 +2,7 @@
 import json
 import pytest
 from test_web_intake_autofill import client, upload_metadata, intake
-from test_web_service import confirm_change
+from web_support import confirm_change
 
 
 def answer(client, sid, aid, field, value, other=False):
@@ -95,7 +95,7 @@ def test_batch_profiles_stay_out_of_model_context_and_upgrade_old_draft(client, 
     service = client.app.state.service
     state = service.load(sid)
     state["_intake_autofill"][aid].pop("batch_columns", None)
-    service.save(state)
+    service.sessions.save(state)
     value = intake(client, sid, aid)
     assert "culture_batch" in batch_question(value)["title"]
     assert value["facts"]["target_stage"] == "progenitor"

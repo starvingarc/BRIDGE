@@ -2,6 +2,7 @@
 
 | 字段 | 内容 |
 | --- | --- |
+| Current result schema | See [Tool Card contract](../../src/bridge/tool_packages/cards/P0-02.md#contract) |
 | Task ID | `TASK-CELL-STATE-v0.1` |
 | 文档版本 | `0.1` |
 | 日期 | 2026-08-06 |
@@ -9,7 +10,7 @@
 | 适用范围 | 移植前 scRNA-seq / snRNA-seq；PD hPSC-mDA 为首个实例 |
 | Annotation snapshot | `BRIDGE-PD-vMB-ANNOTATION-v0.1-draft` |
 | 主要输出 | `CellStateEvidenceProfile` |
-| 当前实现 | P0-02 v0.5.2 可执行 shadow baseline；含可追溯层级对应图、静态状态定义证据矩阵及 raw-count 重复基因规范化审计 |
+| 当前实现 | 可执行候选路径、表达探索与来源分开的 reference/marker 辅助证据；准确包版本、输入与输出以 [P0-02 Tool Card](../../src/bridge/tool_packages/cards/P0-02.md) 为准 |
 
 ## 1. 任务目标
 
@@ -61,7 +62,7 @@ L3 包含：`RG_mFP`、`RG_mBMP`、`RG_mBIP`、`Nb_mFP`、`Nb_mBMP`、`Nb_mBIP`�
 
 ## 4. 分析流程
 
-当前可执行 baseline 固定为两条互补通道：source-specific pseudobulk Spearman/cosine support，以及版本化 marker/program evidence。它们分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。这里的 pseudobulk correlation 是 sample-by-label reference similarity summary，不是 replicate-aware differential-expression inference，不输出 DE effect 或 FDR。scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象只作 sensitivity。
+本节的 reference/marker 辅助 baseline 包含两条互补通道：source-specific pseudobulk Spearman/cosine support，以及版本化 marker/program evidence。它们分别保存，不转换为概率、不按工具数投票，也不设置未经验证的 OOD 阈值。这里的 pseudobulk correlation 是 sample-by-label reference similarity summary，不是 replicate-aware differential-expression inference，不输出 DE effect 或 FDR。scRNA 与 snRNA 使用独立 `MeasurementSpec`；Chen combined 对象只作 sensitivity。
 
 ```mermaid
 flowchart LR
@@ -184,7 +185,7 @@ Cell-State 使用隔离的 Python 与 R 环境。环境间通过 checksummed spa
 | `ENV-CELLSTATE-PY-v0.1` | Scanpy、CellTypist、scVI/scANVI、透明 Python 基线和结果交换 | `health_check_passed`；data-free adapter health 已记录 |
 | `ENV-CELLSTATE-BIOC-R46-v0.1` | SingleR、scmap、Symphony、UCell 和 scConform | `health_check_passed`；data-free adapter health 已记录 |
 
-完整工程验收见 [Server reproducibility validation, 2026-08-12](../validation/server_reproducibility_20260812.md)。其他目录方法继续保持 `catalog_only`、`shadow` 或 `deferred`，需要时再建立独立环境合同。环境通过只表示依赖可重建和工具可加载，不表示方法已经通过科学验证。
+完整工程验收见 [Server reproducibility validation, 2026-08-12](https://github.com/starvingarc/BRIDGE/blob/d3d69363c50541fb34320f703db2995edb27105e/docs/validation/server_reproducibility_20260812.md)。其他目录方法继续保持 `catalog_only`、`shadow` 或 `deferred`，需要时再建立独立环境合同。环境通过只表示依赖可重建和工具可加载，不表示方法已经通过科学验证。
 
 ## 9. Web 必备可视化
 

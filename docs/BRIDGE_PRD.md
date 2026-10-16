@@ -10,7 +10,7 @@
 | 适用范围 | 研究用途的细胞治疗产品转录组评估；PD hPSC-mDA 为首个实例 |
 | 文档权威性 | 本文档是 BRIDGE 当前唯一主规范；Registry 和 Task Card 是受其约束的实施附件 |
 
-> **当前实现边界：** BRIDGE 已有 12 个确定性 P0 工具包。私有 Web 在既定范围内已验收研究问题、资料、必要追问、来源事实确认、范围/资源审批与 QC，并提供可核对的 protocol 表示。下游图驱动研究闭环、内部 comparator 选择和 qualified report/export 是已批准目标，不是当前完整能力；现有候选缺失图与 blocked 内部报告不等于产品评估完成。当前没有冻结 P0 ScoreContract，所有活动模块保持 domain_score=null。精确证据见[验证记录](validation/README.md)，剩余科学工作见[活动计划](../plans/product-evidence-validation.md)。
+> **当前实现边界：** BRIDGE 已有 12 个确定性 P0 工具包。私有 Web 在既定范围内已验收研究问题、资料、必要追问、来源事实确认、范围/资源审批与 QC，并提供可核对的 protocol 表示。同一真实保存案例的五域、解释引用、版本化报告与名称更正已完成工程走查；湿实验研究者独立走查、内部 comparator 选择和 qualified report/export 仍待验收。工程走查不验证自由文本的全部科学表述。当前没有冻结 P0 ScoreContract，所有活动模块保持 domain_score=null。精确证据见[验证记录](validation/README.md)，剩余科学工作见[活动计划](../plans/product-evidence-validation.md)。
 
 ## 目录
 
@@ -450,6 +450,13 @@ graft 的 scRNA-seq 和 snRNA-seq 需要分别处理。其结果不回填移植�
 - 输入或证据不足时返回 `unavailable`，不临时替换方法。
 - 实时联网信息不改变当次分域评估分数。
 
+研究解释可以在用户批准的有限范围内检索公开文献。解释应将已确认产品背景、
+当前观察、可能机制、竞争解释及可区分的观察连接起来，而不是复述工具表格。
+文献只支持生物学背景与候选机制，不能替代本样本测量。报告保存已读取来源及
+物种、谱系、发育阶段、实验语境的适用条件；未知条件仍标记未知。新增来源产生
+新的解释版本，不覆盖旧报告，也不改变正式测量、reference、prior 或阈值。
+
+
 ### 4.2 P0 核心分析任务
 
 | 分析任务 | 推荐工具与流程 | 主要输出 |
@@ -522,9 +529,9 @@ BRIDGE 以 Web 作为主要交互界面。LLM 是主动的、证据驱动的研�
 单 Agent 或多 Agent 实现，但不得让模型文本取代确定性工具合同。
 
 > **当前与目标必须分开：** 现有私有 Web 在既定范围内已验收下述主线第 1–6
-> 步，包括 protocol 的可核对表示；这些步骤不重新设计或重做。第 7–10 步的
-> 图驱动反馈循环、内部 comparator 推荐与确认、合格报告和导出是已批准目标。
-> 当前已有的工具菜单、图组件、候选缺失图和 blocked 内部报告不能证明该闭环已接通。
+> 步，包括 protocol 的可核对表示；这些步骤不重新设计或重做。第 7–10 步已在
+> 一个授权保存案例上完成五域结果、引用解释、版本化报告与名称更正的工程走查。
+> 湿实验研究者独立走查、内部 comparator 推荐与确认、合格报告和导出仍是待验收目标。
 > 精确现状见[验证记录](validation/README.md)，未完成科学工作见
 > [Product Evidence Validation](../plans/product-evidence-validation.md)。
 
@@ -549,8 +556,8 @@ BRIDGE 以 Web 作为主要交互界面。LLM 是主动的、证据驱动的研�
 10. **Corrections / 修正**：记录事实变化、影响范围和经确认的局部重算新版本。
 
 第 1–6 步的当前验收只证明其既定输入、确认、审批、QC 和 protocol 表示流程；
-不证明下游产品域已测量或报告可发布。第 7–10 步是产品目标合同；其中已有的
-独立组件仍按各自验证记录报告，不把局部实现写成完整闭环。
+不证明报告可发布。第 7–10 步的单例工程收尾以验证记录为界，不外推到所有研究问题、
+独立研究者接受度或科学资格。
 
 在既定授权、范围和资源上限内，Agent 可自主继续已批准任务。QC 后必须重新计算
 并展示实际 eligibility。扩大问题范围、资源上限、联网权限、比较队列或运行
@@ -603,11 +610,33 @@ Agent 默认提供一份简洁的 sourced experimental-background summary，分�
 
 Protocol BPL 是来源绑定、可版本化和人工核对的计划过程表示。它不是本批执行记录、
 产品身份、实验独立性或生物学验证；固定编译器通过也不证明语义完整。具体合同见
-[已批准 BPL 设计](superpowers/specs/2026-09-09-protocol-bpl-design.md)。
+[已批准 BPL 设计](protocol-formalization.md)。
 
 如缺少 role rules，Agent 结合 P0-02 证据、已确认产品目标和可追溯材料，提出
 role candidates 及其后果。用户核对不会提升候选科学等级。P0-03 与 P0-05 必须
 消费同一个 eligible、reviewed role definition，不能各自循环发明角色。
+
+#### 研究、会话、批次与方案版本
+
+研究工作区直接包含会话与共享原始资料，不在研究和会话之间强制设置实验或批次目录。
+用户可以用会话讨论问题、比较方案或开展评估；会话本身不是一个实际批次、文件或
+独立生物学重复。具体组织与界面见[研究工作区](research-workspace.md)。
+
+单产品评估仍以已核对的实际批次 / preparation 为中心。同批次的多个文件或采样
+时间点保留各自采样语境，不直接合并。共享资料只是提供可选原件；每个会话分别
+选择输入，保留独立问题、事实确认、批准、分析版本和证据。
+
+批次关联分化方案及其版本。同一方案的其他批次、改进方案的新批次，须保留各自
+明确身份；比较时不覆盖原批次或把新数据混入旧结果。方案版本、批次身份和分析
+版本分开：事实修正或重分析产生新的分析版本，不自动变成新的分化方案；一次
+批次表现的变化也不能直接归因于方案改进。
+
+实验背景显示已有方案、批次声明、采样时间、预期产品、当前输入和分析状态。
+未知信息明确留空，不从文件名、研究或会话标题、培养天数猜测。跨会话比较须
+引用明确批次及分析版本，并继续满足第 6.4 节的可比性要求。
+
+研究归属不代表多上传数据已完成批次绑定。兼容既有会话时保留原件和结果，
+仅按用户选择移入研究及共享原件；不得自动拆分、删除或重新解释历史实验。
 
 ### 6.3 分析计划与任务执行
 
@@ -650,7 +679,8 @@ hypoxia、unfolded-protein response、apoptosis-related。S/G2M 不能代表全�
 用户确认 cohort 后才执行。Publication alone is not registration,
 comparability or permission。用户指定 reference/comparator 与系统默认对象分开
 记录。sealed 与 competitor-isolated 数据始终排除在 reference、prior、校准、
-正式 Evidence Graph 和比较队列之外。
+正式 Evidence Graph 和比较队列之外；例外是 Boost/Boost+（E-MTAB-14729）与 RC17（GSE200610），
+自 2026-10-12 起仅作比较对象进入比较队列，仍不得用于 reference、prior、校准、训练或阈值。
 
 默认 reference selection 使用一个经过审阅、内部对齐的 multi-source reference
 system：共同定义与 decision rules、逐对象 applicability checks、source/version
@@ -704,7 +734,9 @@ uncertainty、actual values 与 denominators、figures、methods、sources 和
 versions。页面标明 same-family dependence，并允许进入相关 Evidence Graph
 节点。关键值不能只放在 hover 中；键盘、触控与可下载表格应能获得同一信息。
 
-不得使用综合总分、绝对排名、雷达图或红绿灯式产品等级。missing/unavailable
+不得使用综合总分、绝对排名或红绿灯式产品等级。分化链五级条件比例是带分子分母的原始测量，
+可用圆环、雷达或漏斗展示，乘积（目标细胞比例）可作汇总，但不加权、不排名、不等同 domain_score，
+定义见[研究内对象](../plans/research-objects.md)。missing/unavailable
 不画成 0；negative、missing、unknown、unavailable 与 alert 分开。candidate、
 shadow 和 exploratory 始终显示文字状态，所有 active domain 保持
 domain_score=null。
@@ -712,7 +744,7 @@ domain_score=null。
 #### 正式图形的数据绑定
 
 正式图形消费 typed、checksummed visualization data artifact；Web 与静态导出
-使用同一数据。当前 registry 的 43 个组件（36 typed_candidate、7
+使用同一数据。当前 registry 的 46 个组件（39 typed_candidate、7
 legacy_untyped）是审计记录，不是证据得分或完整交互验收。完整数据绑定和图族
 验收见[Visualization Data Contract](../plans/visualization-data-contract.md)及其
 [验证记录](validation/visualization_data_contract_20260828.md)。
@@ -730,8 +762,12 @@ Agent 保持少量 competing hypotheses，并为每个假设记录支持、反�
 区分性下一工具、预期观察和反驳条件。建议优先补足会改变决策的事实或测量，
 最多展示三项可执行 next actions；不提供未经验证的小分子剂量或处理时序。
 
-方法不一致时，先确认是否属于相同定义、输入、分母和适用范围，再分别展示结果
-及其实质差异。共同输入或同源 reference 必须标注依赖，不能把方法数量当置信度。
+产品解析与报告正文以生物学发现、证据含义和待区分的解释为主，不反复强调方法或软件包名。
+原始方法、数值、单位、版本与来源保留在证据图和可展开的测量详情中。
+只有证据图中不同方法的结果存在影响解释的实质冲突时，正文才分别点明方法、各自结果、
+尚未解决的问题，以及可区分解释的后续实验或分析。先核对定义、输入、分母、参考和适用范围；
+不同量纲或不同问题的得分差异本身不构成矛盾。共同输入或同源 reference 必须标注依赖，
+不能把方法数量当置信度。
 
 Agent 应主动检查可用 linked post-transplant data 的 relevance 与 eligibility，
 提出它能回答的问题和所需资源；只有用户把它纳入批准范围后才执行。graft 是独立
@@ -757,9 +793,11 @@ release_blocked；P0-11 只生成或审计本地候选，不验证授权身份�
 
 ### 6.9 P0 验收要求
 
-**当前流程验收：** 第 1–6 步在既定范围内已接受；验证记录分别说明源代码、
-安装、真实运行和科学含义。不得由此声称第 7–10 步闭环、内部 comparator 选择或
-qualified export 已完成。
+**当前流程验收：** 第 1–6 步在既定范围内已接受；第 7–10 步的一个授权保存案例
+已完成固定源码下的工程走查，包括五域状态、原始数值、解释引用、同版本报告及名称更正。
+[收尾记录](validation/step7_evidence_coordinator_20260911.md#single-product-engineering-closeout--2026-10-04)
+保留失败与措辞局限。下列湿实验研究者独立走查尚未完成，内部 comparator 选择与
+qualified export 也不能据此核销。
 
 **下游目标验收：**
 

@@ -1,0 +1,412 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "type": "null"
+                },
+                "biological_unit_manifest_sha256": {
+                  "type": "null"
+                }
+              }
+            },
+            {
+              "properties": {
+                "biological_unit_manifest_ref": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "biological_unit_manifest_sha256": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              },
+              "required": [
+                "biological_unit_manifest_ref",
+                "biological_unit_manifest_sha256"
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "Content-addressed expression view passed between scientific tools.",
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "biological_unit_manifest_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Ref"
+        },
+        "biological_unit_manifest_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Biological Unit Manifest Sha256"
+        },
+        "matrix_location": {
+          "minLength": 1,
+          "title": "Matrix Location",
+          "type": "string"
+        },
+        "matrix_semantics": {
+          "enum": [
+            "raw_counts",
+            "normalized_expression"
+          ],
+          "title": "Matrix Semantics",
+          "type": "string"
+        },
+        "n_observations": {
+          "minimum": 0,
+          "title": "N Observations",
+          "type": "integer"
+        },
+        "observation_ids_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Ids Sha256",
+          "type": "string"
+        },
+        "parent_asset_id": {
+          "minLength": 1,
+          "title": "Parent Asset Id",
+          "type": "string"
+        },
+        "parent_asset_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Parent Asset Sha256",
+          "type": "string"
+        },
+        "sample_or_preparation_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Or Preparation Ref"
+        },
+        "selection_spec_ref": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Spec Ref"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "view_id": {
+          "minLength": 1,
+          "title": "View Id",
+          "type": "string"
+        },
+        "view_kind": {
+          "enum": [
+            "all_observations",
+            "qc_selected_observations"
+          ],
+          "title": "View Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "view_kind",
+        "artifact_id",
+        "sha256",
+        "parent_asset_id",
+        "parent_asset_sha256",
+        "matrix_location",
+        "matrix_semantics",
+        "n_observations",
+        "observation_ids_sha256"
+      ],
+      "title": "DataViewBinding",
+      "type": "object"
+    },
+    "NativeCountObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "channel": {
+          "title": "Channel",
+          "type": "string"
+        },
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "denominator": {
+          "exclusiveMinimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "denominator_scope": {
+          "title": "Denominator Scope",
+          "type": "string"
+        },
+        "fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "label_level": {
+          "title": "Label Level",
+          "type": "string"
+        },
+        "producer_ref": {
+          "title": "Producer Ref",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Id"
+        }
+      },
+      "required": [
+        "channel",
+        "label",
+        "label_level",
+        "source_id",
+        "count",
+        "denominator",
+        "fraction",
+        "denominator_scope",
+        "producer_ref",
+        "artifact_sha256"
+      ],
+      "title": "NativeCountObservation",
+      "type": "object"
+    }
+  },
+  "$id": "bridge://schemas/native-cell-state-context-profile/v0.1",
+  "additionalProperties": false,
+  "properties": {
+    "auxiliary_composition": {
+      "items": {
+        "$ref": "#/$defs/NativeCountObservation"
+      },
+      "title": "Auxiliary Composition",
+      "type": "array"
+    },
+    "auxiliary_producer_ref": {
+      "title": "Auxiliary Producer Ref",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "derivation": {
+      "const": "saved_native_context_projection_no_matrix_execution",
+      "default": "saved_native_context_projection_no_matrix_execution",
+      "title": "Derivation",
+      "type": "string"
+    },
+    "domain_score": {
+      "default": null,
+      "title": "Domain Score",
+      "type": "null"
+    },
+    "evidence_family_id": {
+      "title": "Evidence Family Id",
+      "type": "string"
+    },
+    "expected_window_match": {
+      "default": null,
+      "title": "Expected Window Match",
+      "type": "null"
+    },
+    "independence_state": {
+      "const": "unknown",
+      "default": "unknown",
+      "title": "Independence State",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "marker_observations": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Marker Observations",
+      "type": "array"
+    },
+    "n_independent_replicates": {
+      "default": null,
+      "title": "N Independent Replicates",
+      "type": "null"
+    },
+    "non_target_fraction": {
+      "default": null,
+      "title": "Non Target Fraction",
+      "type": "null"
+    },
+    "object_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "original_figure_refs": {
+      "items": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "title": "Original Figure Refs",
+      "type": "array"
+    },
+    "original_producer_ref": {
+      "title": "Original Producer Ref",
+      "type": "string"
+    },
+    "primary_composition": {
+      "items": {
+        "$ref": "#/$defs/NativeCountObservation"
+      },
+      "title": "Primary Composition",
+      "type": "array"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "reference_state_portrait": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Reference State Portrait"
+    },
+    "role_judgement_state": {
+      "const": "not_assessed",
+      "default": "not_assessed",
+      "title": "Role Judgement State",
+      "type": "string"
+    },
+    "runtime_mode": {
+      "const": "saved_cell_state_context",
+      "default": "saved_cell_state_context",
+      "title": "Runtime Mode",
+      "type": "string"
+    },
+    "score_state": {
+      "const": "unavailable",
+      "default": "unavailable",
+      "title": "Score State",
+      "type": "string"
+    },
+    "source_receipt_sha256": {
+      "title": "Source Receipt Sha256",
+      "type": "string"
+    },
+    "target_fraction": {
+      "default": null,
+      "title": "Target Fraction",
+      "type": "null"
+    },
+    "tool_id": {
+      "enum": [
+        "P0-04",
+        "P0-05"
+      ],
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tool_id",
+    "tool_version",
+    "profile_id",
+    "data_view",
+    "source_receipt_sha256",
+    "original_producer_ref",
+    "auxiliary_producer_ref",
+    "evidence_family_id",
+    "primary_composition",
+    "auxiliary_composition",
+    "marker_observations",
+    "reference_state_portrait",
+    "original_figure_refs",
+    "limitations",
+    "created_at"
+  ],
+  "title": "NativeCellStateContextProfile",
+  "type": "object"
+}

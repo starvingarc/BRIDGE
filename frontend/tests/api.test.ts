@@ -23,19 +23,19 @@ describe("API client", () => {
       expect.objectContaining({ method: "POST", body: JSON.stringify({scope_id:"scope-1",scope_digest:"digest-1"}) }));
   });
 
-  it("keeps authentication in a same-origin cookie and sends the login token only in the request body", async () => {
+  it("keeps authentication in a same-origin cookie and sends account credentials only in the request body", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse({ authenticated: true }),
     );
 
-    await api.login("preview-secret");
+    await api.accountLogin("researcher", "synthetic-password");
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/login",
       expect.objectContaining({
         method: "POST",
         credentials: "same-origin",
-        body: JSON.stringify({ token: "preview-secret" }),
+        body: JSON.stringify({ username: "researcher", password: "synthetic-password" }),
       }),
     );
   });

@@ -1,3 +1,4 @@
+import { stateName } from "../researcherLabels";
 import { Ban, Check, CircleAlert, CircleDashed, LoaderCircle, Minus, OctagonX } from "lucide-react";
 import type { PlanStep, SessionStatus } from "../types";
 
@@ -11,9 +12,9 @@ export function SessionStatusMark({ status }: { status: SessionStatus }) {
       <span aria-hidden="true" className="status-dot" />
     );
   return (
-    <span className={`session-status session-status--${status}`} title={status.replace("_", " ")}>
+    <span className={`session-status session-status--${status}`} title={stateName(status)}>
       {content}
-      <span className="sr-only">{status.replace("_", " ")}</span>
+      <span className="sr-only">{stateName(status)}</span>
     </span>
   );
 }

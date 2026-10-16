@@ -1,0 +1,263 @@
+[
+  {
+    "id": "readme-package",
+    "document": "README.md",
+    "pattern": "The Python package is currently \\*\\*\\x60(?P<value>[^\\x60]+)\\x60",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "toml",
+          "path": "pyproject.toml",
+          "keys": [
+            "project",
+            "version"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "id": "release-package",
+    "document": "docs/RELEASE.md",
+    "pattern": "Python 包声明为 \\x60(?P<value>[^\\x60]+)\\x60",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "toml",
+          "path": "pyproject.toml",
+          "keys": [
+            "project",
+            "version"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "id": "docs/web-preview.md-timeout",
+    "document": "docs/web-preview.md",
+    "pattern": "(?P<value>[\\d,]+)-second HTTP timeout",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/provider.py",
+          "symbol": "_INTERPRETATION_REQUEST_TIMEOUT_SECONDS"
+        },
+        "scale": 1
+      }
+    }
+  },
+  {
+    "id": "docs/privacy-and-provenance.md-timeout",
+    "document": "docs/privacy-and-provenance.md",
+    "pattern": "(?P<value>[\\d,]+)-second HTTP timeout",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/provider.py",
+          "symbol": "_INTERPRETATION_REQUEST_TIMEOUT_SECONDS"
+        },
+        "scale": 1
+      }
+    }
+  },
+  {
+    "id": "object-budget",
+    "document": "docs/web-preview.md",
+    "pattern": "(?P<value>[\\d,]+) registrations per conversation",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/inputs.py",
+          "symbol": "SESSION_OBJECT_LIMIT"
+        },
+        "scale": 1
+      }
+    }
+  },
+  {
+    "id": "object-bytes",
+    "document": "docs/web-preview.md",
+    "pattern": "remain limited to (?P<value>\\d+) MiB each",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/inputs.py",
+          "symbol": "OBJECT_LIMIT"
+        },
+        "scale": 1048576
+      }
+    }
+  },
+  {
+    "id": "parquet-bytes",
+    "document": "docs/web-preview.md",
+    "pattern": "at most (?P<value>\\d+) MiB of stored Parquet bytes",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/artifacts.py",
+          "symbol": "PARQUET_STORED_LIMIT"
+        },
+        "scale": 1048576
+      }
+    }
+  },
+  {
+    "id": "upload-default",
+    "document": "docs/web-preview.md",
+    "pattern": "ceiling is (?P<value>\\d+) GiB",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/runtime.py",
+          "symbol": "Settings.max_upload_bytes"
+        },
+        "scale": 1073741824
+      }
+    }
+  },
+  {
+    "id": "logical-default",
+    "document": "docs/web-preview.md",
+    "pattern": "with a separate (?P<value>\\d+) GiB logical-HDF5 ceiling",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/runtime.py",
+          "symbol": "Settings.max_h5ad_logical_bytes"
+        },
+        "scale": 1073741824
+      }
+    }
+  },
+  {
+    "id": "file-maximum",
+    "document": "docs/web-preview.md",
+    "pattern": "byte ceilings only as far as (?P<value>\\d+) GiB",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/runtime.py",
+          "symbol": "MAX_CONFIGURED_FILE_BYTES"
+        },
+        "scale": 1073741824
+      }
+    }
+  },
+  {
+    "id": "figure-count-en",
+    "document": "docs/product-principles.md",
+    "pattern": "registry contains (?P<total>\\d+) components: (?P<typed>\\d+) typed candidates and (?P<legacy>\\d+) legacy",
+    "count": 1,
+    "groups": {
+      "total": {
+        "source": {
+          "kind": "figures",
+          "key": "total"
+        }
+      },
+      "typed": {
+        "source": {
+          "kind": "figures",
+          "key": "typed"
+        }
+      },
+      "legacy": {
+        "source": {
+          "kind": "figures",
+          "key": "legacy"
+        }
+      }
+    }
+  },
+  {
+    "id": "figure-count-zh",
+    "document": "docs/BRIDGE_PRD.md",
+    "pattern": "registry 的 (?P<total>\\d+) 个组件（(?P<typed>\\d+) typed_candidate、(?P<legacy>\\d+)\\s+legacy_untyped",
+    "count": 1,
+    "groups": {
+      "total": {
+        "source": {
+          "kind": "figures",
+          "key": "total"
+        }
+      },
+      "typed": {
+        "source": {
+          "kind": "figures",
+          "key": "typed"
+        }
+      },
+      "legacy": {
+        "source": {
+          "kind": "figures",
+          "key": "legacy"
+        }
+      }
+    }
+  },
+  {
+    "id": "assessment-output-cap",
+    "document": "docs/web-preview.md",
+    "pattern": "Reasoning requests\\s+allow at least (?P<value>[\\d,]+) output tokens",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/model_transport.py",
+          "symbol": "_REASONING_OUTPUT_TOKEN_LIMIT"
+        }
+      }
+    }
+  },
+  {
+    "id": "research-output-cap",
+    "document": "docs/web-preview.md",
+    "pattern": "uses a bounded (?P<value>[\\d,]+)-token response",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/provider.py",
+          "symbol": "_INTERPRETATION_OUTPUT_TOKEN_LIMIT"
+        }
+      }
+    }
+  },
+  {
+    "id": "privacy-output-cap",
+    "document": "docs/privacy-and-provenance.md",
+    "pattern": "HTTP timeout for the (?P<value>[\\d,]+)-token reasoning/output allowance",
+    "count": 1,
+    "groups": {
+      "value": {
+        "source": {
+          "kind": "python",
+          "path": "src/bridge/web/model_transport.py",
+          "symbol": "_REASONING_OUTPUT_TOKEN_LIMIT"
+        }
+      }
+    }
+  }
+]

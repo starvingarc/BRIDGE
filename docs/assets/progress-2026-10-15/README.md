@@ -22,8 +22,9 @@ laboratory records. The protocol editor example is separate from this sample.
 No private samples, personal account details, credentials, deployment addresses
 or local filesystem paths are included. The JPEG files contain no EXIF metadata.
 
-These screenshots illustrate a development build ahead of the public source
-snapshot; installing the public snapshot does not reproduce these views yet.
+The workbench source is included in this repository. Reproducing the mapping
+view requires separately authorized reference assets and resource configuration;
+the screenshot does not imply that those assets are distributed with the code.
 
 ## File integrity
 

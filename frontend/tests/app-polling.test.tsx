@@ -1,6 +1,8 @@
+import { AuthRoot } from "../src/AuthRoot";
+import { testPrincipal, onTestSignedOut } from "./account-fixture";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../src/App";
+import SessionWorkspace from "../src/SessionWorkspace";
 import type { IntakeResponse, Session } from "../src/types";
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -86,6 +88,7 @@ describe("session loading and polling", () => {
     let sessionReads = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: "session-1", title: "Polling assessment", updated_at: "2026-09-05T06:00:00Z" }],
@@ -101,13 +104,13 @@ describe("session loading and polling", () => {
       throw new Error(`Unexpected request: ${path}`);
     });
 
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
-    expect(await screen.findAllByText("thinking")).toHaveLength(2);
+    expect(await screen.findAllByText("正在处理")).toHaveLength(2);
     expect(await screen.findByRole("alert", {}, { timeout: 2_000 })).toHaveTextContent(
       "temporary_unavailable",
     );
-    expect(await screen.findAllByText("idle", {}, { timeout: 6_000 })).toHaveLength(2);
+    expect(await screen.findAllByText("等待下一步", {}, { timeout: 6_000 })).toHaveLength(2);
     expect(sessionReads).toBe(4);
   }, 8_000);
 
@@ -115,6 +118,7 @@ describe("session loading and polling", () => {
     let sessionReads = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: "session-1", title: "Polling assessment", updated_at: "2026-09-05T06:00:00Z" }],
@@ -125,10 +129,10 @@ describe("session loading and polling", () => {
       return jsonResponse(makeSession("idle"));
     });
 
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
-    expect(await screen.findAllByText("running")).toHaveLength(2);
-    expect(await screen.findAllByText("idle", {}, { timeout: 3_500 })).toHaveLength(2);
+    expect(await screen.findAllByText("进行中")).toHaveLength(2);
+    expect(await screen.findAllByText("等待下一步", {}, { timeout: 3_500 })).toHaveLength(2);
     expect(sessionReads).toBe(3);
   }, 5_000);
 
@@ -137,6 +141,7 @@ describe("session loading and polling", () => {
     let pollSignal: AbortSignal | undefined;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: "session-1", title: "Polling assessment", updated_at: "2026-09-05T06:00:00Z" }],
@@ -150,8 +155,8 @@ describe("session loading and polling", () => {
       });
     });
 
-    const view = render(<App />);
-    expect(await screen.findAllByText("running")).toHaveLength(2);
+    const view = render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+    expect(await screen.findAllByText("进行中")).toHaveLength(2);
     await vi.waitFor(() => expect(pollSignal).toBeDefined(), { timeout: 2_000 });
 
     view.unmount();
@@ -163,6 +168,11 @@ describe("session loading and polling", () => {
     let sessionReads = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const path = String(input);
+      if (path === "/api/auth/config") return jsonResponse({mode: "accounts", notice: "Synthetic notice"});
+      if (path === "/api/researches") return jsonResponse({researches: []});
+      if (path === "/api/config") return jsonResponse({max_upload_bytes: 1024, max_h5ad_logical_bytes: 1024, max_h5ad_dataset_elements: 100});
+      if (path === "/api/me") return jsonResponse({user: testPrincipal});
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: "session-1", title: "Polling assessment", updated_at: "2026-09-05T06:00:00Z" }],
@@ -173,10 +183,11 @@ describe("session loading and polling", () => {
       return jsonResponse({ detail: "authentication_required" }, 401);
     });
 
-    render(<App />);
-    expect(await screen.findAllByText("thinking")).toHaveLength(2);
+    render(<AuthRoot />);
+    await userEvent.click(await screen.findByRole("button", {name: "打开历史会话"}));
+    expect(await screen.findAllByText("正在处理")).toHaveLength(2);
     expect(
-      await screen.findByRole("heading", { name: "Private research preview" }, { timeout: 2_000 }),
+      await screen.findByRole("heading", { name: "登录研究空间" }, { timeout: 2_000 }),
     ).toBeInTheDocument();
     const readsAfterLogout = sessionReads;
     await new Promise((resolve) => window.setTimeout(resolve, 1_500));
@@ -186,6 +197,7 @@ describe("session loading and polling", () => {
   it("keeps the signed-in workspace visible when the selected session cannot load", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: "session-1", title: "Unavailable assessment", updated_at: "2026-09-05T06:00:00Z" }],
@@ -194,11 +206,11 @@ describe("session loading and polling", () => {
       return jsonResponse({ detail: "session_temporarily_unavailable" }, 503);
     });
 
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
-    expect(await screen.findByRole("heading", { name: "No analysis selected" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "开始第一段讨论" })).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("session_temporarily_unavailable");
-    expect(screen.queryByRole("heading", { name: "Private research preview" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Your workspace/ })).not.toBeInTheDocument();
   });
 
   it.each(["thinking", "running", "awaiting_approval"] as const)(
@@ -213,7 +225,7 @@ describe("session loading and polling", () => {
         return jsonResponse(makeSession(status));
       });
 
-      render(<App />);
+      render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
       expect(await screen.findByRole("button", { name: "Stop analysis" })).toBeEnabled();
     },
@@ -227,6 +239,7 @@ describe("session loading and polling", () => {
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: current.id, title: current.title, updated_at: current.updated_at }],
@@ -240,10 +253,11 @@ describe("session loading and polling", () => {
       return jsonResponse(current);
     });
     const user = userEvent.setup();
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
+    await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
     expect(await screen.findByText("4 个观测 · 3 个基因")).toBeInTheDocument();
-    const source = await screen.findByLabelText("Data source / experiment reference");
+    const source = await screen.findByLabelText("数据来源或实验编号");
     await user.type(source, "source-family:new{Enter}");
     await vi.waitFor(() => expect(fetchMock.mock.calls.some(
       ([path]) => String(path).endsWith("/inputs"),
@@ -259,7 +273,8 @@ describe("session loading and polling", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getAllByText("stopping")).toHaveLength(2);
+    expect(document.querySelector(".session-status--stopping")).not.toBeNull();
+    expect(screen.getByText("正在停止", { selector: ".focus-heading" })).toBeInTheDocument();
   });
 
   it("continues polling after same-status input confirmation starts a new generation", async () => {
@@ -278,6 +293,7 @@ describe("session loading and polling", () => {
     let sessionReads = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: stopping.id, title: stopping.title, updated_at: stopping.updated_at }],
@@ -302,11 +318,11 @@ describe("session loading and polling", () => {
       throw new Error(`Unexpected request: ${path}`);
     });
     const user = userEvent.setup();
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
     await user.click(await screen.findByRole("button", { name: "Confirm change" }));
 
-    expect(await screen.findAllByText("idle", {}, { timeout: 2_500 })).toHaveLength(2);
+    expect(await screen.findAllByText("等待下一步", {}, { timeout: 2_500 })).toHaveLength(2);
     expect(sessionReads).toBe(2);
   }, 4_000);
 
@@ -314,6 +330,7 @@ describe("session loading and polling", () => {
     let sessionReads = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{
@@ -333,12 +350,12 @@ describe("session loading and polling", () => {
       throw new Error(`Unexpected request: ${path}`);
     });
     const user = userEvent.setup();
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
     await user.click(await screen.findByRole("button", { name: "Stop analysis" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("stop_temporarily_unavailable");
 
-    expect(await screen.findAllByText("idle", {}, { timeout: 2_500 })).toHaveLength(2);
+    expect(await screen.findAllByText("等待下一步", {}, { timeout: 2_500 })).toHaveLength(2);
     expect(sessionReads).toBe(2);
   }, 4_000);
 
@@ -374,6 +391,7 @@ describe("session loading and polling", () => {
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: proposed.id, title: proposed.title, updated_at: proposed.updated_at }],
@@ -396,23 +414,24 @@ describe("session loading and polling", () => {
       return jsonResponse(proposed);
     });
     const user = userEvent.setup();
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
+    await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
     expect(await screen.findByText("4 个观测 · 3 个基因")).toBeInTheDocument();
     const reviewCard = await screen.findByRole("region", { name: "Input change review" });
-    expect(reviewCard).toHaveTextContent("source_family_id");
+    expect(reviewCard).toHaveTextContent("数据来源");
+    expect(reviewCard).not.toHaveTextContent("source_family_id");
     expect(within(reviewCard).getByText("case.h5ad")).toBeInTheDocument();
-    expect(within(reviewCard).getByText("bbbbbbbb22222222")).toBeInTheDocument();
+    expect(within(reviewCard).queryByText("bbbbbbbb22222222")).not.toBeInTheDocument();
     expect(within(reviewCard).queryByText("aaaaaaaa11111111")).not.toBeInTheDocument();
-    expect(screen.getByText('"study-old"')).toBeInTheDocument();
-    expect(screen.getByText('"study-new"')).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm analysis" })).toBeDisabled();
+    expect(screen.getByText("study-old")).toBeInTheDocument();
+    expect(screen.getByText("study-new")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "开始分析" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Discard change" })).toBeEnabled();
     expect(screen.getByLabelText("Message")).toBeEnabled();
 
-    await user.click(screen.getByText("Analysis inputs"));
-    await user.selectOptions(await screen.findByLabelText("Analysis tool"), "P0-06");
-    expect(screen.getByRole("button", { name: "Prepare plan" })).toBeDisabled();
+    expect(screen.queryByText("Analysis inputs")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Register JSON")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Confirm change" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -436,6 +455,7 @@ describe("session loading and polling", () => {
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const path = String(input);
+      if (path === "/api/model-settings") return jsonResponse({ configured: true, base_url: "https://provider.invalid/v1", model: "test-model", has_api_key: true, action_protocol: "json" });
       if (path === "/api/sessions") {
         return jsonResponse({
           sessions: [{ id: review.id, title: review.title, updated_at: review.updated_at }],
@@ -447,7 +467,7 @@ describe("session loading and polling", () => {
       return jsonResponse(review);
     });
     const user = userEvent.setup();
-    render(<App />);
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
 
     expect(await screen.findByText(/Review the existing input forms/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Keep current inputs" }));

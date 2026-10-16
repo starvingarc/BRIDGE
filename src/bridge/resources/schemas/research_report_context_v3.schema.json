@@ -326,8 +326,15 @@
           "type": "string"
         },
         "discriminating_check": {
-          "title": "Discriminating Check",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Discriminating Check"
         },
         "evidence_aliases": {
           "items": {

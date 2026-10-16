@@ -79,6 +79,60 @@ def test_adding_an_evidence_requirement_does_not_retract_existing_results(tmp_pa
     assert len(impact["reusable"]) == 6
 
 
+def test_p008_new_source_selected_from_frozen_scope_preserves_compiled_history(tmp_path):
+    from bridge.web.scientific_inputs import digest
+
+    controls, state, directory = setup_state(tmp_path)
+    old_path = directory / "runs" / "pluri-gate.json"
+    new_path = directory / "runs" / "dissoc-gate.json"
+    sufficiency = directory / "runs" / "pluri-sufficiency.json"
+    receipt(state, directory, "P0-08", "pluri-gate", [old_path], [sufficiency])
+    receipt(state, directory, "P0-09", "pluri-graph", [sufficiency], [directory / "runs" / "graph.json"])
+    state["_input_objects"] = {
+        "pluri": {"path": str(old_path), "sha256": "a" * 64},
+        "dissoc": {"path": str(new_path), "sha256": "b" * 64},
+    }
+    before = {"tool_id": "P0-08", "mode_id": "default", "asset_ids": [],
+              "measurement_spec_ref": None,
+              "object_inputs": [{"role": "domain_gate_input", "input_id": "pluri"}]}
+    after = {**before, "object_inputs": [{"role": "domain_gate_input", "input_id": "dissoc"}]}
+    scope = {"input_revision": state["_input_revision"], "binding": {
+        "resources": {"dissoc": state["_input_objects"]["dissoc"]},
+        "append_p008": {"base_selection": before, "selection": after}}}
+    state["_assessment"] = {"status": "proposed", "scope": scope, "scope_digest": digest(scope)}
+    impact = controls.selection_impact(state, before, after)
+    assert impact["affected"] == []
+    assert [row["tool_id"] for row in impact["reusable"]] == ["P0-08", "P0-09"]
+    assert impact["new_approval_required"] is True
+
+
+def test_p008_correction_still_invalidates_old_measurement_and_graph(tmp_path):
+    from bridge.web.scientific_inputs import digest
+
+    controls, state, directory = setup_state(tmp_path)
+    old_path = directory / "runs" / "pluri-gate.json"
+    sufficiency = directory / "runs" / "pluri-sufficiency.json"
+    receipt(state, directory, "P0-08", "pluri-gate", [old_path], [sufficiency])
+    receipt(state, directory, "P0-09", "pluri-graph", [sufficiency], [directory / "runs" / "graph.json"])
+    state["_input_objects"] = {
+        "pluri": {"path": str(old_path), "sha256": "a" * 64},
+        "dissoc": {"path": str(directory / "runs" / "dissoc-gate.json"), "sha256": "b" * 64},
+        "correction": {"path": str(directory / "runs" / "corrected-gate.json"), "sha256": "c" * 64},
+    }
+    before = {"tool_id": "P0-08", "mode_id": "default", "asset_ids": [],
+              "measurement_spec_ref": None,
+              "object_inputs": [{"role": "domain_gate_input", "input_id": "pluri"}]}
+    append = {**before, "object_inputs": [{"role": "domain_gate_input", "input_id": "dissoc"}]}
+    correction = {**before, "object_inputs": [{"role": "domain_gate_input", "input_id": "correction"}]}
+    scope = {"input_revision": state["_input_revision"], "binding": {
+        "resources": {"dissoc": state["_input_objects"]["dissoc"]},
+        "append_p008": {"base_selection": before, "selection": append}}}
+    state["_assessment"] = {"status": "proposed", "scope": scope, "scope_digest": digest(scope)}
+    impact = controls.selection_impact(state, before, correction)
+    assert [row["tool_id"] for row in impact["affected"]] == ["P0-08", "P0-09"]
+    assert impact["new_approval_required"] is True
+
+
 def test_matrix_change_invalidates_transitive_outputs_not_other_upload(tmp_path):
     controls, state, _ = chain(tmp_path)
     impact = controls.impact(state, "query", "asset", [{"field": "matrix_location"}])
@@ -92,6 +146,8 @@ def test_matrix_change_invalidates_transitive_outputs_not_other_upload(tmp_path)
 @pytest.mark.parametrize(("kind", "changes"), [
     ("source", [{"field": "source_family_id"}]),
     ("intake", [{"field": "source_family_id"}]),
+    ("intake", [{"field": "source_family_id"}, {"field": "product_family"}]),
+    ("intake", [{"field": "product_name"}, {"field": "target_stage"}, {"field": "source_family_id"}]),
 ])
 def test_source_correction_reuses_qc_but_invalidates_source_dependent_analysis(tmp_path, kind, changes):
     controls, state, _ = chain(tmp_path)
@@ -108,6 +164,29 @@ def test_product_only_change_preserves_qc_and_native_but_updates_interpretation(
     assert [row["tool_id"] for row in impact["reusable"]] == ["P0-01", "P0-02", "P0-01"]
     impact = controls.impact(state, "query", "intake", [{"field": "gene_symbol_column"}])
     assert len(impact["affected"]) == 5
+
+
+@pytest.mark.parametrize("field", ["matrix_location", "count_semantics", "assay", "sample_id_column", "capture_id_column", "gene_symbol_column"])
+def test_mixed_source_product_and_qc_declaration_change_still_invalidates_qc(tmp_path, field):
+    controls, state, _ = chain(tmp_path)
+    impact = controls.impact(state, "query", "intake", [
+        {"field": "source_family_id"}, {"field": "product_family"}, {"field": field}])
+    assert [row["tool_id"] for row in impact["affected"]] == ["P0-01", "P0-02", "P0-04", "P0-09", "P0-10"]
+
+
+@pytest.mark.parametrize("register", [False, True])
+def test_retired_qc_is_rejected_before_any_receipt_or_catalog_access(register, monkeypatch):
+    from bridge.web.qc_results import QcResults
+    qc = QcResults(None, lambda: 0)
+    def unexpected_receipt_access(*args):
+        pytest.fail("Invalidated QC must be rejected before receipt access")
+    monkeypatch.setattr(qc, "receipt_asset_id", unexpected_receipt_access)
+    state = {"_tool_runs": [{"tool_id": "P0-01", "state": "succeeded", "file": "retired.json"}],
+             "_invalidated_receipts": {"retired.json": "confirmed-change"}}
+    for enrich in (False, True):
+        with pytest.raises(ValueError, match="^completed_qc_required$"):
+            qc.asset(state, "upload", register=register, enrich=enrich)
+    assert state["_invalidated_receipts"] == {"retired.json": "confirmed-change"}
 
 
 def test_nested_structured_dependency_is_traced_and_receipt_corruption_blocks(tmp_path):
@@ -158,7 +237,7 @@ def test_object_revision_only_invalidates_its_consumers_and_descendants(tmp_path
     assert state["_invalidated_receipts"] == {}
 
 
-from test_web_service import client, confirm_change
+from web_support import client, confirm_change
 from test_web_inputs import context_upload, choice, approve
 
 
@@ -194,3 +273,29 @@ def test_replacing_completed_selection_requires_confirmation_and_preserves_histo
                for name, data in old_bytes.items())
     assert client.post(url + "/input-change/confirm", json={
         "change_id": pending["id"], "change_digest": pending["digest"]}).status_code == 409
+
+def test_product_rename_only_updates_report_and_preserves_measurement_graph_bytes(tmp_path):
+    controls, state, directory = chain(tmp_path)
+    before = {p.name: p.read_bytes() for p in (directory / "receipts").iterdir()}
+    impact = controls.impact(state, "query", "intake", [{"field": "product_name"}])
+    assert [row["tool_id"] for row in impact["affected"]] == ["P0-10"]
+    assert [row["tool_id"] for row in impact["reusable"]] == ["P0-01", "P0-02", "P0-04", "P0-09", "P0-01"]
+    assert {p.name: p.read_bytes() for p in (directory / "receipts").iterdir()} == before
+    assert state["_invalidated_receipts"] == {}
+
+@pytest.mark.parametrize('reverse', [False, True])
+def test_complementary_expression_and_candidate_selection_preserves_results(tmp_path, reverse):
+    controls, state, _ = chain(tmp_path)
+    candidate = {'tool_id': 'P0-02', 'mode_id': None, 'asset_ids': ['query'],
+                 'object_inputs': [], 'measurement_spec_ref': 'CELLSTATE-scRNA-celltypist-candidate-v0.1'}
+    expression = {**candidate, 'measurement_spec_ref': 'EXPRESSION-exploration-v0.1',
+                  'expression_analysis': {'exploration': {'embedding_key': 'X_umap'}}}
+    before, after = (expression, candidate) if reverse else (candidate, expression)
+    impact = controls.selection_impact(state, before, after)
+    assert impact['affected'] == []
+    assert len(impact['reusable']) == 6
+    assert impact['new_approval_required'] is True
+    changed_asset = controls.selection_impact(state, before, {**after, 'asset_ids': ['other']})
+    assert [row['tool_id'] for row in changed_asset['affected']] == ['P0-02', 'P0-04', 'P0-09', 'P0-10']
+    changed_method = controls.selection_impact(state, before, {**after, 'measurement_spec_ref': 'another-method'})
+    assert len(changed_method['affected']) == 4

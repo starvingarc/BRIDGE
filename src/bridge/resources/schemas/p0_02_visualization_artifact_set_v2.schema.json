@@ -1,0 +1,34 @@
+{
+  "$defs": {
+    "VisualizationArtifactV2": {
+      "$ref": "bridge://schemas/visualization-artifact/v0.2"
+    }
+  },
+  "$id": "bridge://schemas/p0-02-visualization-artifact-set/v0.2",
+  "additionalProperties": false,
+  "properties": {
+    "object_version": {
+      "$ref": "bridge://schemas/visualization-artifact/v0.2#/properties/object_version"
+    },
+    "schema_ref": {
+      "const": "bridge://schemas/p0-02-visualization-artifact-set/v0.2",
+      "default": "bridge://schemas/p0-02-visualization-artifact-set/v0.2",
+      "title": "Schema Ref",
+      "type": "string"
+    },
+    "visualizations": {
+      "items": {
+        "$ref": "#/$defs/VisualizationArtifactV2"
+      },
+      "maxItems": 3,
+      "minItems": 2,
+      "title": "Visualizations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "visualizations"
+  ],
+  "title": "ExpressionFigureSet",
+  "type": "object"
+}

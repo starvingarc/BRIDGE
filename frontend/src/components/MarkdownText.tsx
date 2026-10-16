@@ -11,3 +11,9 @@ export function MarkdownText() {
     </Suspense>
   );
 }
+
+export function ResearcherMarkdownText() {
+  return <Suspense fallback={<span className="message-loading">正在读取说明…</span>}>
+    <MarkdownTextImpl researcher />
+  </Suspense>;
+}

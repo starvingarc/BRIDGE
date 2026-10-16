@@ -6,6 +6,12 @@ and is checked against the official predictor; model bundles never use pickle.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+    import pandas as pd
+
 from dataclasses import dataclass
 from functools import cached_property
 import hashlib
@@ -14,13 +20,7 @@ import json
 from pathlib import Path
 from typing import Any, Literal, Sequence
 
-import numpy as np
-import pandas as pd
 from pydantic import Field
-from scipy import sparse
-from scipy.special import expit, logsumexp
-from sklearn.decomposition import PCA
-from sklearn.neighbors import NearestNeighbors
 
 from bridge.toolkit.contracts import FrozenModel
 from .scientific_review import load_development_review, resolve_development_state
@@ -52,6 +52,8 @@ class FittedCellTypist:
     training_provenance: dict[str, Any]
 
     def __post_init__(self):
+        import numpy as np
+
         if (
             not self.features or len(self.features) > 50_000
             or len(set(self.features)) != len(self.features)
@@ -103,6 +105,8 @@ class FittedCellTypist:
 
     @cached_property
     def neighbors(self):
+        from sklearn.neighbors import NearestNeighbors
+
         return NearestNeighbors(
             n_neighbors=min(10, len(self.geometry_points)), algorithm="brute", n_jobs=1,
         ).fit(self.geometry_points)
@@ -121,14 +125,20 @@ class ModelPrediction:
     @property
     def probabilities(self):
         # These are OvR sigmoid values; they do not form a categorical simplex.
+        from scipy.special import expit
+
         return expit(self.decision_scores)
 
     @property
     def predicted_labels(self):
+        import numpy as np
+
         return np.asarray(self.classes)[np.argmax(self.decision_scores, axis=1)]
 
     @property
     def margins(self):
+        import numpy as np
+
         top = np.partition(self.decision_scores, -2, axis=1)[:, -2:]
         return top[:, 1] - top[:, 0]
 
@@ -153,6 +163,9 @@ class OODCalibration(FrozenModel):
 
 
 def _matrix_and_features(expression, genes: Sequence[str]):
+    import numpy as np
+    from scipy import sparse
+
     genes = tuple(str(gene) for gene in genes)
     values = sparse.csr_matrix(expression, dtype=np.float64)
     if (
@@ -165,6 +178,8 @@ def _matrix_and_features(expression, genes: Sequence[str]):
 
 
 def _scaled_chunk(model: FittedCellTypist, values, query_indices, model_indices):
+    import numpy as np
+
     block = values[:, query_indices].toarray()
     if model.with_mean:
         block -= model.means[model_indices]
@@ -177,6 +192,9 @@ def _scaled_chunk(model: FittedCellTypist, values, query_indices, model_indices)
 def predict_celltypist(
     model: FittedCellTypist, expression, genes: Sequence[str], *, chunk_size: int = 256,
 ) -> ModelPrediction:
+    import numpy as np
+    from scipy.special import logsumexp
+
     values, genes = _matrix_and_features(expression, genes)
     if not 1 <= chunk_size <= 4096:
         raise ValueError("prediction_chunk_size_invalid")
@@ -213,6 +231,9 @@ def fit_celltypist(
     max_iter: int = 200, n_jobs: int = 1, reference_per_class: int = 256,
     n_components: int = 32, training_provenance: dict[str, Any],
 ) -> FittedCellTypist:
+    import numpy as np
+    from sklearn.decomposition import PCA
+
     import celltypist
     import sklearn
 
@@ -268,6 +289,8 @@ def calibrate_rejection(
     predictions: ModelPrediction, true_labels: Sequence[str], observation_ids: Sequence[str], *,
     alpha: float = 0.05, min_class_support: int = 20, minimum_feature_coverage: float = 0.9,
 ) -> OODCalibration:
+    import numpy as np
+
     labels = np.asarray(true_labels, dtype=str)
     identities = [str(x) for x in observation_ids]
     n = len(predictions.energy)
@@ -308,6 +331,8 @@ def calibrate_rejection(
 def classify_with_rejection(
     predictions: ModelPrediction, calibration: OODCalibration, observation_ids: Sequence[str],
 ) -> pd.DataFrame:
+    import pandas as pd
+
     if predictions.model_sha256 != calibration.model_sha256:
         raise ValueError("calibration_model_mismatch")
     identities = [str(value) for value in observation_ids]
@@ -346,6 +371,8 @@ def classify_with_rejection(
 
 
 def save_model_bundle(path: Path, model: FittedCellTypist, calibration: OODCalibration) -> str:
+    import numpy as np
+
     path = Path(path)
     if model.fingerprint != calibration.model_sha256:
         raise ValueError("calibration_model_mismatch")
@@ -365,6 +392,8 @@ def save_model_bundle(path: Path, model: FittedCellTypist, calibration: OODCalib
 
 
 def load_model_bundle(path: Path, *, expected_sha256: str) -> tuple[FittedCellTypist, OODCalibration]:
+    import numpy as np
+
     path = Path(path)
     manifest_path, arrays_path = path / "manifest.json", path / "arrays.npz"
     if (

@@ -44,8 +44,8 @@ def main() -> int:
     verification_path = args.verification or args.repo / "knowledge/catalog/source_verification.json"
     verification = _load_json(verification_path) if verification_path.exists() else {}
     rows, source_hash = _read_registry(args.registry)
-    if len(rows) != 396:
-        raise ValueError(f"Expected 396 registry rows, found {len(rows)}")
+    if not rows:
+        raise ValueError("Method registry must not be empty")
     raw_distinct_public_url_count = len(
         {
             token
@@ -158,7 +158,7 @@ def _normalize_methods(rows: list[dict[str, Any]]) -> tuple[list[dict], list[dic
                     or ("competitor_isolated" if competitor_isolated else "registered_local_snapshot"),
                 "formal_eligible": False,
                 "card_ref": f"bridge://knowledge/methods/{method_id}",
-                "provenance_refs": [f"MASTER-20260810:Tools:R{excel_row}" for excel_row, _ in group],
+                "provenance_refs": [row["source_ref"] if str(row["source_ref"]).startswith("docs/") else f"MASTER-20260810:Tools:R{excel_row}" for excel_row, row in group],
             }
             methods.append(method)
             for excel_row, row in group:

@@ -1,0 +1,20 @@
+{
+  "$defs": {
+    "SavedTargetRoleProfile": {
+      "$ref": "bridge://schemas/saved-target-role-profile/v0.1"
+    },
+    "TargetRegionalResult": {
+      "$ref": "bridge://schemas/target-regional-result/v0.1"
+    }
+  },
+  "$id": "bridge://schemas/target-regional-result/v0.2",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/TargetRegionalResult"
+    },
+    {
+      "$ref": "#/$defs/SavedTargetRoleProfile"
+    }
+  ],
+  "title": "TargetRegionalResultV2"
+}

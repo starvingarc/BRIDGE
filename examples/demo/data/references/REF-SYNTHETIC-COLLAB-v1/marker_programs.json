@@ -1,0 +1,383 @@
+{
+  "cards": [
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-ASTRO",
+      "level": "L1",
+      "negative_markers": [
+        "SOX10"
+      ],
+      "positive_markers": [
+        "AQP4",
+        "ALDH1L1",
+        "SLC1A3",
+        "GFAP"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Astrocyte",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-ENDO",
+      "level": "L1",
+      "negative_markers": [
+        "RGS5"
+      ],
+      "positive_markers": [
+        "PECAM1",
+        "VWF",
+        "KDR",
+        "EMCN"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Endothelial_Cell",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-FIBRO",
+      "level": "L1",
+      "negative_markers": [
+        "PECAM1"
+      ],
+      "positive_markers": [
+        "COL1A1",
+        "COL1A2",
+        "DCN",
+        "LUM"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Fibroblast",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-GLIOBLAST",
+      "level": "L1",
+      "negative_markers": [
+        "RBFOX3"
+      ],
+      "positive_markers": [
+        "SOX2",
+        "VIM",
+        "HES1",
+        "FABP7"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Glioblast",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-IMMUNE",
+      "level": "L1",
+      "negative_markers": [
+        "RBFOX3"
+      ],
+      "positive_markers": [
+        "PTPRC",
+        "TYROBP",
+        "AIF1",
+        "C1QA"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Immune_Cell",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-NB",
+      "level": "L1",
+      "negative_markers": [
+        "HES1"
+      ],
+      "positive_markers": [
+        "DCX",
+        "STMN2",
+        "TUBB3",
+        "NEUROD1"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Neuroblast",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-CHAT",
+      "level": "L1",
+      "negative_markers": [],
+      "positive_markers": [
+        "CHAT",
+        "SLC18A3",
+        "SLC5A7",
+        "ACHE"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Neuron_ChAT",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-DA",
+      "level": "L1",
+      "negative_markers": [
+        "TPH2"
+      ],
+      "positive_markers": [
+        "TH",
+        "DDC",
+        "SLC6A3",
+        "NR4A2",
+        "PITX3"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Neuron_DA",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-GABA",
+      "level": "L1",
+      "negative_markers": [
+        "SLC17A6"
+      ],
+      "positive_markers": [
+        "GAD1",
+        "GAD2",
+        "SLC32A1"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Neuron_GABA",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-GLUT",
+      "level": "L1",
+      "negative_markers": [
+        "GAD1",
+        "GAD2"
+      ],
+      "positive_markers": [
+        "SLC17A6",
+        "SLC17A7",
+        "SATB2"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Neuron_Glut",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-OMTN",
+      "level": "L1",
+      "negative_markers": [],
+      "positive_markers": [
+        "ISL1",
+        "ISL2",
+        "MNX1",
+        "CHAT"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Neuron_OMTN",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-SERO",
+      "level": "L1",
+      "negative_markers": [
+        "TH"
+      ],
+      "positive_markers": [
+        "TPH2",
+        "SLC6A4",
+        "FEV"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Neuron_Sero",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-OLIGO",
+      "level": "L1",
+      "negative_markers": [
+        "PDGFRA"
+      ],
+      "positive_markers": [
+        "MBP",
+        "MOG",
+        "PLP1",
+        "MAG"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Oligo",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-OPC",
+      "level": "L1",
+      "negative_markers": [
+        "MBP"
+      ],
+      "positive_markers": [
+        "PDGFRA",
+        "CSPG4",
+        "OLIG1",
+        "OLIG2"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:OPC",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-PERICYTE",
+      "level": "L1",
+      "negative_markers": [
+        "PECAM1"
+      ],
+      "positive_markers": [
+        "RGS5",
+        "PDGFRB",
+        "CSPG4",
+        "ABCC9"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Pericyte",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-RG",
+      "level": "L1",
+      "negative_markers": [
+        "RBFOX3"
+      ],
+      "positive_markers": [
+        "SOX2",
+        "HES1",
+        "HES5",
+        "FABP7"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION",
+        "LAMANNO-2016"
+      ],
+      "state_id": "L1:Radial_Glia",
+      "version": "0.1.0"
+    },
+    {
+      "allowed_use": [
+        "shadow_evidence"
+      ],
+      "card_id": "MP-L1-SMOOTH",
+      "level": "L1",
+      "negative_markers": [
+        "PECAM1"
+      ],
+      "positive_markers": [
+        "ACTA2",
+        "TAGLN",
+        "MYL9",
+        "CNN1"
+      ],
+      "review_status": "shadow_candidate",
+      "source_ids": [
+        "BRIDGE-TEAM-ANNOTATION"
+      ],
+      "state_id": "L1:Smooth_Muscle",
+      "version": "0.1.0"
+    }
+  ],
+  "snapshot_id": "BRIDGE-PD-vMB-MARKERS-v0.1-draft",
+  "status": "shadow_candidate",
+  "version": "0.1.0"
+}

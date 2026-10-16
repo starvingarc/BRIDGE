@@ -51,3 +51,16 @@ evidence.
 
 See the [deterministic replay validation record](../../../../docs/validation/p0_02_cell_state_evidence.md#record-p0-02-deterministic-grouping-20260905)
 for the regression, installed-wheel checks and repeated-request evidence.
+
+## Hierarchical composition totals
+
+From 0.6.2, the existing hierarchical TSV includes
+`included_in_whole_product_total`. Select true rows to sum a non-overlapping
+whole-view composition: refined child states and their unresolved/unavailable
+rows replace the corresponding broad parent total. Unrefined broad states and
+root unresolved rows remain included; per-group and unmeasured rows do not.
+All included counts sum to the selected observation count, not the manufactured
+batch's absolute cell yield. Parent totals and within-parent fractions remain
+available for inspection. An available typed QC handoff supplies the existing
+view ID and checksum; legacy inputs retain their asset binding.
+This does not change candidate labels or the L1-only V3 product-role handoff.

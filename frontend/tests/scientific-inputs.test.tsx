@@ -1,6 +1,9 @@
+import { testPrincipal, onTestSignedOut } from "./account-fixture";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../src/App";
+import SessionWorkspace from "../src/SessionWorkspace";
+import { ScientificInputs } from "../src/components/ScientificInputs";
+import type { ScientificDraft } from "../src/types";
 
 const aid = "a".repeat(32);
 const facts = {
@@ -25,7 +28,7 @@ const initial = () => ({
     sources: [{ source_id: "state-review:L1:Neuron_DA", version: "0.1.0", state_id: "L1:Neuron_DA",
       label_level: "L1", definition: "Dopaminergic neuronal transcriptional state",
       anatomy_scope: "human fetal ventral midbrain", developmental_scope: "context only",
-      derivation: "Team-curated candidate", review_status: "pending",
+      derivation: "Team-curated candidate", review_status: "pending", decision: "evaluate",
       limitations: ["Positive and negative markers require review."], source_refs: ["BRIDGE-TEAM-ANNOTATION"] }],
     unknowns: ["independence_unknown", "scientific_source_review_pending"],
     stages: [{ tool_id: "P0-03", state: "blocked", reason_codes: ["scientific_source_review_pending"] }],
@@ -68,10 +71,61 @@ function setup(value = initial(), confirmFails = false) {
 }
 beforeEach(() => localStorage.clear());
 
+it("keeps unsupported historical values but requires explicit correction before saving or confirming", async () => {
+  const draft = initial().scientific_drafts[0] as ScientificDraft;
+  Object.assign(draft.sources[0], { decision: "parent_only" });
+  draft.candidate.development = [{ ...draft.candidate.roles[0], stage_role: "within_window" }];
+  const onRevise = vi.fn().mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  render(<ScientificInputs draft={draft} busy={false} onConfirm={vi.fn()} onRevise={onRevise} onPrepareReport={vi.fn()} />);
+  expect(screen.getByLabelText("L1:Neuron_DA 的产品角色")).toHaveValue("target");
+  expect(screen.getByLabelText("L1:Neuron_DA 的发育阶段")).toHaveValue("within_window");
+  expect(screen.getByRole("checkbox", { name: /已核对候选选择/ })).toBeDisabled();
+  await user.selectOptions(screen.getByLabelText("L1:Neuron_DA 的产品角色"), "role_unresolved");
+  expect(screen.getByRole("button", { name: "保存选择为新草稿" })).toBeDisabled();
+  await user.selectOptions(screen.getByLabelText("L1:Neuron_DA 的发育阶段"), "unresolved");
+  expect(screen.getByRole("button", { name: "确认本版科学草稿" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "保存选择为新草稿" }));
+  expect(onRevise).toHaveBeenCalledWith(expect.objectContaining({
+    roles: [expect.objectContaining({ product_role: "role_unresolved" })],
+    development: [expect.objectContaining({ stage_role: "unresolved" })],
+  }));
+  expect(draft.candidate.roles[0].product_role).toBe("target");
+  expect(draft.candidate.development[0].stage_role).toBe("within_window");
+});
+
+it.each([
+  ["parent_only", /仅支持.*较粗粒度/],
+  ["unavailable", /当前来源不足以判断/],
+  [undefined, /重新整理草稿/],
+])("prevents unsupported role and stage edits for %s without losing candidates", async (decision, explanation) => {
+  const draft = initial().scientific_drafts[0] as ScientificDraft;
+  const row = draft.candidate.roles[0];
+  row.product_role = "role_unresolved";
+  draft.candidate.development = [{ ...row, stage_role: "unresolved" }];
+  Object.assign(draft.sources[0], { decision, parent_state_id: "L1:Neuron" });
+  const onRevise = vi.fn();
+  const user = userEvent.setup();
+  render(<ScientificInputs draft={draft} busy={false} onConfirm={vi.fn()} onRevise={onRevise} onPrepareReport={vi.fn()} />);
+  const role = screen.getByLabelText("L1:Neuron_DA 的产品角色");
+  const stage = screen.getByLabelText("L1:Neuron_DA 的发育阶段");
+  expect(within(role).getByRole("option", { name: "目标候选" })).toBeDisabled();
+  expect(within(stage).getByRole("option", { name: "预期窗口候选" })).toBeDisabled();
+  expect(role).toHaveAccessibleDescription(explanation);
+  expect(stage).toHaveAccessibleDescription(explanation);
+  await user.selectOptions(role, "target");
+  await user.selectOptions(stage, "within_window");
+  expect(role).toHaveValue("role_unresolved");
+  expect(stage).toHaveValue("unresolved");
+  expect(screen.queryByRole("button", { name: "保存选择为新草稿" })).not.toBeInTheDocument();
+  expect(onRevise).not.toHaveBeenCalled();
+  expect(draft.candidate.roles[0].product_role).toBe("role_unresolved");
+});
+
 it("shows sources, unknowns and exact candidate confirmation without executing", async () => {
   const writes = setup();
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   const card = await screen.findByRole("region", { name: "科学输入草稿" });
   expect(within(card).getByText("尚未确认生物学独立性")).toBeInTheDocument();
   await user.click(within(card).getByText("查看候选来源"));
@@ -84,13 +138,13 @@ it("shows sources, unknowns and exact candidate confirmation without executing",
   await waitFor(() => expect(within(card).getByText("草稿已确认")).toBeInTheDocument());
   expect(writes).toEqual([{ path: "/api/sessions/science-session/scientific-inputs/confirm",
     body: { draft_id: "b".repeat(32), draft_digest: "c".repeat(64) } }]);
-  expect(screen.queryByRole("button", { name: "Confirm analysis" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "开始分析" })).not.toBeInTheDocument();
 });
 
 it("stages a changed role as a new review version rather than confirming it", async () => {
   const writes = setup();
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   await user.selectOptions(await screen.findByLabelText("L1:Neuron_DA 的产品角色"), "role_unresolved");
   expect(writes).toHaveLength(0);
   expect(screen.getByRole("button", { name: "确认本版科学草稿" })).toBeDisabled();
@@ -112,7 +166,8 @@ it("provides the next scientific draft entry from confirmed ordinary product fac
   value.scientific_drafts = [];
   const writes = setup(value);
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await user.click(await screen.findByRole("button", {name: "实验背景"}));
   await user.click(await screen.findByRole("button", { name: "整理科学输入草稿" }));
   expect(writes).toEqual([{ path: "/api/sessions/science-session/scientific-inputs/draft", body: { upload_id: aid } }]);
 });
@@ -121,10 +176,10 @@ it("restores confirmed review and preserves source-review blockers", async () =>
   const value = initial();
   value.scientific_drafts[0].status = "confirmed";
   const writes = setup(value);
-  const first = render(<App />);
+  const first = render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText("草稿已确认")).toBeInTheDocument();
   first.unmount();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText("草稿已确认")).toBeInTheDocument();
   expect(screen.getAllByText(/来源仍待生物学审阅/).length).toBeGreaterThan(0);
   expect(writes).toHaveLength(0);
@@ -134,7 +189,7 @@ it("renders stale drafts read-only and rejects a failed confirmation visibly", a
   const value = initial();
   value.scientific_drafts[0].status = "stale";
   const writes = setup(value);
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText("相关输入已变化，请重新整理草稿。")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "确认本版科学草稿" })).not.toBeInTheDocument();
   expect(writes).toHaveLength(0);
@@ -143,7 +198,7 @@ it("renders stale drafts read-only and rejects a failed confirmation visibly", a
 it("keeps failed confirmations pending without claiming success", async () => {
   setup(initial(), true);
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   await user.click(await screen.findByRole("checkbox", { name: /已核对候选选择和未知项/ }));
   await user.click(screen.getByRole("button", { name: "确认本版科学草稿" }));
   expect(await screen.findByText("草稿或来源已变化，请刷新后重新核对。")).toBeInTheDocument();
@@ -160,7 +215,7 @@ it("shows stage blockers and prepares missingness without approving the tool", a
     { tool_id: "P0-11", state: "blocked", reason_codes: ["verified_report_and_export_approval_required"] });
   const writes = setup(value);
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText("报告的证据归组与声明判定规则尚未配置")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "准备缺失证据检查" }));
   expect(writes).toEqual([{ path: "/api/sessions/science-session/report-inputs/prepare",
@@ -177,8 +232,8 @@ it.each([["P0-09", "整理当前证据"], ["P0-10", "生成并核验内部报告
       { tool_id: toolId, state: "ready", reason_codes: ["internal_draft_only"] });
     const writes = setup(value);
     const user = userEvent.setup();
-    render(<App />);
-    expect(await screen.findByText(/产品比较 · 尚不可运行/)).toBeInTheDocument();
+    render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+    expect(await screen.findByText(/产品比较 · 受阻/)).toBeInTheDocument();
     expect(screen.queryByText(/移植证据/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: label }));
     expect(writes).toEqual([{ path: "/api/sessions/science-session/report-inputs/prepare",
@@ -198,7 +253,7 @@ it("restores the internal report and shows the actual blocked verification witho
     next_actions: ["完成候选来源与产品角色的生物学审阅，再准备正式域测量。"],
   } });
   const writes = setup(value);
-  const first = render(<App />);
+  const first = render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   let report = await screen.findByRole("region", { name: "内部研究报告" });
   expect(within(report).getByText("发布受阻")).toBeInTheDocument();
   expect(within(report).getByText("本次核对不能证明安全性。")).toBeInTheDocument();
@@ -207,7 +262,7 @@ it("restores the internal report and shows the actual blocked verification witho
   expect(within(report).getByText("当前声明规则尚未支持缺失性表述")).toBeInTheDocument();
   expect(within(report).queryByRole("button", { name: /导出/ })).not.toBeInTheDocument();
   first.unmount();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   report = await screen.findByRole("region", { name: "内部研究报告" });
   expect(within(report).getByText("发布受阻")).toBeInTheDocument();
   expect(writes).toHaveLength(0);
@@ -218,8 +273,20 @@ it("retains a completed missingness result without offering it as a product verd
   value.scientific_drafts[0].status = "confirmed";
   value.scientific_drafts[0].stages.push({ tool_id: "P0-08", state: "available", reason_codes: ["missingness_only"] });
   const writes = setup(value);
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
   expect(await screen.findByText("仅检查缺失证据，不是产品合格判定")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "准备缺失证据检查" })).not.toBeInTheDocument();
   expect(writes).toHaveLength(0);
+});
+
+
+it("does not fall back to internal codes for unrecognised scientific prerequisites", async () => {
+  const value = initial();
+  value.scientific_drafts[0].stages.push({tool_id:"P0-99",state:"new_internal_state",reason_codes:["new_internal_guard_required"]});
+  value.scientific_drafts[0].unknowns.push("another_internal_guard_required");
+  setup(value);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  const card = await screen.findByRole("region", { name:"科学输入草稿" });
+  expect(card.textContent).not.toMatch(/P0-99|new_internal_state|new_internal_guard_required|another_internal_guard_required/);
+  expect(within(card).getByText("尚未确认生物学独立性")).toBeInTheDocument();
 });

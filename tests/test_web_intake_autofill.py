@@ -7,7 +7,7 @@ import zipfile
 
 import pytest
 
-from test_web_service import client, new_session, settle, confirm_change
+from web_support import client, new_session, settle, confirm_change
 
 
 def upload_metadata(client, tmp_path, *, days=(28, 28), samples=("PRIVATE_SAMPLE_A", "PRIVATE_SAMPLE_A"),
@@ -458,7 +458,7 @@ def test_confirmed_manual_assay_does_not_overrule_a_newer_asset_declaration(clie
     with service.lock:
         state = service.load(sid)
         state["_asset_declarations"][aid]["assay"] = "snRNA-seq"
-        service.save(state)
+        service.sessions.save(state)
     assert intake(client, sid, aid)["facts"]["assay"] == "snRNA-seq"
 
 
@@ -586,7 +586,7 @@ def test_protocol_confirmation_lists_sources_and_rechecks_attachment_integrity(c
     service = client.app.state.service
     state = service.load(sid)
     pid = state["_intake_autofill"][aid]["protocols"][0]["id"]
-    from bridge.web.app import write_file
+    from bridge.web.sessions import write_file
     write_file(service.directory(sid) / "intake-protocols" / (pid + ".bin"), b"Replaced text")
     pending = staged["pending_input_change"]
     response = client.post(f"/api/sessions/{sid}/input-change/confirm",

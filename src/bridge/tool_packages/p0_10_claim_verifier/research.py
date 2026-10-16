@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 import re
 import textwrap
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -24,8 +24,6 @@ from bridge.tool_packages.p0_09_evidence_compiler.models import (
     CaseEvidenceGraphManifest, EvidenceRecord, EvidenceRecordSet,
     contains_unsafe_reference, VersionedObjectRef,
 )
-from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
-from bridge.tool_packages.p0_09_evidence_compiler.adapter import _validate_source_record_set
 from bridge.tool_packages.p0_10_claim_verifier.models import (
     AuthoringChannel, ClaimBlock, ClaimPolicySpec, ClaimVerificationResult,
     ClaimVerifierReleaseContract, ReportDraft, StatementRegistry, ReleaseState,
@@ -147,7 +145,14 @@ class ResearchExplanation(FrozenModel):
     missing_evidence_aliases: list[str] = Field(default_factory=list)
     expected_observation: str | None = None
     competing_explanation: str
-    discriminating_check: str
+    discriminating_check: str | None
+
+    @property
+    def is_evidence_gap(self) -> bool:
+        # Display classification only: no new evidence, qualification or serialized fields.
+        return (not self.evidence_aliases and bool(self.missing_evidence_aliases)
+                and not self.opposing_evidence_aliases and self.expected_observation is None
+                and self.discriminating_check is None)
 
 
 class ResearchExplanationVersion(FrozenModel):
@@ -168,6 +173,93 @@ class ResearchExplanationVersion(FrozenModel):
         if self.content_sha256 != _digest(payload):
             raise ValueError("report_explanation_hash_mismatch")
         return self
+
+
+class BiologicalFacts(FrozenModel):
+    product_family: str
+    starting_cell_type: str | None
+    culture_day: int | None
+    target_cell_type: str | None
+    target_stage: str | None
+    sampling_context: str
+    independent_cultures: int | None
+    assay: str
+    sequencing_method: str | None
+
+
+class BiologicalContext(FrozenModel):
+    source: Literal["confirmed_intake"]
+    input_revision: int
+    facts: BiologicalFacts
+
+
+from bridge.toolkit.literature import LiteratureSnapshot, LiteratureUse
+
+
+class ResearchExplanationV11(ResearchExplanation):
+    literature_support: list[LiteratureUse] = Field(default_factory=list, max_length=3)
+
+
+class ResearchExplanationVersionV11(ResearchExplanationVersion):
+    object_version: Literal["1.1.0"] = "1.1.0"
+    hypotheses: list[ResearchExplanationV11]
+    biological_context: BiologicalContext
+    literature: LiteratureSnapshot
+
+    @model_validator(mode="after")
+    def literature_binding(self):
+        if self.biological_context.input_revision != self.input_revision:
+            raise ValueError("explanation_background_revision_mismatch")
+        read = {row.source_ref for row in self.literature.sources if row.content_level == "abstract"}
+        for row in self.hypotheses:
+            refs = [use.source_ref for use in row.literature_support]
+            if (len(refs) != len(set(refs)) or not set(refs) <= read
+                    or row.is_evidence_gap and refs):
+                raise ValueError("literature_support_not_read")
+        return self
+
+
+from bridge.toolkit.interpretation import EvidenceRelation, FeatureCoverageSnapshot, validate_relations, validate_feature_queries, interpretation_graph, InterpretationGraphRef, current_explanation
+
+
+class ResearchExplanationV12(ResearchExplanationV11):
+    evidence_relations: list[EvidenceRelation] = Field(default_factory=list, max_length=24)
+    feature_queries: list[str] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def relation_binding(self):
+        validate_feature_queries(self.feature_queries)
+        return validate_relations(self)
+
+
+class ResearchExplanationVersionV12(ResearchExplanationVersion):
+    object_version: Literal["1.2.0"] = "1.2.0"
+    hypotheses: list[ResearchExplanationV12]
+    feature_coverage: FeatureCoverageSnapshot | None
+    graph_ref: InterpretationGraphRef | None
+    biological_context: BiologicalContext | None = None
+    literature: LiteratureSnapshot | None = None
+
+    @model_validator(mode="after")
+    def semantic_binding(self):
+        if self.feature_coverage is None and any(h.feature_queries for h in self.hypotheses):
+            raise ValueError("feature_query_coverage_required")
+        if self.feature_coverage is not None and self.feature_coverage.input_revision != self.input_revision:
+            raise ValueError("feature_coverage_revision_mismatch")
+        if self.biological_context is not None and self.biological_context.input_revision != self.input_revision:
+            raise ValueError("explanation_background_revision_mismatch")
+        read = {r.source_ref for r in self.literature.sources if r.content_level == "abstract"} if self.literature else set()
+        if any(u.source_ref not in read for h in self.hypotheses for u in h.literature_support):
+            raise ValueError("literature_support_not_read")
+        return self
+
+
+def parse_research_explanation(value):
+    model = {"1.0.0": ResearchExplanationVersion, "1.1.0": ResearchExplanationVersionV11,
+             "1.2.0": ResearchExplanationVersionV12}.get(value.get("object_version"))
+    if model is None:
+        raise ValueError("unsupported_explanation_version")
+    return model.model_validate(value)
 
 
 class ResearchCandidateDevelopment(FrozenModel):
@@ -250,7 +342,13 @@ class _ResearchReportContextContent(FrozenModel):
 
     @model_validator(mode="after")
     def source_bindings(self) -> Self:
-        _safe_content(self.model_dump(mode="json"))
+        payload = self.model_dump(mode="json")
+        if self.object_version in {"0.4.0", "0.5.0"}:
+            # Literature has its own typed identity/hash contract and is rendered inert.
+            # Keep the existing private-content checks on facts and model-written prose.
+            for version in payload["explanation_versions"]:
+                version.pop("literature", None)
+        _safe_content(payload)
         sources = {row.source_ref for row in self.sources}
         if len(sources) != len(self.sources):
             raise ValueError("duplicate_report_context_source")
@@ -281,9 +379,60 @@ class ResearchReportContext(_ResearchReportContextContent):
         return self
 
 
-def seal_research_context(payload: dict) -> ResearchReportContext:
-    value = _ResearchReportContextContent.model_validate(payload).model_dump(mode="json")
-    return ResearchReportContext.model_validate({**value, "context_sha256": _digest(value)})
+class _ResearchReportContextContentV04(_ResearchReportContextContent):
+    object_version: Literal["0.4.0"] = "0.4.0"
+    explanation_versions: list[Annotated[ResearchExplanationVersion | ResearchExplanationVersionV11,
+        Field(discriminator="object_version")]] = Field(default_factory=list)
+
+
+class ResearchReportContextV04(_ResearchReportContextContentV04):
+    context_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def context_binding(self):
+        if self.context_sha256 != _digest(self.model_dump(mode="json", exclude={"context_sha256"})):
+            raise ValueError("report_context_hash_mismatch")
+        return self
+
+
+class _ResearchReportContextContentV05(_ResearchReportContextContent):
+    object_version: Literal["0.5.0"] = "0.5.0"
+    explanation_versions: list[Annotated[ResearchExplanationVersion | ResearchExplanationVersionV11 | ResearchExplanationVersionV12,
+        Field(discriminator="object_version")]] = Field(default_factory=list)
+
+
+class ResearchReportContextV05(_ResearchReportContextContentV05):
+    context_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def context_binding(self):
+        if self.context_sha256 != _digest(self.model_dump(mode="json", exclude={"context_sha256"})):
+            raise ValueError("report_context_hash_mismatch")
+        return self
+
+
+RESEARCH_CONTEXT_V05_SCHEMA_REF = "bridge://schemas/research-report-context/v0.5"
+RESEARCH_CONTEXT_SNAPSHOT_V05_SCHEMA_REF = "bridge://schemas/research-analysis-snapshot/v0.5"
+
+
+RESEARCH_CONTEXT_V04_SCHEMA_REF = "bridge://schemas/research-report-context/v0.4"
+RESEARCH_CONTEXT_SNAPSHOT_V04_SCHEMA_REF = "bridge://schemas/research-analysis-snapshot/v0.4"
+
+
+def parse_research_context(value):
+    if isinstance(value, str):
+        value = json.loads(value)
+    model = {"0.4.0": ResearchReportContextV04, "0.5.0": ResearchReportContextV05}.get(value.get("object_version"), ResearchReportContext)
+    return model.model_validate(value)
+
+
+def seal_research_context(payload: dict):
+    content, model = ((_ResearchReportContextContentV04, ResearchReportContextV04)
+        if payload.get("object_version") == "0.4.0" else (_ResearchReportContextContent, ResearchReportContext))
+    if payload.get("object_version") == "0.5.0":
+        content, model = _ResearchReportContextContentV05, ResearchReportContextV05
+    value = content.model_validate(payload).model_dump(mode="json")
+    return model.model_validate({**value, "context_sha256": _digest(value)})
 
 
 class ResearchAnalysisSnapshot(FrozenModel):
@@ -367,7 +516,9 @@ class ResearchAnalysisSnapshotV03(ResearchAnalysisSnapshot):
 
     @model_validator(mode="after")
     def bound_context(self) -> Self:
-        context = ResearchReportContext.model_validate_json(self.report_context_json)
+        context = parse_research_context(self.report_context_json)
+        if context.object_version != self.object_version:
+            raise ValueError("snapshot_context_version_mismatch")
         if self.context_sections_json != _json(_context_sections(context)):
             raise ValueError("report_context_presentation_mismatch")
         if hashlib.sha256(self.report_context_json.encode()).hexdigest() != self.report_context_sha256:
@@ -381,20 +532,57 @@ class ResearchAnalysisSnapshotV03(ResearchAnalysisSnapshot):
         return self
 
 
+class ResearchAnalysisSnapshotV04(ResearchAnalysisSnapshotV03):
+    object_version: Literal["0.4.0"] = "0.4.0"
+    context_renderer_id: Literal["BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.4"] = "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.4"
+
+
+class ResearchAnalysisSnapshotV05(ResearchAnalysisSnapshotV03):
+    object_version: Literal["0.5.0"] = "0.5.0"
+    context_renderer_id: Literal["BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.5"] = "BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.5"
+    interpretation_graph_json: str
+
+    @model_validator(mode="after")
+    def semantic_graph_binding(self):
+        context = parse_research_context(self.report_context_json)
+        if self.interpretation_graph_json != _json(interpretation_graph(context)):
+            raise ValueError("interpretation_graph_context_mismatch")
+        return self
+
+
+def research_snapshot_model(version):
+    return {"0.2.0": ResearchAnalysisSnapshot, "0.3.0": ResearchAnalysisSnapshotV03,
+            "0.4.0": ResearchAnalysisSnapshotV04, "0.5.0": ResearchAnalysisSnapshotV05}[version]
+
+
 def active_research_records(manifest, evidence):
     """Resolve append-only history before selecting current report evidence."""
+    from bridge.tool_packages.p0_09_evidence_compiler.adapter import _validate_source_record_set
+
     effective = _validate_source_record_set(evidence, manifest)
     return [row for row in evidence.records
             if effective[row.ref].value == "active" and row.applicability.value == "applicable"]
 
 
 def _check_context_graph(context, manifest, manifest_sha256, revision, evidence):
-    context = ResearchReportContext.model_validate(context.model_dump(mode="json"))
+    context = parse_research_context(context.model_dump(mode="json"))
     if (context.graph_id != manifest.graph_id or context.graph_version != manifest.graph_version
             or context.graph_manifest_sha256 != manifest_sha256
             or context.product_case_ref != manifest.product_case_ref
             or context.input_revision != revision):
         raise ValueError("report_context_graph_binding_mismatch")
+    for version in context.explanation_versions:
+        if version.object_version in {"1.1.0", "1.2.0"} and version.biological_context is not None and str(version.input_revision) == context.input_revision:
+            expected = {key: getattr(context.confirmed_product_facts, key)
+                        for key in BiologicalFacts.model_fields}
+            if version.biological_context.facts.model_dump(mode="json") != expected:
+                raise ValueError("report_explanation_background_mismatch")
+    for version in context.explanation_versions:
+        coverage = getattr(version, "feature_coverage", None)
+        if coverage is not None and str(version.input_revision) == context.input_revision:
+            if (coverage.upload_sha256 != context.data_view.parent_asset_sha256
+                    or coverage.matrix_location != context.data_view.matrix_location):
+                raise ValueError("feature_coverage_input_binding_mismatch")
     records = {}
     for row in active_research_records(manifest, evidence):
         if (context.data_view.sample_or_preparation_ref is not None
@@ -533,6 +721,8 @@ def _make_draft(*, manifest: CaseEvidenceGraphManifest, manifest_sha256: str,
 
 def _read_graph(graph_manifest_path: Path):
     manifest_raw = read_regular_bytes(graph_manifest_path)
+    from bridge.tool_packages.p0_09_evidence_compiler.queries import EvidenceGraphQueries
+
     graph = EvidenceGraphQueries.open(graph_manifest_path)
     manifest = CaseEvidenceGraphManifest.model_validate_json(manifest_raw)
     manifest_sha256 = hashlib.sha256(manifest_raw).hexdigest()
@@ -587,6 +777,13 @@ def build_research_snapshot(*, graph_manifest_path: Path, report: ReportDraft,
                        report_context_json=raw, context_sections_json=_json(_context_sections(report_context)),
                        report_context_sha256=hashlib.sha256(raw.encode()).hexdigest())
         model = ResearchAnalysisSnapshotV03
+        if report_context.object_version == "0.4.0":
+            payload.update(object_version="0.4.0", context_renderer_id="BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.4")
+            model = ResearchAnalysisSnapshotV04
+        if report_context.object_version == "0.5.0":
+            payload.update(object_version="0.5.0", context_renderer_id="BRIDGE-RESEARCH-CONTEXT-RENDERER-v0.5")
+            model = ResearchAnalysisSnapshotV05
+            payload["interpretation_graph_json"] = _json(interpretation_graph(report_context))
     payload["snapshot_sha256"] = _digest(payload)
     return model.model_validate(payload)
 
@@ -607,7 +804,7 @@ def research_draft_matches_graph(report: ReportDraft, snapshot: ResearchAnalysis
     ))
     return (
         report.report_id == _report_id(snapshot.graph_manifest_sha256, snapshot.input_revision,
-            ResearchReportContext.model_validate_json(snapshot.report_context_json)
+            parse_research_context(snapshot.report_context_json)
             if isinstance(snapshot, ResearchAnalysisSnapshotV03) else None)
         and report.audience is ReportAudience.INTERNAL_RESEARCH
         and report.language.value == "zh"
@@ -633,72 +830,157 @@ def _context_report_html(context, records, paragraphs, sections, metadata):
                 + "</tr></thead><tbody>" + "".join("<tr>" + "".join("<td>" + text(v) + "</td>" for v in row)
                     + "</tr>" for row in rows) + "</tbody></table>")
 
+    def percent(value):
+        if value is None:
+            return "暂无数值"
+        scaled = value * 100
+        number = f"{scaled:.3g}" if 0 < abs(scaled) < .01 else f"{scaled:.2f}".rstrip("0").rstrip(".")
+        return number + "%"
+
+    def count(value):
+        return "未提供" if value is None else f"{value:,}"
+
+    def ratio_result(row):
+        value = row.get("value")
+        if value is None:
+            return "暂无数值"
+        result = percent(value) if row.get("unit") == "fraction" else str(value)
+        n, total = row.get("numerator"), row.get("denominator")
+        if n is not None and total is not None:
+            result += f"（{count(n)} 个 / 共 {count(total)} 个细胞）"
+        return result
+
     facts = context.confirmed_product_facts
-    sampling = {"process_sample": "分化过程中的样本", "final_preparation": "最终制备物",
-                "unknown": "尚未明确"}.get(facts.sampling_context, facts.sampling_context)
-    body = '<p class="eyebrow">BRIDGE · 私有研究证据</p><h1>' + text(facts.product_name or "产品研究报告") + "</h1>"
-    body += "<p class=\"boundary\">本报告保留测量、候选解释与缺失证据；不建立细胞产品的临床疗效、安全性或放行资格。</p>"
-    body += "<h2>产品背景与数据范围</h2><p>以下产品目标来自已确认资料，不等于已验证的细胞身份。</p>"
-    body += table(("项目", "已确认资料 / 工具记录"), [
+    sampling = {"process_sample": "分化过程样本", "final_preparation": "最终制备物",
+                "unknown": "待确认"}.get(facts.sampling_context, facts.sampling_context)
+    body = '<p class="eyebrow">BRIDGE · 研究报告</p><h1>' + text(facts.product_name or "产品研究报告") + "</h1>"
+    body += "<h2>样本概况</h2>"
+    body += table(("项目", "信息"), [
         ("目标细胞", facts.target_cell_type), ("预期阶段", facts.target_stage),
-        ("取样性质", sampling), ("实验类型", facts.assay),
-        ("本次数据视图中的观测数", context.data_view.n_observations),
+        ("样本类型", sampling), ("实验类型", facts.assay),
+        ("纳入细胞", count(context.data_view.n_observations)),
         ("独立培养次数", facts.independent_cultures)])
-    body += "<p>观测数不等于独立生物学重复数；培养天数不换算为体内发育年龄。</p>"
     if any(row.development_gate_state == "failed" for row in context.candidate_development):
-        body += "<p class=\"boundary\">候选开发门槛失败：下列细胞标签是候选方法输出，不能作为已确立身份、目标组成或发育匹配结论。</p>"
+        body += "<p class=\"boundary\">候选方法的开发门槛失败，细胞标签待复核。</p>"
     if context.composition_mapping:
-        states = {"candidate": "候选", "unknown": "未知", "unavailable": "不可用"}
+        states = {"candidate": "候选", "unknown": "未确定", "unavailable": "不可用"}
         body += "<h2>候选细胞组成</h2>"
-        body += table(("候选标签", "状态", "观测数", "分母", "比例（工具原值）"), [
-            (row.label, states.get(row.assignment_state, row.assignment_state), row.count, row.denominator, row.fraction)
+        body += table(("类别", "状态", "细胞数", "占比"), [
+            (row.label, states.get(row.assignment_state, row.assignment_state),
+             f"{count(row.count)} / 共 {count(row.denominator)}", percent(row.fraction))
             for row in context.composition_mapping])
-    native = {"native_s_g2m_fraction": "S/G2M 周期预测比例",
-              "candidate_assignment_fraction": "候选分配保留比例"}
+    native = {"native_s_g2m_fraction": "S/G2M 期细胞占比",
+              "candidate_assignment_fraction": "获得候选注释的细胞占比"}
     numeric = [row for row in records if row.get("metric_id") in native]
     if numeric:
-        body += "<h2>测量摘要</h2>"
-        body += table(("测量", "原值", "分子", "分母", "单位"), [
-            (native[row["metric_id"]], row.get("value"), row.get("numerator"), row.get("denominator"), row.get("unit"))
-            for row in numeric])
-        body += "<p>周期预测比例不等于实际分裂速率，也不能单独证明静息或产品安全性。缺失数值不补零。</p>"
+        body += "<h2>主要观察</h2>"
+        body += table(("指标", "结果"), [(native[row["metric_id"]], ratio_result(row)) for row in numeric])
     if context.process_means:
-        body += "<h2>过程程序观测</h2>"
-        body += table(("方法 / 程序", "均值（工具原值）", "原始单位", "观测数"), [
-            (row.method_id + " / " + row.program_id, row.mean, row.score_unit, row.n_observations)
-            for row in context.process_means])
-        body += "<p>不同方法的单位分别保留，不合并为一个分数或独立投票；这里的观测数不是比例分母或独立重复数。</p>"
-    body += "<h2>当前解释与局限</h2><p>解释未验证；支持、反对及缺失证据的版本化引用保留在下方完整记录中。</p>"
-    latest = context.explanation_versions[-1].hypotheses if context.explanation_versions else []
+        methods = {"PROC-SCORE-SCANPY": "相对背景表达 · Scanpy", "PROC-SCORE-DECOUPLER": "基因集关联 · ULM"}
+        programs = {"S": "S 期", "G2M": "G2/M 期", "PROC-ROS": "氧化应激",
+                    "PROC-UPR": "未折叠蛋白反应", "PROC-APOPTOSIS": "凋亡相关", "PROC-HYPOXIA": "缺氧",
+                    "PROC-PLURIPOTENCY": "多能性", "PROC-DISSOCIATION": "解离 / 热休克"}
+        units = {"scanpy_control_adjusted_expression": "对照校正表达得分",
+                 "scanpy_relative_expression_score": "相对表达分数",
+                 "decoupler_ulm_t_value": "单变量线性模型 t 值"}
+        body += "<h2>增殖与应激</h2><details><summary>查看测量数值与方法</summary>"
+        groups = {}
+        for row in context.process_means:
+            groups.setdefault((row.method_id, row.score_unit), []).append(row)
+        for (method, unit), rows in groups.items():
+            body += "<h3>" + text(methods.get(method, "方法名称待核对")) + "</h3>"
+            body += "<p class=\"measure-unit\">" + text(units.get(unit, unit)) + "</p>"
+            body += table(("程序", "平均得分", "细胞数"), [
+                (programs.get(row.program_id, "程序名称待核对"),
+                 "暂无数值" if row.mean is None else f"{row.mean:.4g}", count(row.n_observations))
+                for row in rows])
+        body += "</details>"
+    body += "<h2>结果解读（尚待验证）</h2>"
+    version = (current_explanation(context) if context.object_version == "0.5.0"
+               else context.explanation_versions[-1] if context.explanation_versions else None)
+    latest = version.hypotheses if version else []
     for row in latest:
-        body += ("<article><h3>待检验解释</h3><p>" + text(row.statement)
-                 + "</p><p>竞争解释：" + text(row.competing_explanation)
-                 + "</p><p>预期观察：" + text(row.expected_observation) + "</p></article>")
+        label = "待补充证据" if row.is_evidence_gap else "解读"
+        body += "<article><h3>" + label + "</h3><p>" + text(row.statement) + "</p>"
+        if row.competing_explanation or row.expected_observation:
+            body += "<details><summary>解读依据与待确认事项</summary>"
+            if row.competing_explanation:
+                body += "<p>" + text(row.competing_explanation) + "</p>"
+            if row.expected_observation:
+                body += "<p>待检验观察：" + text(row.expected_observation) + "</p>"
+            body += "</details>"
+        for use in getattr(row, "literature_support", []):
+            body += '<p>文献依据：<a href="#' + text(use.source_ref) + '">' + text(use.rationale) + "</a></p>"
+            body += "<p>适用条件（待核对）：" + text("；".join(getattr(use, field) for field in
+                ("species", "lineage", "stage", "experimental_context"))) + "</p>"
+        relations = getattr(row, "evidence_relations", [])
+        if relations:
+            body += "<details><summary>证据如何支持或限制这项解释（待验证）</summary>"
+            names = {"supports": "支持", "limits": "限制", "contradicts": "相反证据", "missing_for": "待补证据"}
+            for relation in relations:
+                body += "<p><strong>" + names[relation.relation] + "：</strong>" + text(relation.rationale) + "</p>"
+                body += "<p>适用范围：" + text(relation.applicability) + "</p><small>来源：" + text(relation.evidence_alias) + "</small>"
+            body += "</details>"
+        body += "</article>"
     if not latest:
-        body += "<p>当前版本未列出竞争解释；这不代表证据充分、没有冲突或科学问题已完成。</p>"
-    body += "<p>目标角色、发育窗口或程序缺少适用依据时仍不可用。本报告不授予方法或产品科学资格，未验证的分数保持为空。</p>"
-    body += '<details><summary>逐项核验声明、完整来源与解释历史</summary>' + paragraphs + sections + "</details>"
-    body += '<footer><h2>报告版本</h2><p>' + text(metadata) + "</p></footer>"
+        body += "<p>暂无解读。</p>"
+    coverage = getattr(version, "feature_coverage", None)
+    if coverage is not None:
+        body += "<details><summary>已核对的输入基因覆盖</summary><p>仅核对所选输入中的精确标识符；不代表表达、检测灵敏度或生物学缺失。</p>"
+        states = {"present": "输入包含", "not_found": "未找到精确匹配", "unknown": "尚不能确定"}
+        for item in coverage.results:
+            body += "<p>" + text(item.identifier) + "：" + states[item.state] + "</p>"
+        body += "</details>"
+    bibliography = getattr(version, "literature", None)
+    if bibliography is not None:
+        body += "<h2>参考文献与适用范围</h2>"
+        if not bibliography.sources:
+            body += "<p>本轮未读取到可引用的文献摘要；这不表示不存在相关研究。</p>"
+        for source in bibliography.sources:
+            metadata_row = source.metadata
+            body += '<article id="' + text(source.source_ref) + '"><h3><a href="' + text(source.url) + '" rel="noreferrer">'
+            body += text(metadata_row.title) + "</a></h3>"
+            body += "<p>" + text(metadata_row.authors or "作者未提供") + " · " + text(metadata_row.year or "年份未提供")
+            body += " · " + text(metadata_row.journal or "期刊未提供") + "</p>"
+            publication_notice = {
+                "unknown": "撤稿与更正状态未完整提供，尚未核实。",
+                "no_flag_reported": "来源未报告撤稿或更正标记，仍需核实。",
+                "correction_reported": "来源报告更正信息，请核对更正内容。",
+                "retraction_or_concern_reported": "来源报告撤稿或关注声明，不应据此确立机制解释。",
+            }[metadata_row.publication_status]
+            body += "<p>" + text(publication_notice) + "</p>"
+            for correction in metadata_row.corrections or []:
+                body += "<p>" + text(" · ".join(value for value in (
+                    correction.type, correction.source, correction.id, correction.reference, correction.note) if value)) + "</p>"
+            body += "<p>PMID：" + text(metadata_row.pmid) + "；DOI：" + text(metadata_row.doi or "未提供") + "</p>"
+            body += "<p>" + ("已读取摘要" if source.content_level == "abstract" else "仅书目信息，不能支持机制解释")
+            body += "；读取时间：" + text(source.retrieved_at) + "</p>"
+            if source.abstract:
+                body += "<details><summary>保存的摘要</summary><p>" + text(source.abstract) + "</p></details>"
+            body += "</article>"
+    # Preserve exact audit material as inert document data, outside the reader UI.
+    body += '<template id="report-audit">' + paragraphs + sections + "<p>" + text(metadata) + "</p></template>"
+    body += '<footer><p>资料版本 ' + text(context.input_revision) + "</p></footer>"
     return ('<!doctype html><html lang="zh"><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
             '<title>内部研究证据报告</title><style>'
-            '*{box-sizing:border-box}body{font-family:system-ui,sans-serif;max-width:72rem;margin:0 auto;padding:2rem;line-height:1.65;color:#17302b;overflow-wrap:anywhere}'
-            'h1{font-size:2rem;line-height:1.3}h2{margin-top:2rem;font-size:1.25rem}.eyebrow{color:#45665c;letter-spacing:.08em}'
-            '.boundary{background:#f1f5f3;border-left:3px solid #45665c;padding:1rem}'
-            'table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;vertical-align:top;padding:.65rem;border-bottom:1px solid #dce5df;overflow-wrap:anywhere}'
-            'th{background:#f5f7f5}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem}details{margin-top:2rem}summary{cursor:pointer;font-weight:600}'
+            '*{box-sizing:border-box}body{font-family:system-ui,sans-serif;max-width:72rem;margin:0 auto;padding:2rem;line-height:1.65;color:#1d1d1f;overflow-wrap:anywhere}'
+            'h1{font-size:2rem;line-height:1.3}h2{margin-top:2rem;font-size:1.25rem}.eyebrow{color:#6e6e73;letter-spacing:.08em}'
+            '.boundary{background:#f5f5f7;border-left:3px solid #86868b;padding:1rem}'
+            'table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.9rem}th,td{text-align:left;vertical-align:top;padding:.65rem;border-bottom:1px solid #e5e5e7;overflow-wrap:anywhere}'
+            'th{background:#f5f5f7}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem}details{margin:.5rem 0 1rem} .measure-unit{color:#6e6e73;font-size:.85rem}summary{cursor:pointer;font-weight:600}'
             'footer{margin-top:2rem;border-top:1px solid #dce5df;font-size:.75rem;color:#52645c}'
             '@media(max-width:600px){body{padding:1rem}h1{font-size:1.6rem}th,td{padding:.4rem;font-size:.8rem}}'
             '@media print{body{max-width:none;padding:0;color:#000}h2{break-after:avoid}tr{break-inside:avoid}}'
-            '</style><body data-layout-version="1">' + body + '</body></html>')
+            '</style><body data-layout-version="3">' + body + '</body></html>')
 
 
 def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
                              result: ResearchClaimVerificationResult) -> dict[str, bytes]:
     # Revalidation also rejects callers using Pydantic model_copy/model_construct
     # to circumvent frozen model validators.
-    model = ResearchAnalysisSnapshotV03 if snapshot.object_version == "0.3.0" else ResearchAnalysisSnapshot
+    model = research_snapshot_model(snapshot.object_version)
     snapshot = model.model_validate(snapshot.model_dump(mode="json"))
     result = ResearchClaimVerificationResult.model_validate(result.model_dump(mode="json"))
     draft = ReportDraft.model_validate_json(snapshot.report_draft_json)
@@ -715,9 +997,11 @@ def render_research_snapshot(*, snapshot: ResearchAnalysisSnapshot,
     records = json.loads(snapshot.source_evidence_records_json)
     manifest = CaseEvidenceGraphManifest.model_validate_json(snapshot.graph_manifest_json)
     evidence = EvidenceRecordSet.model_validate_json(snapshot.source_evidence_record_set_json)
+    from bridge.tool_packages.p0_09_evidence_compiler.adapter import _validate_source_record_set
+
     effective = _validate_source_record_set(evidence, manifest)
     payload = snapshot.model_dump(mode="json")
-    context = (ResearchReportContext.model_validate_json(snapshot.report_context_json)
+    context = (parse_research_context(snapshot.report_context_json)
                if isinstance(snapshot, ResearchAnalysisSnapshotV03) else None)
     context_sections = [] if context is None else _context_sections(context)
     rows = []

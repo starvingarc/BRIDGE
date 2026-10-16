@@ -5,7 +5,6 @@ import json
 from importlib.resources import files
 from typing import Any
 
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 from bridge.toolkit.contracts import KnowledgeHit
 
@@ -27,6 +26,8 @@ class KnowledgeRegistry:
     """Read-only search over a versioned BRIDGE knowledge snapshot."""
 
     def __init__(self, snapshot: dict[str, Any]) -> None:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+
         self.snapshot = snapshot
         self.snapshot_id = str(snapshot["snapshot_id"])
         self.methods = list(snapshot["methods"])

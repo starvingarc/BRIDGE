@@ -1,0 +1,99 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>脑类器官流程 · 交互参考</title><style>:root{--foreground:#545b61;--background:#fff;--muted-foreground:#91979c;--viz-series-1:#343b41;--viz-series-2:#737b81;font:15px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:var(--foreground);background:white}body{margin:0 auto;max-width:1100px;padding:24px}a{color:#535e68}h1{font-size:25px;font-weight:550}.text-small{font-size:13px;line-height:1.7}.text-muted{color:#788187}.btn{background:white;border:0;color:inherit;font:inherit;cursor:pointer;padding:5px}.btn:hover,.btn[aria-pressed=true]{background:#f0f2f3}.btn:focus-visible,[role=button]:focus-visible{outline:2px solid #64727e;outline-offset:2px}[role=button],summary{cursor:pointer}nav{display:flex;gap:20px;font-size:13px;margin-bottom:25px}.boundary{border-bottom:1px solid #ddd;padding-bottom:15px;color:#747c83;font-size:13px;line-height:1.7}</style></head><body><nav><a href="index.html">参考入口</a><a href="molecules/index.html">中脑 DA 小分子库</a></nav><h1>分化流程 · 交互参考</h1><p class="boundary">公开文献参考：Lancaster–Knoblich 脑类器官路线。点击阶段或试剂查阅条件与来源。该图不代表用户实验，也不是中脑 DA 定向分化方案；上传 protocol 的模型提取与确认接线尚待实现。</p><div id="organoid-paper-morphology">
+<style>
+#organoid-paper-morphology .map{position:relative;margin-top:12px}
+#organoid-paper-morphology .drawing{display:block;width:100%;overflow:visible}
+#organoid-paper-morphology .drawing text{font-size:12px;fill:var(--foreground)}
+#organoid-paper-morphology .row-control{position:absolute;left:0;transform:translateY(-50%)}
+#organoid-paper-morphology .feedback{margin:10px 0}
+#organoid-paper-morphology .foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+#organoid-paper-morphology .recipe{margin-top:12px}
+#organoid-paper-morphology .recipe p{margin:9px 0}
+#organoid-paper-morphology .recipe strong{font-weight:500}
+#organoid-paper-morphology .category-icon{width:40px;height:40px;object-fit:contain}
+#organoid-paper-morphology .reagent-label{display:flex;align-items:center;gap:8px}
+#organoid-paper-morphology .feedback{display:flex;align-items:center;gap:14px}
+#organoid-paper-morphology .feedback[hidden]{display:none}
+#organoid-paper-morphology .large-icon{width:160px;height:140px;object-fit:contain;flex-shrink:0}
+@media(max-width:520px){#organoid-paper-morphology .feedback{flex-wrap:wrap}#organoid-paper-morphology .category-icon{width:28px;height:32px}#organoid-paper-morphology .category-icon{width:40px;height:40px;object-fit:contain}
+#organoid-paper-morphology .reagent-label{gap:4px}}
+</style>
+<h3>iPSC → 脑类器官</h3>
+<div class="map"><svg class="drawing" aria-label="培养阶段与各试剂添加窗口，共用按天等比例时间轴" role="group"></svg><div class="row-controls"></div></div>
+<div id="reagent-detail" class="feedback text-small" hidden aria-live="polite"></div>
+<div class="foot text-small text-muted"><span>形态为重绘示意、非等比例 · ○ 依形态停加 · → 继续培养</span></div>
+<details class="recipe"><summary>基础配方与来源</summary><div class="recipe-body"></div><a class="text-small" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4160653/" target="_blank" rel="noopener noreferrer">Lancaster–Knoblich 2014 ↗</a><div class="text-small text-muted">培养形态：参考 Lancaster–Knoblich 2014 图 2a–c、e、g 与图 3a、c、f，经 AI 辅助重绘；非显微照片，不代表固定尺寸或唯一形态。图 2a 原图为 hESC，起始集落仅借鉴通用多能干细胞形态。灰度为统一示意配色，不代表染色。试剂图标为类别示意；类别详情使用本包 AI 辅助插图，Y-27632 结构来自 PubChem。* B27 比例按原文标称配方量。</div></details>
+<script>
+(()=>{
+const root=document.getElementById('organoid-paper-morphology');const svg=root.querySelector('.drawing');const controls=root.querySelector('.row-controls');const feedback=root.querySelector('.feedback');const recipe=root.querySelector('.recipe-body');
+const hsRecipe='hES 原文标称约 500 mL：DMEM/F12 400 mL，KOSR 100 mL，ES 级 FBS 15 mL，GlutaMAX 5 mL，MEM-NEAA 5 mL，2-巯基乙醇 3.5 μL；bFGF 依阶段另加。原文以约数命名配方，所列组分体积相加并非精确 500 mL。';
+const cdRecipe='分化培养基原文标称约 250 mL：DMEM/F12 125 mL + Neurobasal 125 mL；N2 1.25 mL，Insulin 原液 62.5 μL，GlutaMAX 2.5 mL，MEM-NEAA 1.25 mL，青链霉素 2.5 mL，B27 2.5 mL；另加 87.5 μL 的 1:100 预稀释 2-巯基乙醇。比例按原文标称体积表达，未将加料后总体积重新定容。';
+const betaHs=['2-巯基乙醇 · 培养添加物','3.5 μL 原液 / 原文约 500 mL 配方','hES 培养阶段：D0 至转入神经诱导，通常约 D6。原文未直接列终浓度 μM。'];
+const betaCd=['2-巯基乙醇 · 培养添加物','87.5 μL 的 1:100 预稀释液 / 原文约 250 mL','约 D11 起至培养终点；按原文加料量展示，未推算 μM。'];
+const insulin=['Insulin · 蛋白','62.5 μL 原液 / 原文约 250 mL（标称 1:4000）','约 D11 起至培养终点；原文列产品 I9278，未直接给出质量终浓度。'];
+const supplements=['基础补充剂 · 非单一诱导分子','N2 1.25 mL；GlutaMAX 2.5 mL；MEM-NEAA 1.25 mL；青链霉素 2.5 mL / 原文约 250 mL','约 D11 起至培养终点。复方内每个组分的浓度未在本文逐项列出。'];
+const conditions=[
+{title:'iPSC 起始培养 · D0 前',summary:'此处展示原文的饲养层依赖起始条件；预培养持续时间未固定。',note:'D0 定义：建立胚样体的当天。起始培养条件不等同于后续诱导条件。',items:[['bFGF / FGF2 · 生长因子','20 ng/mL','D0 前的饲养层依赖 hPSC 维持；D0 改为低 bFGF 配方。']],recipe:hsRecipe,source:'Reagent Setup：Feeder-dependent human PSC lines；hES media'},
+{title:'胚样体 · 分两段添加',summary:'早期添加 Y-27632 与低 bFGF；随后使用不再添加这两者的 hES 培养基。',note:'约 D4 是典型停止添加时间，需结合 EB 变亮或直径超过 350–400 μm。半量换液下，停止添加不代表残留浓度立即归零。',items:[['Y-27632 · ROCK 抑制剂','50 μM（5 mM 储液 1:100）','D0 → 达到形态/大小条件；通常前 4 天。'],['bFGF / FGF2 · 生长因子','4 ng/mL','D0 → 与 ROCK 抑制剂同时停止添加；通常前 4 天。'],betaHs],recipe:hsRecipe,source:'Reagent Setup；步骤 1、3–5'},
+{title:'神经诱导 · 通常约 D6–D11',summary:'DMEM/F12 神经诱导培养基；实际转段依据胚样体大小和神经上皮形态。',note:'本文此阶段没有列入 SB431542、LDN193189 或 CHIR99021；这些试剂不能从其他定向方案拼入本图。',items:[['Heparin · 多糖添加物','1 μg/mL','转入神经诱导时开始（通常约 D6）→ Matrigel 包埋时结束（通常约 D11）。'],['N2 · 复合补充剂','1%（v/v）','约 D6–D11；包埋后改用分化培养基中的配方量。'],['GlutaMAX、MEM-NEAA · 培养补充剂','各 1%（v/v）','神经诱导阶段；约 D6–D11。']],recipe:'DMEM/F12 + N2 1% + GlutaMAX 1% + MEM-NEAA 1% + Heparin 1 μg/mL。进入神经诱导后 48 h 补加同配方培养基；诱导约 4–5 天、结合形态后进入包埋。',source:'Reagent Setup：Neural induction media；步骤 5–7'},
+{title:'Matrigel 包埋 · 通常约 D11–D15',summary:'包埋后静态培养 4 天；使用不含维生素 A 的 B27。',note:'Matrigel 是基质，B27 是复合补充剂，Insulin 是蛋白，均不应标成小分子抑制剂。',items:[['B27 − vitamin A · 复合补充剂','2.5 mL / 原文约 250 mL（标称约 1%）','包埋时开始（约 D11）→ 转入动态培养（约 D15）。'],insulin,betaCd,['Matrigel · 基质','约 30 μL / 组织团','包埋时加入；后续随组织转移，原文未给出固定移除日期或统一 mg/mL。'],supplements],recipe:cdRecipe,source:'Reagent Setup：Cerebral organoid differentiation media；步骤 13、16、18–20'},
+{title:'动态培养 · 通常约 D15 起',summary:'静态培养 4 天后，切换至含维生素 A 的 B27 并转入旋转培养。',note:'Vitamin A 由 B27 提供；原文未给出独立 RA 剂量或维生素 A 的单组分终浓度。不能标成“RA × μM”。',items:[['B27 + vitamin A · 复合补充剂','2.5 mL / 原文约 250 mL（标称约 1%）','进入动态培养（约 D15）→ 实验选定的培养终点。'],insulin,betaCd,supplements],recipe:cdRecipe+' 此阶段改用含 vitamin A 的 B27。旋转瓶方案每周完整换液；轨道摇床支路为每 3–4 天完整换液。',source:'Reagent Setup；步骤 20–21'},
+{title:'脑类器官 · 继续培养与检测',summary:'Day 28 是示例观察点，不是统一停药或停止培养时间。',note:'后续维持相同分化配方；终点由具体实验定义，原文没有固定统一结束日期。',items:[['B27 + vitamin A · 复合补充剂','2.5 mL / 原文约 250 mL（标称约 1%）','约 D15 → 具体实验终点；D28 不自动停止。'],insulin,betaCd,supplements],recipe:cdRecipe+' 使用含 vitamin A 的 B27；可按实验目的继续长期培养。',source:'Reagent Setup；步骤 20–21；Figure 2g'}
+];
+
+const art={"ipsc": "assets/morphology/ipsc-diagram.png", "eb": "assets/morphology/eb-diagram.png", "neural": "assets/morphology/neural-diagram.png", "budding": "assets/morphology/budding-diagram.png", "organoid": "assets/morphology/organoid-diagram.png"};
+const rows=[
+{id:'y',name:'Y-27632',stage:1,segments:[{s:0,e:4,label:'50 μM',conditional:true}],detail:'Y-27632 · 50 μM · D0 → 通常约 D4；按胚样体形态停止添加。'},
+{id:'f',name:'FGF2',stage:1,segments:[{s:0,e:4,label:'4 ng/mL',conditional:true}],detail:'FGF2 · 4 ng/mL · D0 → 通常约 D4；与 ROCK 抑制剂同时停止添加。'},
+{id:'h',name:'Heparin',stage:2,segments:[{s:6,e:11,label:'1 μg/mL'}],detail:'Heparin · 1 μg/mL · 神经诱导起（约 D6）→ 包埋时（约 D11）。'},
+{id:'bm',name:'B27 −A',stage:3,segments:[{s:11,e:15,label:'约 1%*'}],detail:'无维生素 A 的 B27 · 2.5 mL/标称约 250 mL · 约 D11–D15。'},
+{id:'bp',name:'B27 +A',stage:4,segments:[{s:15,e:28,label:'约 1%*',ongoing:true}],detail:'含维生素 A 的 B27 · 2.5 mL/标称约 250 mL · 约 D15 → 实验终点；维生素 A 单组分浓度未报告。'}
+];
+const reagentIcons={"y": "assets/reagent-details/y.png", "f": "assets/categories/protein-icon.png", "h": "assets/categories/glycan-icon.png", "bm": "assets/categories/supplement-icon.png", "bp": "assets/categories/supplement-icon.png"};
+const categoryAssets={"molecule": "assets/categories/molecule-icon.png", "protein": "assets/categories/protein-icon.png", "glycan": "assets/categories/glycan-icon.png", "supplement": "assets/categories/supplement-icon.png"};
+const categoryKeys={y:"molecule",f:"protein",h:"glycan",bm:"supplement",bp:"supplement"};
+const iconNotes={y:'Y-27632 母体结构 · PubChem CID 448042',f:'蛋白类别示意 · 非 FGF2 实测结构',h:'糖链类别示意 · 非 Heparin 精确化学结构',bm:'复合补充剂 · 不含维生素 A',bp:'复合补充剂 · 含维生素 A'};
+const iconSources={y:'https://pubchem.ncbi.nlm.nih.gov/compound/448042',f:'assets/categories/README.md',h:'assets/categories/README.md',bm:'assets/categories/README.md',bp:'assets/categories/README.md'};
+let selected=null;const ns='http://www.w3.org/2000/svg';
+function add(tag,attrs,text,parent=svg){const n=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))n.setAttribute(k,v);if(text!==undefined)n.textContent=text;parent.append(n);return n;}
+function renderRecipe(stage=1){
+ const c=conditions[stage];recipe.replaceChildren();
+ const title=document.createElement('p');title.textContent=c.title;recipe.append(title);
+ for(const text of [c.summary,c.note]){
+  const p=document.createElement('p');p.className='text-small';p.textContent=text;recipe.append(p);
+ }
+ c.items.forEach(([name,dose,time])=>{
+  const p=document.createElement('p');const b=document.createElement('strong');b.textContent=name+' · '+dose;
+  const line=document.createElement('div');line.className='text-small text-muted';line.textContent=time;
+  p.append(b,line);recipe.append(p);
+ });
+ const all=document.createElement('details');const summary=document.createElement('summary');summary.textContent='完整培养基配方';
+ const text=document.createElement('p');text.className='text-small';text.textContent=c.recipe;all.append(summary,text);recipe.append(all);
+ const source=document.createElement('p');source.className='text-small text-muted';source.textContent='原文定位：'+c.source;recipe.append(source);
+}
+function select(id,save=true){const row=rows.find(r=>r.id===id);if(!row)return;selected=id;feedback.hidden=false;feedback.replaceChildren();const img=document.createElement('img');img.className='large-icon';img.src=reagentIcons[id];img.alt=iconNotes[id];const copy=document.createElement('div');const text=document.createElement('div');text.textContent=row.detail;const link=document.createElement('a');link.href=iconSources[id];link.target='_blank';link.rel='noopener noreferrer';link.className='text-small';link.textContent=iconNotes[id]+' ↗';copy.append(text,link);feedback.append(img,copy);renderRecipe(row.stage);draw();const active=controls.querySelector('[aria-pressed="true"]');if(active)active.focus({preventScroll:true});}
+function draw(){
+const w=root.getBoundingClientRect().width;if(!w)return;const narrow=w<520;const left=narrow?131:173,right=18,span=w-left-right;const x=d=>left+span*d/28;const height=520;svg.setAttribute('viewBox',`0 0 ${w} ${height}`);svg.style.height=height+'px';svg.replaceChildren();controls.replaceChildren();
+const title=add('title',{},'脑类器官培养与试剂添加区间');
+const stages=[{key:'ipsc',name:'iPSC 集落',short:'iPSC',day:'D0 前',detail:'致密、边界清楚的贴壁多能干细胞集落；参考图 2a 的 hESC 集落形态，并非 iPSC 实测图。'},{key:'eb',name:'胚样体',short:'胚样体',day:'约 D5',detail:'平滑外缘、较暗的致密中心与开始透亮的周边；参考图 2b、3a。'},{key:'neural',name:'神经上皮',short:'神经上皮',day:'约 D10',detail:'平滑聚集体外围形成透亮、径向排列的神经上皮；参考图 2c、3c。'},{key:'budding',name:'包埋后出芽',short:'出芽',day:'约 D14',detail:'Matrigel 中扩张的连续神经上皮芽，部分围绕腔隙；参考图 2e、3f。'},{key:'organoid',name:'脑类器官',short:'脑类器官',day:'约 D28',detail:'较大的不规则组织团与扩张的神经组织区；参考图 2g，非解剖学小脑模型。'}];
+stages.forEach((stage,i)=>{const cx=(i+.5)*w/5;const iw=Math.min(narrow?64:96,w/5-6);const g=add('g',{'role':'button','tabindex':'0','data-tooltip':stage.detail,'aria-label':stage.name+'，'+stage.day+'。'+stage.detail});add('image',{href:art[stage.key],x:cx-iw/2,y:0,width:iw,height:96,preserveAspectRatio:'xMidYMid meet'},undefined,g);add('text',{x:cx,y:113,'text-anchor':'middle'},narrow?stage.short:stage.name,g);add('text',{x:cx,y:132,'text-anchor':'middle'},stage.day,g);const activate=()=>{feedback.hidden=false;feedback.textContent=stage.name+' · '+stage.day+' · '+stage.detail;renderRecipe([0,1,2,3,5][i]);};g.addEventListener('click',activate);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();activate();}});});
+add('text',{x:4,y:168},'Day');add('line',{x1:x(0),y1:163,x2:x(28),y2:163,stroke:'var(--muted-foreground)','stroke-width':1});
+const ticks=narrow?[0,6,15,28]:[0,4,6,11,15,28];ticks.forEach((d,i)=>{add('line',{x1:x(d),y1:155,x2:x(d),y2:163,stroke:'var(--muted-foreground)'});add('text',{x:x(d),y:185,'text-anchor':i===0?'start':i===ticks.length-1?'end':'middle'},d===28?'28…':String(d));});
+// Each row shares the same day scale; endpoints and concentration labels belong to the interval.
+rows.forEach((r,i)=>{const y=233+i*64;const wrap=document.createElement('div');wrap.className='row-control';wrap.style.top=(y-3)+'px';const button=document.createElement('button');button.type='button';button.className='btn btn-ghost';const inner=document.createElement('span');inner.className='reagent-label';const img=document.createElement('img');img.className='category-icon';img.src=categoryAssets[categoryKeys[r.id]];img.alt='';const name=document.createElement('span');name.textContent=r.name;inner.append(img,name);button.append(inner);button.setAttribute('aria-pressed',String(r.id===selected));button.setAttribute('aria-label',r.name+'：展开详细展示图与添加区间');button.setAttribute('aria-expanded',String(r.id===selected));button.setAttribute('aria-controls','reagent-detail');button.addEventListener('click',()=>select(r.id));wrap.append(button);controls.append(wrap);
+r.segments.forEach(seg=>{const a=x(seg.s),b=x(seg.e);const col=r.id===selected?'var(--viz-series-1)':r.id.startsWith('b')?'var(--viz-series-2)':'var(--foreground)';const g=add('g',{'class':'cursor-interaction','role':'button','tabindex':'0','data-tooltip':r.detail,'aria-label':r.detail});
+add('rect',{x:Math.max(left,a-3),y:y-29,width:Math.max(44,b-a+6),height:43,fill:'transparent','data-chart-hit':''},undefined,g);
+add('line',{x1:a,y1:y,x2:b,y2:y,stroke:col,'stroke-width':r.id===selected?3:1.8},undefined,g);
+if(seg.conditional)add('circle',{cx:b,cy:y,r:3.5,fill:'var(--background)',stroke:col,'stroke-width':1.5},undefined,g);
+if(seg.ongoing)add('path',{d:`M ${b-6} ${y-4} L ${b} ${y} L ${b-6} ${y+4}`,fill:'none',stroke:col,'stroke-width':1.5},undefined,g);
+const labelWidth=seg.label.length*7;const center=Math.max(left+labelWidth/2,Math.min(w-right-labelWidth/2,(a+b)/2));
+add('text',{x:center,y:y-11,'text-anchor':'middle'},seg.label,g);
+if(narrow)add('text',{x:Math.min(w-right,a),y:y+16,'text-anchor':'start'},seg.ongoing?`${seg.s} →`:`${seg.s}–${seg.e}`,g);
+g.addEventListener('click',()=>select(r.id));g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(r.id);}});
+});});
+
+}
+renderRecipe();draw();new ResizeObserver(draw).observe(root);
+})();
+</script>
+</div>
+</body></html>

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from bridge.tool_packages import _saved_cell_state_context as native_context
+
 import hashlib
 import re
 from dataclasses import dataclass
@@ -33,6 +35,16 @@ from bridge.tool_packages._structured_runtime import (
 )
 from bridge.tool_packages.p0_03_target_regional.executor import (
     evaluate_target_regional,
+)
+from bridge.tool_packages.p0_03_target_regional.exploratory_models import (
+    INPUT_SCHEMA_REF as EXPLORATORY_INPUT_SCHEMA_REF,
+    ReferenceSimilarityExploratoryInput,
+)
+from bridge.tool_packages.p0_03_target_regional.exploratory_runtime import (
+    run_exploratory_similarity,
+)
+from bridge.tool_packages.p0_03_target_regional.technical_view import (
+    read_saved_source, project_measurements,
 )
 from bridge.tool_packages.p0_03_target_regional.method_models import (
     MethodExecutionState,
@@ -73,8 +85,12 @@ from bridge.tool_packages.p0_03_target_regional.visualization_data import (
     build_target_regional_visualization_data,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/target-regional-evidence-result/v0.2"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
+    "saved_reference_similarity_run": ("bridge://schemas/tool-run/v0.2", ToolRunV2),
+    "reference_similarity_input": (
+        EXPLORATORY_INPUT_SCHEMA_REF,
+        ReferenceSimilarityExploratoryInput,
+    ),
     "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
     "product_definition_card": (
         "bridge://schemas/product-definition-card/v0.1",
@@ -118,7 +134,9 @@ ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
         TargetRegionalMethodSpec,
     ),
 }
-REQUIRED_ROLES = frozenset(ROLE_MODELS) - {"target_regional_method_spec"}
+REQUIRED_ROLES = frozenset(ROLE_MODELS) - {
+    "target_regional_method_spec", "reference_similarity_input", "saved_reference_similarity_run"
+}
 FIXED_OBJECT_VERSIONS = {
     "product_case": "0.1.0",
     "product_definition_card": "0.1.0",
@@ -147,6 +165,19 @@ class TargetRegionalAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if any(ref.role == "saved_cell_state_run" for ref in request.object_inputs):
+            return native_context.eligibility(request, spec)
+        if _saved_similarity_mode(request):
+            reasons = _saved_similarity_reasons(request, spec)
+            return EligibilityResult(tool_id=request.tool_id, eligible=not reasons,
+                                     reason_codes=reasons)
+        if _exploratory_mode(request):
+            reasons = _exploratory_eligibility_reasons(request, spec)
+            return EligibilityResult(
+                tool_id=request.tool_id,
+                eligible=not reasons,
+                reason_codes=sorted(set(reasons)),
+            )
         reasons = _envelope_reasons(request, spec)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -162,6 +193,12 @@ class TargetRegionalAdapter:
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if any(ref.role == "saved_cell_state_run" for ref in request.object_inputs):
+            return native_context.execute(request, spec)
+        if _saved_similarity_mode(request):
+            return _run_saved_similarity(request, spec)
+        if _exploratory_mode(request):
+            return _run_exploratory(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)
@@ -420,7 +457,7 @@ class TargetRegionalAdapter:
             measurements=evaluation.measurements,
             artifacts=artifacts,
             visualizations=[],
-            result_schema_ref=RESULT_SCHEMA_REF,
+            result_schema_ref=spec.result_schema_ref,
             result=evaluation.result.model_dump(mode="json"),
             reason_codes=evaluation.result.reason_codes,
             warnings=[],
@@ -428,6 +465,205 @@ class TargetRegionalAdapter:
 
 
 adapter = TargetRegionalAdapter()
+
+
+def _exploratory_mode(request: ToolRequestV2) -> bool:
+    return any(ref.role == "reference_similarity_input" for ref in request.object_inputs)
+
+
+def _saved_similarity_mode(request):
+    return any(ref.role == "saved_reference_similarity_run" for ref in request.object_inputs)
+
+
+def _saved_similarity_reasons(request, spec):
+    if (len(request.object_inputs) != 1 or request.assets or request.parameters
+            or request.measurement_spec_ref or request.random_seed != 0):
+        return ["saved_similarity_projection_envelope_invalid"]
+    ref = request.object_inputs[0]
+    if (ref.role != "saved_reference_similarity_run"
+            or ref.schema_ref != "bridge://schemas/tool-run/v0.2"
+            or ref.object_version != "0.2.0"):
+        return ["saved_similarity_projection_envelope_invalid"]
+    if request.tool_version not in {None, spec.version}:
+        return ["tool_version_mismatch"]
+    try:
+        read_saved_source(ref)
+    except StructuredInputError as exc:
+        return [exc.reason_code]
+    except (ValueError, OSError, KeyError):
+        return ["saved_similarity_source_invalid"]
+    return []
+
+
+def _run_saved_similarity(request, spec):
+    reasons = _saved_similarity_reasons(request, spec)
+    if reasons:
+        return _failed_run(request, spec, reasons)
+    input_hash = _input_hash(request, spec)
+    run_id = f"run-{input_hash[:16]}"
+    try:
+        producer, result, manifest, provenance = read_saved_source(request.object_inputs[0])
+    except (StructuredInputError, ValueError, OSError, KeyError):
+        return _failed_run(request, spec, ["saved_similarity_source_changed"], input_hash=input_hash)
+    return _publish_similarity(
+        request, spec, result, manifest, producer.request.assets[0].assay,
+        input_hash, run_id, provenance, derived=True,
+    )
+
+
+def _exploratory_inputs(request: ToolRequestV2):
+    return load_structured_inputs(
+        request.object_inputs,
+        model_for=lambda ref: {
+            "reference_similarity_input": ReferenceSimilarityExploratoryInput,
+            "reference_manifest": ReferenceManifest,
+        }.get(ref.role),
+        validate_model=_validate_object_version,
+    )
+
+
+def _exploratory_eligibility_reasons(request: ToolRequestV2,
+                                     spec: ToolPackageSpecV2) -> list[str]:
+    reasons: list[str] = []
+    if request.tool_version is not None and request.tool_version != spec.version:
+        reasons.append("tool_version_mismatch")
+    roles = [ref.role for ref in request.object_inputs]
+    for role in ("reference_similarity_input", "reference_manifest"):
+        if roles.count(role) != 1:
+            reasons.append(f"exactly_one_{role}_required")
+    if set(roles) != {"reference_similarity_input", "reference_manifest"}:
+        reasons.append("unsupported_object_input_role")
+    for ref in request.object_inputs:
+        contract = ROLE_MODELS.get(ref.role)
+        if contract is not None and ref.schema_ref != contract[0]:
+            reasons.append("object_input_schema_mismatch")
+        if ref.role == "reference_similarity_input" and ref.object_version != "0.1.0":
+            reasons.append("object_input_version_mismatch")
+    if len(request.assets) != 1:
+        reasons.append("exactly_one_raw_count_asset_required")
+    else:
+        asset = request.assets[0]
+        if (asset.input_level is not InputLevel.COUNT_READY or
+                asset.matrix_semantics != "raw_counts" or asset.format != "h5ad"):
+            reasons.append("raw_count_h5ad_required")
+        if not re.fullmatch(r"[0-9a-f]{64}", asset.checksum or ""):
+            reasons.append("expression_asset_checksum_required")
+        if asset.assay is None:
+            reasons.append("expression_asset_assay_required")
+    if request.random_seed != 0 or request.measurement_spec_ref or request.parameters:
+        reasons.append("exploratory_parameters_forbidden")
+    if directory_state(request.output_dir) == "other":
+        reasons.append("output_dir_not_regular_directory")
+    if reasons:
+        return sorted(set(reasons))
+    loaded, loading_reasons = _exploratory_inputs(request)
+    reasons.extend(loading_reasons)
+    if loaded is None or reasons:
+        return sorted(set(reasons))
+    source = single_object(request, loaded, "reference_similarity_input",
+                           ReferenceSimilarityExploratoryInput)
+    manifest = single_object(request, loaded, "reference_manifest", ReferenceManifest)
+    asset = request.assets[0]
+    view = source.data_view
+    if (asset.asset_id != view.parent_asset_id or
+            asset.checksum != view.parent_asset_sha256 or
+            asset.matrix_location != view.matrix_location or
+            asset.metadata.get("data_view_id") != view.view_id):
+        reasons.append("expression_asset_view_binding_mismatch")
+    by_id = {profile.profile_id: profile for profile in manifest.profiles}
+    for profile_id in source.profile_ids:
+        profile = by_id.get(profile_id)
+        if profile is None:
+            reasons.append("reference_profile_not_found")
+        elif not profile.matrix_file or not profile.metadata_file:
+            reasons.append("reference_profile_artifact_unavailable")
+        elif profile.assay != asset.assay:
+            reasons.append("reference_assay_mismatch")
+    return sorted(set(reasons))
+
+
+def _run_exploratory(request: ToolRequestV2,
+                     spec: ToolPackageSpecV2) -> ToolRunV2:
+    reasons = _exploratory_eligibility_reasons(request, spec)
+    if reasons:
+        return _failed_run(request, spec, reasons)
+    loaded, reasons = _exploratory_inputs(request)
+    if loaded is None or reasons:
+        return _failed_run(request, spec, reasons)
+    source = single_object(request, loaded, "reference_similarity_input",
+                           ReferenceSimilarityExploratoryInput)
+    manifest = single_object(request, loaded, "reference_manifest", ReferenceManifest)
+    input_hash = _input_hash(request, spec)
+    run_id = f"run-{input_hash[:16]}"
+    try:
+        result = run_exploratory_similarity(
+            source=source, asset=request.assets[0], manifest=manifest,
+            manifest_path=_input_path(request, "reference_manifest"),
+            manifest_sha256=next(ref.sha256 for ref in request.object_inputs
+                                     if ref.role == "reference_manifest"),
+            input_sha256=next(ref.sha256 for ref in request.object_inputs
+                              if ref.role == "reference_similarity_input"),
+            run_id=run_id, tool_version=spec.version,
+        )
+    except TargetRegionalMethodError as exc:
+        return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    return _publish_similarity(request, spec, result, manifest, request.assets[0].assay,
+                               input_hash, run_id, {"derivation": "native_matrix_execution"})
+
+
+def _publish_similarity(request, spec, result, manifest, assay, input_hash, run_id,
+                        provenance, *, derived=False):
+    try:
+        native_spec, measurements = project_measurements(
+            result=result, manifest=manifest, assay=assay, run_id=run_id,
+            tool_version=spec.version, provenance=provenance,
+        )
+    except StructuredInputError as exc:
+        return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    payloads = {
+        "reference_similarity_exploratory_result.json": canonical_json_bytes(result.model_dump(mode="json"), indent=2),
+        "native_measurement_spec.json": canonical_json_bytes(native_spec.model_dump(mode="json"), indent=2),
+        **{f"native_measurement_{i}.json": canonical_json_bytes(m.model_dump(mode="json"), indent=2)
+           for i, m in enumerate(measurements)},
+    }
+
+    def unchanged(refs):
+        if not inputs_unchanged(refs) or not _assets_unchanged(request.assets):
+            return False
+        if derived:
+            try:
+                read_saved_source(refs[0])
+            except (StructuredInputError, ValueError, OSError, KeyError):
+                return False
+        return True
+
+    try:
+        paths = publish_json_bundle(
+            request=request, run_id=run_id,
+            payloads=payloads, inputs_are_unchanged=unchanged,
+        )
+    except PublicationError as exc:
+        return _failed_run(request, spec, [exc.reason_code], input_hash=input_hash)
+    warnings = sorted({reason for item in result.measurements for reason in item.reason_codes})
+    return ToolRunV2(
+        run_id=run_id, request=request,
+        implementation_state=ImplementationState.IMPLEMENTED,
+        execution_state=ExecutionState.SUCCEEDED if result.result_state == "available"
+        else ExecutionState.PARTIAL,
+        tool_version=spec.version, environment_spec_id=spec.environment_spec_id,
+        # A saved projection retains the source observation timestamp; its mode,
+        # producer and provenance explicitly distinguish it from matrix execution.
+        input_hash=input_hash, created_at=result.created_at,
+        measurements=measurements,
+        artifacts=[ArtifactManifest(
+            artifact_id=f"artifact:{run_id}:{name.removesuffix('.json')}",
+            kind=name.removesuffix(".json"), path=paths[name],
+            media_type="application/json", sha256=hashlib.sha256(body).hexdigest(),
+            evidence_ids=[],
+        ) for name, body in payloads.items()],
+        visualizations=[], result_schema_ref=spec.result_schema_ref,
+        result=result.model_dump(mode="json"), reason_codes=[], warnings=warnings,
+    )
 
 
 def _envelope_reasons(request: ToolRequestV2, spec: ToolPackageSpecV2) -> list[str]:
@@ -779,7 +1015,7 @@ def _failed_run(
         request,
         spec,
         reasons,
-        result_schema_ref=RESULT_SCHEMA_REF,
+        result_schema_ref=spec.result_schema_ref,
         fingerprint_input_key="structured_inputs",
         input_hash=input_hash,
     )

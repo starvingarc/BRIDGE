@@ -13,7 +13,7 @@
 <p align="center">
   <a href="#latest-progress"><strong>Latest progress</strong></a> &nbsp;·&nbsp;
   <a href="#get-started">Get started</a> &nbsp;·&nbsp;
-  <a href="examples/README.md#synthetic-scrna-upload-demo">Try the sample data</a> &nbsp;·&nbsp;
+  <a href="examples/demo/README.md">Try the sample data</a> &nbsp;·&nbsp;
   <a href="docs/README.md">Documentation</a> &nbsp;·&nbsp;
   <a href="docs/validation/README.md">Validation</a>
 </p>
@@ -28,9 +28,10 @@ products for Parkinson's disease research**.
 
 ### Workbench update · 2026-10-15
 
-**Development preview.** This update shows the current development build. These
-features are ahead of the public source snapshot; the installation instructions
-below describe the code currently available in this repository.
+**Source update.** The workbench implementation, backend services, tests and
+setup documentation are included in this repository. Scientific references and
+user data are configured separately; the reference assets shown below are not
+bundled with the source.
 
 The workbench brings protocols, experiment batches, samples and analysis history
 into one research space. The screenshots are actual browser captures in the
@@ -96,9 +97,13 @@ cell function, clinical efficacy, safety or manufacturing release readiness.
 
 ## Get started
 
-The current public source snapshot runs as a **private, self-hosted Web application
-for one operator**.
-Requires **Python 3.12** and **Node.js 22.12+**.
+Run BRIDGE as a **private, self-hosted Web application** with account-based login.
+Internal multi-user testing is available through explicit configuration; this
+source update does not establish a public hosted service.
+The Python package is currently **`0.3.0`**; use the Git commit to identify the
+source snapshot. See the [version policy](docs/RELEASE.md#当前开发版本). Requires **Python 3.12** and **Node.js 22.12+**; the supported
+versions are maintained in [pyproject.toml](pyproject.toml) (`requires-python`) and
+[frontend/package.json](frontend/package.json) (`engines.node`).
 
 ### 1. Install and build
 
@@ -106,7 +111,7 @@ Requires **Python 3.12** and **Node.js 22.12+**.
 git clone https://github.com/starvingarc/BRIDGE.git
 cd BRIDGE
 
-python -m pip install ".[qc,web,evidence,process]"
+python -m pip install ".[qc,web,evidence,process,target-regional,developmental]"
 npm --prefix frontend ci
 npm --prefix frontend run build
 ```
@@ -114,21 +119,20 @@ npm --prefix frontend run build
 ### 2. Configure your private instance
 
 Follow the [setup guide](docs/web-preview.md#start-a-private-instance) to
-configure private storage, operator authentication, a model provider and the
-built frontend. Store credentials in private runtime configuration outside the
+initialize account storage and configure a model provider and the built frontend. Store credentials in private runtime configuration outside the
 repository.
 
 Start the service, then open the address you configured:
 
 ```bash
-python -m bridge.web
+bridge-web --config /absolute/path/web.env
 ```
 
 ### 3. Try the sample data
 
-Explore the input format with the
-[synthetic scRNA sample](examples/README.md#synthetic-scrna-upload-demo),
-a small dataset for trying the upload interface and testing integrations.
+Try the [synthetic product and reference](examples/demo/README.md), a small
+self-contained dataset for development and upload testing.
+Synthetic inputs exercise the software and do not validate biological results.
 
 For direct Python or CLI use, see the [tool guide](docs/tool-packages.md) and
 [request examples](examples/README.md). Set the example paths and checksums

@@ -6,7 +6,7 @@ import json
 import pytest
 
 from bridge.web.provider import parse_action
-from test_web_service import client, confirm_change, new_session, settle
+from web_support import client, confirm_change, new_session, settle
 from test_web_intake import uploaded
 
 
@@ -48,7 +48,7 @@ def test_question_action_is_parsed_in_both_configured_transports(protocol):
 
 def ask(client, monkeypatch, sid, aid, **kwargs):
     payload = {"action": "ask_user_input", "questions": question_set(aid, **kwargs)}
-    monkeypatch.setattr("bridge.web.app.converse",
+    monkeypatch.setattr("bridge.web.service.converse",
                         lambda *args: parse_action({"content": json.dumps(payload)}))
     assert client.post(f"/api/sessions/{sid}/messages", json={"text": "请用选项核对"}).status_code == 200
     state = settle(client, sid)
@@ -100,7 +100,7 @@ def test_private_answer_and_supplement_are_excluded_from_model_history(client, t
     def reply(settings, messages, context):
         captured.append({"messages": messages, "context": context})
         return parse_action({"content": '{"action":"reply","text":"请核对草稿。"}'})
-    monkeypatch.setattr("bridge.web.app.converse", reply)
+    monkeypatch.setattr("bridge.web.service.converse", reply)
     client.post(f"/api/sessions/{sid}/messages", json={"text": "继续"})
     assert settle(client, sid)["error"] is None
     assert marker not in json.dumps(captured)
@@ -210,6 +210,7 @@ def test_native_question_schema_can_validate_the_actual_function_arguments():
 
 @pytest.mark.parametrize("protocol", ["json", "deepseek_tools"])
 def test_actual_provider_wire_creates_a_card_without_a_tool_run(client, tmp_path, monkeypatch, protocol):
+    from web_support import skill_read_response
     import httpx
     from dataclasses import replace
     from bridge.web.provider import converse
@@ -220,6 +221,9 @@ def test_actual_provider_wire_creates_a_card_without_a_tool_run(client, tmp_path
     # Capture the wire through the real provider parser; preserve the HTTP boundary.
     def wire(request):
         payload = json.loads(request.content)
+        read = skill_read_response(payload)
+        if read is not None:
+            return read
         assert payload["messages"][0]["role"] == "system"
         action = {"action": "ask_user_input", "questions": question_set(aid)}
         message = native(action) if protocol == "deepseek_tools" else {"content": json.dumps(action)}

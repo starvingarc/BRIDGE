@@ -107,7 +107,7 @@ import hashlib
 import json
 import re
 
-from test_web_service import client, settle
+from web_support import client, settle
 from test_web_intake_autofill import upload_metadata, intake
 
 
@@ -1082,11 +1082,11 @@ def test_checked_download_cannot_cross_session_and_detects_artifact_tampering(cl
     route = f"/api/sessions/{sid}/intake/protocols/{pid}/versions/{vid}/bpl?upload_id={aid}"
     downloaded = client.get(route)
     assert downloaded.status_code == 200 and downloaded.text == item["latest"]["bpl"]
-    from test_web_service import new_session
+    from web_support import new_session
     other_sid = new_session(client)["id"]
     assert client.get(route.replace(sid, other_sid)).status_code == 404
     service = client.app.state.service
-    from bridge.web.app import write_file
+    from bridge.web.sessions import write_file
     write_file(service.directory(sid) / "protocol-versions" / pid / vid / "protocol.bpl", b"tampered")
     assert client.get(route).status_code == 409
 
@@ -1159,7 +1159,7 @@ def test_review_receipt_integrity_is_checked(client, tmp_path, monkeypatch):
     version = representation(client, sid, aid, pid)["latest"]
     protocol_action(client, sid, aid, pid, "review", digest=version["digest"])
     service = client.app.state.service
-    from bridge.web.app import write_file
+    from bridge.web.sessions import write_file
     write_file(service.directory(sid) / "protocol-versions" / pid / version["id"] / "review.json", b"{}")
     assert client.get(f"/api/sessions/{sid}/intake?upload_id={aid}").status_code == 409
 

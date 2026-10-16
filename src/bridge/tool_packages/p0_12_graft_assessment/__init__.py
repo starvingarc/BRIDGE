@@ -1,6 +1,7 @@
 """Optional P0-12 graft-assessment candidate."""
 
-from bridge.tool_packages.p0_12_graft_assessment.adapter import adapter
+from bridge.tool_packages._lazy_exports import defer_exports
+
 from bridge.tool_packages.p0_12_graft_assessment.analysis_models import (
     GraftExpressionAnalysisResult,
 )
@@ -19,3 +20,8 @@ __all__ = [
     "GraftExpressionAnalysisResult",
     "adapter",
 ]
+
+
+defer_exports(__name__, {
+    "adapter": ("bridge.tool_packages.p0_12_graft_assessment.adapter", "adapter"),
+})

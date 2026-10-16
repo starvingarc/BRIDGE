@@ -4,10 +4,10 @@ from __future__ import annotations
 import json
 import pytest
 
-from test_web_service import client, settle
+from web_support import client, settle
 from test_web_scientific_inputs import science_case, propose, candidate
 from test_web_intake import stage, stated_facts
-from test_web_service import confirm_change
+from web_support import confirm_change
 
 
 def measured_development_case(client, tmp_path, monkeypatch):
@@ -69,7 +69,7 @@ def select_measured_requirements(client, sid, run, *, explicit=None, domain="dev
                {"role": "measurement_spec", "input_id": refs["measurement_spec"].input_id}]
     if validation_id:
         choices.append({"role": "validation_record", "input_id": validation_id})
-    service.save(state)
+    service.sessions.save(state)
     from test_web_inputs import choice
     response = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-08", "default", choices))
     assert response.status_code == 200, response.json()
@@ -129,12 +129,13 @@ def test_measured_domain_candidate_binds_real_values_and_preserves_requirements(
     with pytest.raises(ValueError, match="measured_domain_requirements_required"):
         service.report_inputs.assessment_selection(state, typed, typed.allowed_modes[0],
             saved.model_copy(update={"object_inputs": []}))
-    service.save(state)
+    service.sessions.save(state)
     monkeypatch.setattr("bridge.web.provider.converse", next_check_or_stop)
     approve_scope(client, sid, scope)
     done = settle_assessment(client, sid)
-    assert done["assessment"]["tool_runs_used"] == 1
     after = service.load(sid)
+    assert "tool_runs_used" not in done["assessment"]
+    assert after["_assessment"]["tool_runs_used"] == 1
     receipt = after["_tool_runs"][-1]
     assert receipt["tool_id"] == "P0-08" and receipt["state"] == "succeeded"
     result = json.loads((service.directory(sid) / "receipts" / receipt["file"]).read_bytes())["result"]
@@ -240,7 +241,7 @@ def select_measured_graph_assertions(client, sid, run, measurements, *, numerica
             schema_ref="bridge://schemas/" + schemas[role] + "/v0.1", object_version="0.1.0",
             data=encoded(model.model_dump(mode="json")))
         choices.append({"role": role, "input_id": identifier})
-    service.save(state)
+    service.sessions.save(state)
     if not select:
         return choices
     response = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-09", "case_initial_v2", choices))
@@ -269,8 +270,9 @@ def measured_graph_case(client, tmp_path, monkeypatch):
     monkeypatch.setattr("bridge.web.provider.converse", check_query_or_stop)
     approve_scope(client, sid, scope)
     done = settle_assessment(client, sid)
-    assert done["assessment"]["tool_runs_used"] == 3, done["assessment"]
     state = service.load(sid)
+    assert "tool_runs_used" not in done["assessment"]
+    assert state["_assessment"]["tool_runs_used"] == 3
     graph_receipt = next(row for row in reversed(state["_tool_runs"]) if row["tool_id"] == "P0-09" and row["state"] == "succeeded")
     query = json.loads((service.directory(sid) / "receipts" / graph_receipt["file"]).read_bytes())
     assert query["artifacts"] == [] and query["measurements"] == []
@@ -282,7 +284,8 @@ def measured_graph_case(client, tmp_path, monkeypatch):
     assert {row["evidence_tier"] for row in records} == {"shadow"}
     assert {row["denominator"] for row in records} == {2, 4}
     assert any(row["value"] == 0.5 and row["numerator"] == 2 and row["denominator"] == 4 for row in records)
-    assert done["assessment"]["stop_reason"] == "no_discriminating_check"
+    assert "stop_reason" not in done["assessment"]
+    assert state["_assessment"]["stop_reason"] == "no_discriminating_check"
     return service, sid, aid, run, measurements
 
 
@@ -388,7 +391,7 @@ def test_measured_graph_feedback_appends_after_real_discriminating_check(client,
         schema_ref="bridge://schemas/domain-gate-input/v0.1", object_version="0.1.0", data=encoded(domain.model_dump(mode="json")))
     domains = [*state["_input_selections"]["P0-08"]["object_inputs"],
                {"role": "domain_gate_input", "input_id": domain_id}, {"role": "measurement_spec", "input_id": spec_id}]
-    service.save(state)
+    service.sessions.save(state)
     changed = client.post(f"/api/sessions/{sid}/analysis-inputs", json=choice("P0-08", "default", domains))
     assert changed.status_code == 200
     confirm_change(client, sid, changed.json())
@@ -413,7 +416,8 @@ def test_measured_graph_feedback_appends_after_real_discriminating_check(client,
     approve_scope(client, sid, scope)
     done = settle_assessment(client, sid, timeout=180)
     state = service.load(sid)
-    assert done["assessment"]["tool_runs_used"] == 5, done["assessment"]
+    assert "tool_runs_used" not in done["assessment"]
+    assert state["_assessment"]["tool_runs_used"] == 5
     assert_measured_feedback_artifacts(service.directory(sid), state, len(before["_tool_runs"]),
         old_records, scope["input_revision"])
 
@@ -518,9 +522,21 @@ def test_actual_approved_missingness_tool_retains_five_unassessed_domains(client
     assert done["plan"]["status"] == "completed", done
     state = service.load(sid)
     outputs = [record for record in state["_input_objects"].values()
-        if record["source"] == "tool_output" and record["schema_ref"] == "bridge://schemas/evidence-sufficiency-run-result/v0.2"]
+        if record["source"] == "tool_output" and record["schema_ref"] in {
+            "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+            "bridge://schemas/evidence-sufficiency-run-result/v0.3"}]
     assert len(outputs) == 1
     result = service.inputs.verify(state, outputs[0])
+    # Mixed historical/current schema selection must retain canonical producers.
+    versions = ("bridge://schemas/evidence-sufficiency-run-result/v0.2",
+                "bridge://schemas/evidence-sufficiency-run-result/v0.3")
+    canonical = service.report_inputs._canonical_outputs(
+        state, state["_input_objects"], "P0-08", versions)
+    assert len(canonical) == 1
+    assert canonical[0][1] == result
+    draft = state["_scientific_drafts"][-1]
+    assert service.report_inputs._result(state, draft, "P0-08", versions) == (
+        canonical[0][0], result)
     assert len(result["profiles"]) == 5
     for profile in result["profiles"]:
         assert profile["evidence_sufficiency_state"] == "not_assessed"
@@ -567,10 +583,10 @@ def test_candidate_graph_requires_canonical_missingness_and_separate_approval(cl
     from copy import deepcopy
     intact = deepcopy(selected)
     selected["_input_selections"]["P0-09"]["object_inputs"] = [row for row in selected["_input_selections"]["P0-09"]["object_inputs"] if row["role"] != "evidence_sufficiency_run_result"]
-    service.save(selected)
+    service.sessions.save(selected)
     assert client.post(f"/api/sessions/{sid}/approve", json={"plan_id": plan["id"], "plan_digest": plan["digest"]}).status_code == 409
     assert service.load(sid)["_tool_runs"] == before["_tool_runs"]
-    service.save(intact)
+    service.sessions.save(intact)
     assert client.post(f"/api/sessions/{sid}/approve",
         json={"plan_id": plan["id"], "plan_digest": plan["digest"]}).status_code == 200
     done = settle(client, sid)
@@ -662,7 +678,10 @@ def test_report_approval_rejects_corruption_without_running_or_displaying_stale_
     else:
         schema = {"policy": "claim-registry/v0.1", "upstream": "evidence-sufficiency-run-result/v0.2",
                   "report": "report-draft/v0.1"}[corruption]
-        record = next(row for row in state["_input_objects"].values() if row["schema_ref"] == "bridge://schemas/" + schema)
+        schemas = {"bridge://schemas/" + schema}
+        if corruption == "upstream":
+            schemas.add("bridge://schemas/evidence-sufficiency-run-result/v0.3")
+        record = next(row for row in state["_input_objects"].values() if row["schema_ref"] in schemas)
         path = Path(record["path"])
     original = path.read_bytes()
     try:
@@ -688,8 +707,14 @@ def test_candidate_factory_is_unreviewed_case_bound_and_never_converts_measured_
     def payload(identifier): return service.inputs.verify(state, state["_input_objects"][identifier])
     case = ProductCase.model_validate(payload(draft["object_ids"]["product_case"]))
     definition = ProductDefinitionCard.model_validate(payload(draft["object_ids"]["product_definition_card"]))
-    result = EvidenceSufficiencyRunResultV2.model_validate(next(payload(key) for key, row in state["_input_objects"].items()
-        if row["schema_ref"] == "bridge://schemas/evidence-sufficiency-run-result/v0.2"))
+    raw_result = next(payload(key) for key, row in state["_input_objects"].items()
+        if row["schema_ref"] in {"bridge://schemas/evidence-sufficiency-run-result/v0.2",
+                                "bridge://schemas/evidence-sufficiency-run-result/v0.3"})
+    if raw_result["result_version"] == "0.3.0":
+        from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyRunResultV3
+        result = EvidenceSufficiencyRunResultV3.model_validate(raw_result)
+    else:
+        result = EvidenceSufficiencyRunResultV2.model_validate(raw_result)
     stamp = datetime.now(timezone.utc)
     policy = build_missingness_policy(case, definition, result, created_at=stamp)
     assert policy == build_missingness_policy(case, definition, result, created_at=stamp)
@@ -754,8 +779,73 @@ def test_owned_report_selection_cannot_drop_current_case_binding(client, tmp_pat
     state = service.load(sid)
     state["_input_selections"]["P0-08"]["object_inputs"] = [
         item for item in state["_input_selections"]["P0-08"]["object_inputs"] if item["role"] != "product_case"]
-    service.save(state)
+    service.sessions.save(state)
     result = client.post(f"/api/sessions/{sid}/prepare-analysis", json={"tool_id": "P0-08"})
     assert result.status_code == 200
-    assert result.json()["error"] == "report_draft_selection_mismatch"
-    assert service.load(sid)["_tool_runs"] == []
+    assert result.json()["presentation"]["issue"]["error_id"] == "report_unavailable"
+    private = service.load(sid)
+    assert private["error"] == "report_draft_selection_mismatch"
+    assert private["_tool_runs"] == []
+
+
+def test_native_continuation_requires_review_of_an_invalidated_predecessor():
+    from copy import deepcopy
+    from bridge.web import native_evidence
+    from test_p0_09_evidence_compiler import _candidate
+    candidate = _candidate()
+    candidate_model = native_evidence.EvidenceCandidate.model_validate(candidate)
+    record = {name: candidate[name] for name in native_evidence.EvidenceRecord.model_fields if name in candidate}
+    record.update(evidence_id="evidence:" + "a" * 24, evidence_version=1,
+        logical_key=native_evidence.evidence_logical_key(candidate_model), content_hash="b" * 64,
+        lifecycle_state="active", compiler_version="0.2.0",
+        sufficiency_profile_ref={"object_id": "sufficiency:synthetic", "object_version": "0.1.0"})
+    record = native_evidence.EvidenceRecord.model_validate(record).model_dump(mode="json")
+    assert native_evidence._continuation_candidates([candidate], [record]) == []
+    candidate["tool_run_ref"]["object_id"] += "-new"
+    successor, = native_evidence._continuation_candidates([candidate], [record])
+    assert successor["revision_action"] == "supersede"
+    assert successor["predecessor_ref"] == record["evidence_id"] + "@1"
+    invalidated = deepcopy(record)
+    invalidated.update(lifecycle_state="invalidated", revision_action="invalidate",
+        predecessor_ref=record["evidence_id"] + "@1", evidence_version=2)
+    with pytest.raises(ValueError, match="native_invalidated_evidence_revision_requires_review"):
+        native_evidence._continuation_candidates([candidate], [record, invalidated])
+
+
+@pytest.mark.parametrize("failure,expected", [
+    ("native_invalidated_evidence_revision_requires_review", "native_invalidated_evidence_revision_requires_review"),
+    ("canonical_graph_inputs_unchanged", "canonical_graph_inputs_unchanged"),
+    ("private-sentinel-not-for-user", "native_append_source_unavailable"),
+])
+def test_native_scope_blocker_is_persisted_without_private_exception_text(client, tmp_path, monkeypatch, failure, expected):
+    from dataclasses import replace
+    from bridge.web import native_evidence
+    from bridge.web.assessment import AssessmentScope, ScopeProposal
+    service, sid, aid = science_case(client, tmp_path)
+    monkeypatch.setattr(service, "settings", replace(service.settings,
+        cell_state_candidate_runtime_ref="synthetic-runtime-binding"))
+    original_binding = service.assessment._binding
+    def bound_native_graph(*args, **kwargs):
+        binding = original_binding(*args, **kwargs)
+        # Isolate diagnostic propagation from scientific producers and graph compilation.
+        binding["resources"]["synthetic-graph"] = {
+            "producer_tool_id": "P0-09", "schema_ref": "bridge://schemas/case-evidence-graph-manifest/v0.1"}
+        binding["selections"]["P0-09"] = dict(tool_id="P0-09", mode_id="case_append_v2",
+            asset_ids=[], object_inputs=[], measurement_spec_ref=None)
+        return binding
+    def selection_failure(*args):
+        raise ValueError(failure)
+    monkeypatch.setattr(service.assessment, "_binding", bound_native_graph)
+    monkeypatch.setattr(native_evidence, "selection", selection_failure)
+    before_runs = service.load(sid)["_tool_runs"]
+    service.assessment.propose(service.load(sid), ScopeProposal(question="Review the proposed evidence revision.",
+        upload_id=aid, allowed_modes=[{"tool_id": "P0-09", "mode_id": "case_append_v2"}],
+        max_tool_runs=1, max_model_turns=1))
+    saved = service.load(sid)
+    assert saved["_assessment"]["scope"]["binding"]["append_p009"]["blocker"] == expected
+    assert saved["_assessment"]["blockers"][0]["reason_codes"] == [expected]
+    scope = AssessmentScope.model_validate(saved["_assessment"]["scope"])
+    row, = service.inputs.assessment_candidates(saved, scope)
+    assert row["blockers"] == [expected] and row["request"] is None
+    assert saved["_tool_runs"] == before_runs
+    assert "private-sentinel" not in json.dumps(saved["_assessment"])

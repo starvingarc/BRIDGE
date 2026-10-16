@@ -1,6 +1,8 @@
+import { testPrincipal, onTestSignedOut } from "./account-fixture";
+import { InputChangeCard } from "../src/components/InputChangeCard";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import App from "../src/App";
+import SessionWorkspace from "../src/SessionWorkspace";
 
 const facts = {
   product_name: null, product_family: "unknown", target_cell_type: null, target_stage: null,
@@ -44,7 +46,8 @@ it.each(["draft", "confirmed"])("keeps per-attachment protocol review accessible
     throw new Error("Unexpected request: " + path);
   });
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
   expect(await screen.findByRole("region", { name: "方案核对：second-method.txt" })).toBeInTheDocument();
   expect(writes).toEqual([]);
   if (state === "confirmed") expect(screen.getByRole("button", { name: "修改资料" })).toBeInTheDocument();
@@ -57,7 +60,7 @@ it.each(["draft", "confirmed"])("keeps per-attachment protocol review accessible
     body: { upload_id: "a".repeat(32), protocol_id: "1".repeat(32), revision: 3 },
   });
   expect(screen.queryByRole("button", { name: "确认资料" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Confirm analysis" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "开始分析" })).not.toBeInTheDocument();
 });
 
 
@@ -113,7 +116,8 @@ it("keeps an intake proposal visible even when it targets an older upload", asyn
     }
     throw new Error("Unexpected request: " + path);
   });
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
   expect(await screen.findByRole("button", { name: "确认资料" })).toBeInTheDocument();
   expect(screen.getByLabelText("本次评估文件")).toHaveValue(older.id);
 });
@@ -158,7 +162,8 @@ it.each([false, true])("requires complete known facts and separate confirmation 
     throw new Error("Unexpected request: " + path);
   });
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
   if (autofill) await user.click(await screen.findByRole("button", { name: "补充或修改完整资料" }));
   expect(await screen.findByLabelText("矩阵内容")).toHaveValue("unknown");
   await user.selectOptions(screen.getByLabelText("产品类别"), "hpsc_mda");
@@ -177,7 +182,7 @@ it.each([false, true])("requires complete known facts and separate confirmation 
   expect(writes).toHaveLength(2);
   expect(writes[1]).toMatch(/input-change\/confirm$/);
   await user.click(prepare);
-  expect(await screen.findByRole("button", { name: "Confirm analysis" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "开始分析" })).toBeInTheDocument();
   expect(writes).toHaveLength(3);
   expect(writes[2]).toMatch(/intake\/prepare$/);
 });
@@ -200,7 +205,8 @@ it("pauses plan preparation while confirmed product facts are being edited", asy
     throw new Error("Unexpected request: " + path);
   });
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
   await user.click(await screen.findByRole("button", { name: "修改资料" }));
   expect(screen.getByRole("button", { name: "生成下一阶段计划" })).toBeDisabled();
   await user.selectOptions(screen.getByLabelText("矩阵内容"), "unknown");
@@ -212,7 +218,8 @@ it("pauses plan preparation while confirmed product facts are being edited", asy
 
 it("shows file structure separately from unknown researcher declarations", async () => {
   const writes = setupRequests();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
   const panel = await screen.findByRole("region", { name: "产品资料" });
   expect(await within(panel).findByText(/4 个观测/)).toHaveTextContent("3 个基因");
   expect(within(panel).getByLabelText("实验类型")).toHaveValue("unknown");
@@ -226,7 +233,8 @@ it("shows file structure separately from unknown researcher declarations", async
 it("stages a readable draft without confirming facts or approving a run", async () => {
   const writes = setupRequests();
   const user = userEvent.setup();
-  render(<App />);
+  render(<SessionWorkspace research={null} researches={[]} onHome={vi.fn()} onAssigned={vi.fn()} principal={testPrincipal} onSignedOut={onTestSignedOut} />);
+  await userEvent.click(await screen.findByRole("button", {name: "实验背景"}));
   await screen.findByRole("region", { name: "产品资料" });
   await user.type(await screen.findByLabelText("产品 / 批次名称"), "My product");
   await user.selectOptions(screen.getByLabelText("实验类型"), "scRNA-seq");
@@ -241,4 +249,21 @@ it("stages a readable draft without confirming facts or approving a run", async 
     facts: { product_name: "My product", assay: "scRNA-seq", matrix_location: "X", count_semantics: "raw_counts" },
   });
   expect(screen.getByText("产品 / 批次名称", { selector: "dt" })).toBeInTheDocument();
+});
+
+
+it("names report-only rename impact without internal registry titles and keeps discard separate from confirm", async () => {
+  const discard = vi.fn(), confirm = vi.fn();
+  render(<InputChangeCard uploads={baseSession.uploads} busy={false} onConfirm={confirm} onDiscard={discard} onKeep={vi.fn()}
+    pending={{ id:"change", digest:"digest", kind:"intake", upload_id:baseSession.uploads[0].id,
+      changes:[{ field:"product_name", before:"Original product", after:"New product" }],
+      impact:{ version:"1.0", input_revision:3, new_approval_required:true, historical_artifacts_preserved:true,
+        affected:[{ tool_id:"P0-10", label:"Claim Verifier", receipt_sha256:"report" }],
+        reusable:[{ tool_id:"P0-09", label:"Evidence Compiler", receipt_sha256:"graph" }] } }} />);
+  expect(screen.getByText(/确认后新报告使用新名称/)).toBeVisible();
+  expect(screen.getByText(/核验并生成私有研究报告：新报告需使用确认后的名称/)).toBeVisible();
+  expect(screen.queryByText(/Claim Verifier|Evidence Compiler|P0-/)).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", {name:"放弃这次修改"}));
+  expect(discard).toHaveBeenCalledOnce();
+  expect(confirm).not.toHaveBeenCalled();
 });

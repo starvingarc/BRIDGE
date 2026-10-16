@@ -25,6 +25,8 @@ knowledge/index/*.pkl
 
 # Scientific data stays outside Git except explicit tiny fixtures.
 *.h5ad
+!examples/demo/data/product.h5ad
+!examples/demo/data/reference.h5ad
 *.h5
 *.loom
 *.zarr/
@@ -34,7 +36,6 @@ knowledge/index/*.pkl
 *.qs
 *.parquet
 !tests/fixtures/**/*.parquet
-!examples/demo-data/scrna-upload-v0.1/demo_scrna.h5ad
 
 # External BRIDGE model assets; download via models/assets.json.
 models/whole_brain_ref_model/
@@ -46,3 +47,19 @@ models/**/*.h5ad
 
 # Browser dependencies remain local to the frontend workspace.
 frontend/node_modules
+
+# Deployment state and secrets stay outside the development repository.
+.env
+.env.*
+!.env.example
+*.private
+model-settings.json
+/private/
+/runtime/
+/shared/
+/releases/
+/.superpowers/
+
+# Standalone anatomy component preview build.
+frontend/anatomy-dist/
+frontend/workbench-dist/

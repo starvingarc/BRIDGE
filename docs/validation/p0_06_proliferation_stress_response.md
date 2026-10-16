@@ -372,3 +372,21 @@ Existing methods, score semantics and candidate status are unchanged:
 `domain_score=null`, `score_state=unavailable`. Next integration work must bind
 actual producer artifacts and documented experimental units without coercing
 unresolved cells or bypassing missing inputs.
+
+<a id="record-p0-06-exploratory-native-projection-20260922"></a>
+## P0-06 exploratory native projection source check - 2026-09-22
+
+At source checkpoint `f66a272b`, the exploratory publication path in
+`src/bridge/tool_packages/p0_06_proliferation_stress_response/adapter.py`
+constructs an internal `MeasurementSpecV2` with `descriptive_only` status and
+emits five source-bound native `MeasurementResultV2` objects: the S/G2M
+fraction and four Scanpy/decoupler program means. Present values are method-
+native observations; unavailable values remain null. The internal spec does
+not satisfy caller-supplied product-review or MeasurementSpec gates.
+
+This reconciles the Tool Card with implementation. It is a source-consistency
+check, not a new dataset execution or scientific validation. These outputs may
+support exploratory graph observations with their source and method units, but
+do not establish independent biological replication, qualified product-domain
+measurements or a formal score (`domain_score=null`,
+`score_state=unavailable`).

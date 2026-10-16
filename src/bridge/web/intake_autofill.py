@@ -11,11 +11,13 @@ from typing import Literal
 
 from fastapi import HTTPException
 import httpx
+
+from .model_transport import provider_client, apply_model_effort
 from pydantic import Field, StrictInt, StrictStr, model_validator
 
-from .inputs import InputBody, checked_bytes
+from .inputs import InputBody, checked_bytes, checked_file
 from .intake import IntakeFacts, IntakeInput, IntakePrepare
-from .intake_sources import clean_text, metadata, protocol_text, bounded_passages, PROTOCOL_LIMIT, identity_values, redact_identities
+from .intake_sources import metadata, protocol_text, bounded_passages, PROTOCOL_LIMIT, identity_values, redact_identities
 
 class ExtractedField(InputBody):
     field: str = Field(max_length=80)
@@ -132,12 +134,18 @@ def public(service, state, aid, facts):
 def model_context(service, state, aid):
     record = ensure(service, state, aid)
     upload = state["_uploads"][aid]
-    data = checked_bytes(service, state, service.directory(state["id"]) / "uploads" / (aid + ".h5ad"),
-                         upload["sha256"], limit=service.settings.upload_limit)
+    path = service.directory(state["id"]) / "uploads" / (aid + ".h5ad")
+    with checked_file(
+        service,
+        state,
+        path,
+        upload["sha256"],
+        limit=service.settings.max_upload_bytes,
+    ) as stream:
+        identities = identity_values(state, aid, stream)
     for protocol in record["protocols"]:
         checked_bytes(service, state, service.directory(state["id"]) / "intake-protocols" / (protocol["id"] + ".bin"),
                       protocol["sha256"], limit=PROTOCOL_LIMIT)
-    identities = identity_values(state, aid, data)
     def safe(text):
         return redact_identities(text, identities)
     sources, remaining, truncated = [], 96000, False
@@ -201,11 +209,12 @@ not proof that this sample followed every step. No prose. No analysis or tool ex
                             {"role": "user", "content": json.dumps(context, ensure_ascii=False)}]}
     if settings.model_action_protocol == "deepseek_tools":
         payload.update(tools=[{"type": "function", "function": {"name": "extract_intake", "parameters": schema}}],
-                       tool_choice="required", thinking={"type": "disabled"})
+                       tool_choice="required")
     else:
         payload["response_format"] = {"type": "json_object"}
         payload["messages"][0]["content"] += "\nRequired JSON schema: " + json.dumps(schema)
-    with httpx.Client(timeout=90, follow_redirects=False) as client:
+    reasoning_possible = apply_model_effort(settings, payload)
+    with provider_client(settings, timeout=600 if reasoning_possible else 90) as client:
         response = client.post(settings.model_base_url.rstrip("/") + "/chat/completions",
                                headers={"Authorization": "Bearer " + settings.model_api_key}, json=payload)
         response.raise_for_status()
@@ -285,7 +294,7 @@ def start(service, state, aid, formalize_pid=None):
             source["id"]: hashlib.sha256(source["text"].encode()).hexdigest() for source in context["sources"]}}
     record["state"] = "parsing"
     record["revision"] += 1
-    service.schedule(state, "thinking",
+    service.execution.schedule(state, "thinking",
                      lambda sid, epoch: run(service, sid, epoch, aid, generation, context, formalize_pid))
 
 
@@ -341,7 +350,7 @@ def run(service, sid, epoch, aid, generation, context, formalize_pid=None):
                 state["status"] = "thinking"
             except (ValueError, OSError):
                 next_work = None
-        service.save(state)
+        service.sessions.save(state)
     if next_work is not None:
         protocol_formalization.run(service, sid, epoch, next_work)
 
@@ -384,7 +393,7 @@ def answer(service, state, body):
 
 
 def attach(service, state, aid, name, content):
-    from .app import write_file
+    from .sessions import write_file
     service.busy(state)
     service.controls.require_ready(state)
     record = ensure(service, state, aid)
@@ -394,7 +403,7 @@ def attach(service, state, aid, name, content):
         raise HTTPException(400, "invalid_protocol_name")
     try:
         passages = bounded_passages(protocol_text(name, content))
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError):
         raise HTTPException(422, "protocol_text_unavailable") from None
     pid = secrets.token_hex(16)
     write_file(service.directory(state["id"]) / "intake-protocols" / (pid + ".bin"), content)

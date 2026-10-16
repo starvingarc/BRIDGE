@@ -25,6 +25,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     EvidenceSufficiencyProfile,
     EvidenceSufficiencyProfileV2,
     EvidenceSufficiencyRunResultV2,
+    EvidenceSufficiencyRunResultV3,
 )
 from bridge.tool_packages.p0_09_evidence_compiler.compiler import (
     CompilationInvariantError,
@@ -102,7 +103,8 @@ ROLE_SCHEMAS = {
         "bridge://schemas/evidence-sufficiency-profile/v0.2",
     },
     "evidence_sufficiency_run_result": {
-        "bridge://schemas/evidence-sufficiency-run-result/v0.2"
+        "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+        "bridge://schemas/evidence-sufficiency-run-result/v0.3",
     },
     "evidence_family_registry": {"bridge://schemas/evidence-family-registry/v0.1"},
     "claim_registry": {"bridge://schemas/claim-registry/v0.1"},
@@ -420,7 +422,9 @@ def _role_model(ref: StructuredInputRef) -> type[FrozenModel] | None:
             else EvidenceSufficiencyProfile
         )
     if ref.role == "evidence_sufficiency_run_result":
-        return EvidenceSufficiencyRunResultV2
+        return (EvidenceSufficiencyRunResultV3
+                if ref.schema_ref == "bridge://schemas/evidence-sufficiency-run-result/v0.3"
+                else EvidenceSufficiencyRunResultV2)
     if ref.role in {"base_graph_manifest", "source_case_graph_manifest"}:
         if ref.schema_ref == "bridge://schemas/case-evidence-graph-manifest/v0.1":
             return CaseEvidenceGraphManifest

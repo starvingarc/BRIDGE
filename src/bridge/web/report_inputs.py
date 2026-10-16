@@ -10,6 +10,10 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import DomainGateInp
 from .inputs import Selection
 from .scientific_inputs import DraftIdentity, encoded
 
+SUFFICIENCY_SCHEMAS = (
+    "bridge://schemas/evidence-sufficiency-run-result/v0.2",
+    "bridge://schemas/evidence-sufficiency-run-result/v0.3",
+)
 
 DOMAIN_LABELS = {"target_identity": "目标身份", "regional_fidelity": "区域一致性",
     "developmental_compatibility": "发育阶段兼容性", "off_target_control": "非目标细胞控制",
@@ -218,19 +222,7 @@ class ReportInputs:
 
 
     def _canonical_outputs(self, state, pool, tool_id, schema):
-        inputs = self.service.inputs
-        found = []
-        for receipt in state.get("_tool_runs", []):
-            if receipt["tool_id"] != tool_id or receipt["state"] not in {"succeeded", "partial"}:
-                continue
-            identifiers = [identifier for identifier, record in pool.items()
-                if record.get("source") == "tool_output" and record.get("producer_tool_id") == tool_id
-                and record.get("receipt_file") == receipt["file"] and record.get("receipt_sha256") == receipt["sha256"]
-                and record["schema_ref"] == schema]
-            for identifier in identifiers:
-                run, _ = inputs.producer_objects(state, receipt, tool_id, set())
-                found.append((identifier, inputs.verify(state, pool[identifier]), run))
-        return found
+        return self.service.inputs.evidence_sources(state).outputs(pool, tool_id, schema)
 
     def _latest_graph(self, state, pool, case_ref):
         found = [row for row in self._canonical_outputs(state, pool, "P0-09",
@@ -259,6 +251,10 @@ class ReportInputs:
         """Keep unresolved interpretation visible without suppressing a useful append."""
         if allowed.tool_id != "P0-09" or allowed.mode_id not in {"case_initial_v2", "case_append_v2"}:
             return []
+        if allowed.mode_id == "case_append_v2" and scope.binding.get("append_p009", {}).get("after_sufficiency"):
+            # Native continuation builds checked claims for the new source;
+            # the old manual template does not define its interpretation gaps.
+            return []
         inputs = self.service.inputs
         roots = {row["role"]: row["input_id"] for row in
                  scope.binding["selections"].get("P0-09", {}).get("object_inputs", [])}
@@ -268,7 +264,7 @@ class ReportInputs:
         template = inputs.verify(state, pool[roots["compilation_bundle"]])
         case_ref = self._identity(template["product_case_ref"])
         results = [value for _, value, _ in self._canonical_outputs(state, pool, "P0-08",
-            "bridge://schemas/evidence-sufficiency-run-result/v0.2")
+            SUFFICIENCY_SCHEMAS)
             if self._identity(value["case_summary"]["product_case_ref"]) == case_ref]
         if not results:
             return []
@@ -336,7 +332,7 @@ class ReportInputs:
                     or self._identity(claim["biological_context_ref"]) != definition_ref):
                 raise ValueError("measured_graph_policy_case_mismatch")
         sufficiency = [row for row in self._canonical_outputs(state, pool, "P0-08",
-                       "bridge://schemas/evidence-sufficiency-run-result/v0.2")
+                       SUFFICIENCY_SCHEMAS)
                        if self._identity(row[1]["case_summary"]["product_case_ref"]) == case_ref]
         if not sufficiency:
             raise ValueError("canonical_sufficiency_result_required")
@@ -496,19 +492,60 @@ class ReportInputs:
         graph_id, graph, run = latest
         record = pool[graph_id]
         self.service.inputs.verify(state, record)
-        from .research_context import build_research_context
+        from .research_context import build_research_context, selected_report_context_key
         from .scientific_inputs import digest
-        from bridge.tool_packages.p0_10_claim_verifier.research import ResearchReportContext
-        key = digest([scope.scope_id, scope.input_revision, record["sha256"]])
+        from bridge.tool_packages.p0_10_claim_verifier.research import (
+            parse_research_explanation, parse_research_context,
+        )
+        assessment = state.get("_assessment") or {}
+        if assessment.get("scope", {}).get("scope_id") == scope.scope_id:
+            receipt = next((row for row in state.get("_tool_runs", [])
+                if row["file"] == record.get("receipt_file")
+                and row["sha256"] == record.get("receipt_sha256")), None)
+            appended_here = receipt is not None and any(
+                row["plan_id"] == receipt["plan_id"] and row["tool_id"] == "P0-09"
+                and row["mode_id"] == "case_append_v2" and row["state"] in {"completed", "partial"}
+                for row in assessment.get("admissions", []))
+            if appended_here:
+                from .evidence import assessment_evidence
+                evidence, _ = assessment_evidence(self.service.inputs, state, assessment)
+                from .evidence import assessment_citation_roles
+                citation_roles = assessment_citation_roles(evidence)
+                evidence_roles = citation_roles["support"] | citation_roles["observation"]
+                allowed = {row.tool_id for row in scope.allowed_modes}
+                valid = False
+                for raw in reversed(assessment.get("interpretation_versions", [])):
+                    try:
+                        version = parse_research_explanation(raw)
+                    except ValueError:
+                        continue
+                    if (version.scope_digest != assessment["scope_digest"]
+                            or version.input_revision != scope.input_revision
+                            or version.evidence_snapshot_sha256 != digest(evidence)
+                            or not version.hypotheses):
+                        continue
+                    # Limitations may accompany supported explanations, never replace them.
+                    if any(row.evidence_aliases for row in version.hypotheses) and all(
+                           (row.evidence_aliases or row.is_evidence_gap)
+                           and set(row.evidence_aliases) <= evidence_roles
+                           and set(row.opposing_evidence_aliases) <= citation_roles["opposition"]
+                           and set(row.missing_evidence_aliases) <= citation_roles["missing"]
+                           and (row.discriminating_check is None or row.discriminating_check in allowed)
+                           for row in version.hypotheses):
+                        valid = True
+                        break
+                if not valid:
+                    raise ValueError("current_scope_explanation_required")
+        key = selected_report_context_key(state, scope, record["sha256"])
         context_id = state.get("_selected_report_contexts", {}).get(key)
         if context_id:
-            context = ResearchReportContext.model_validate(
+            context = parse_research_context(
                 self.service.inputs.verify(state, state["_input_objects"][context_id]))
         else:
             context, dependencies = build_research_context(self, state, scope, pool,
                 graph_manifest_input_id=graph_id)
             context_id = self.service.inputs.add_derived_object(state, tool_id="P0-10", mode_id="default",
-                role="research_report_context", schema_ref="bridge://schemas/research-report-context/v0.3",
+                role="research_report_context", schema_ref="bridge://schemas/research-report-context/v" + context.object_version.rsplit(".", 1)[0],
                 payload=context.model_dump(mode="json"), dependencies=dependencies)
         report = build_research_draft(graph_manifest_path=Path(record["path"]),
             input_revision=str(scope.input_revision), created_at=run.created_at, report_context=context)
@@ -576,6 +613,7 @@ class ReportInputs:
         return None
 
     def _result(self, state, draft, tool_id, schema):
+        schemas = (schema,) if isinstance(schema, str) else schema
         saved = self._saved(state, draft["id"], tool_id)
         if not saved:
             return None
@@ -585,24 +623,27 @@ class ReportInputs:
             and row["state"] in {"succeeded", "partial"}}
         matches = [(identifier, record) for identifier, record in state["_input_objects"].items()
             if record["source"] == "tool_output" and record.get("producer_tool_id") == tool_id
-            and record.get("receipt_file") in receipts and record["schema_ref"] == schema]
+            and record.get("receipt_file") in receipts and record["schema_ref"] in schemas]
         if not matches:
             return None
         identifier, record = matches[-1]
         return identifier, self.service.inputs.verify(state, record)
 
     def _prepare_downstream(self, state, body):
-        from .app import now
+        from .sessions import now
         from bridge.tool_packages._configurable_contracts import ProductCase, ProductDefinitionCard
-        from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyRunResultV2
         from bridge.tool_packages.p0_09_evidence_compiler.candidate_policy import build_missingness_policy
         if body.tool_id == "P0-10":
             return self._prepare_verification(state, body)
         draft = self._draft(state, body)
         try:
-            upstream = self._result(state, draft, "P0-08", "bridge://schemas/evidence-sufficiency-run-result/v0.2")
+            upstream = self._result(state, draft, "P0-08", SUFFICIENCY_SCHEMAS)
             if upstream is None:
                 raise ValueError("canonical_missingness_result_required")
+            if upstream[1]["result_version"] == "0.3.0":
+                from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyRunResultV3 as SufficiencyResult
+            else:
+                from bridge.tool_packages.p0_08_evidence_sufficiency.models import EvidenceSufficiencyRunResultV2 as SufficiencyResult
             trial = deepcopy(state)
             saved = self._saved(trial, draft["id"], body.tool_id)
             if saved is None:
@@ -610,7 +651,7 @@ class ReportInputs:
                 definition = self.service.inputs.verify(trial, trial["_input_objects"][draft["object_ids"]["product_definition_card"]])
                 objects = build_missingness_policy(ProductCase.model_validate(case),
                     ProductDefinitionCard.model_validate(definition),
-                    EvidenceSufficiencyRunResultV2.model_validate(upstream[1]), created_at=now())
+                    SufficiencyResult.model_validate(upstream[1]), created_at=now())
                 choices = [{"role": "evidence_sufficiency_run_result", "input_id": upstream[0]}]
                 schemas = {"compilation_bundle": "evidence-compilation-bundle",
                     "evidence_family_registry": "evidence-family-registry", "claim_registry": "claim-registry",
@@ -640,11 +681,11 @@ class ReportInputs:
                 "P0-10": "P0-10 核验内部报告：报告仅说明当前缺失证据，使用现有发布规则逐条核对。规则尚未支持此类表述，预计会保留发布受阻结果；不会公开导出。请单独确认。",
             }[tool_id]
             saved["plan_ids"].append(trial["plan"]["id"])
-        self.service.save(trial)
+        self.service.sessions.save(trial)
         state.update(trial)
 
     def _prepare_verification(self, state, body):
-        from .app import now
+        from .sessions import now
         from bridge.tool_packages.p0_10_claim_verifier.models import ClaimBlock, ReportDraft, report_content_hash
         from bridge.tool_packages.p0_10_claim_verifier.verifier import load_release_contract
         draft = self._draft(state, body)
@@ -750,7 +791,7 @@ class ReportInputs:
     def prepare(self, state, body):
         if body.tool_id != "P0-08":
             return self._prepare_downstream(state, body)
-        from .app import now
+        from .sessions import now
         draft = self._draft(state, body)
         trial = deepcopy(state)
         saved = trial.setdefault("_report_inputs", {}).get(draft["id"])
@@ -788,7 +829,7 @@ class ReportInputs:
             trial["plan"]["summary"] = ("P0-08 未评估与缺失证据检查：五个科学域均未提供正式测量、匹配的数据视图或验证记录。"
                 "本次仅用包内规则登记缺项，不将已有 QC 或旧版细胞状态结果冒充这些证据，不判定产品合格。请单独确认。")
             saved["plan_ids"].append(trial["plan"]["id"])
-        self.service.save(trial)
+        self.service.sessions.save(trial)
         state.update(trial)
 
     def stages(self, state, draft):
@@ -802,7 +843,8 @@ class ReportInputs:
         ):
             status, reasons = ("ready", [ready_reason]) if previous else ("blocked", [blocked_reason])
             try:
-                available = previous and self._result(state, draft, tool_id, "bridge://schemas/" + schema) is not None
+                available = previous and self._result(state, draft, tool_id,
+                    SUFFICIENCY_SCHEMAS if tool_id == "P0-08" else "bridge://schemas/" + schema) is not None
             except (HTTPException, ValueError, OSError, KeyError):
                 available, status, reasons = False, "blocked", ["result_evidence_invalid"]
             if available:

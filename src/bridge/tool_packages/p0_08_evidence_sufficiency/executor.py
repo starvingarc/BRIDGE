@@ -38,9 +38,9 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     CaseEvidenceReadinessSummaryV2 as CaseEvidenceReadinessSummary,
     EvidenceSufficiencyProfileV2 as EvidenceSufficiencyProfile,
-    EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
+    EvidenceSufficiencyRunResultV3 as EvidenceSufficiencyRunResult,
     MeasurementEvidenceStateCount,
-    SourceObjectBinding,
+    SourceObjectBindingV3 as SourceObjectBinding,
 )
 from bridge.toolkit.contracts import (
     EvidenceState,
@@ -265,7 +265,7 @@ def evaluate_evidence_sufficiency(
     )
     return EvidenceSufficiencyRunResult(
         result_id=f"evidence-sufficiency-result:{digest}",
-        result_version="0.2.0",
+        result_version="0.3.0",
         gate_rule_spec_ref=gate_rule.gate_rule_spec_id,
         source_object_bindings=_source_object_bindings(
             request=request,

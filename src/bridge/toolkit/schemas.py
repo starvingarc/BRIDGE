@@ -4,12 +4,32 @@ import json
 from importlib.resources import files
 
 SCHEMA_REFS = {
+    "bridge://schemas/developmental-compatibility-visualization-data/v0.1": "developmental_compatibility_visualization_data.schema.json",
+    "bridge://schemas/evidence-compiler-visualization-data/v0.1": "evidence_compiler_visualization_data.schema.json",
+    "bridge://schemas/p0-03-visualization-artifact-set/v0.1": "p0_03_visualization_artifact_set.schema.json",
+    "bridge://schemas/p0-04-visualization-artifact-set/v0.1": "p0_04_visualization_artifact_set.schema.json",
+    "bridge://schemas/p0-09-visualization-artifact-set/v0.1": "p0_09_visualization_artifact_set.schema.json",
+    "bridge://schemas/target-regional-visualization-data/v0.1": "target_regional_visualization_data.schema.json",
+    "bridge://schemas/native-cell-state-context-profile/v0.2": "native_cell_state_context_profile_v2.schema.json",
+    "bridge://schemas/off-target-hard-count-profile/v0.3": "off_target_hard_count_profile_v3.schema.json",
+    "bridge://schemas/off-target-control-result/v0.4": "off_target_control_result_v4.schema.json",
+    "bridge://schemas/exploratory-process-input/v0.3": "exploratory_process_input_v3.schema.json",
+    "bridge://schemas/exploratory-program-profile/v0.2": "exploratory_program_profile_v2.schema.json",
+    "bridge://schemas/proliferation-stress-response-result/v0.3": "proliferation_stress_response_result_v3.schema.json",
+    "bridge://schemas/off-target-hard-count-profile/v0.2": "off_target_hard_count_profile_v2.schema.json",
+    "bridge://schemas/off-target-control-result/v0.3": "off_target_control_result_v3.schema.json",
+    "bridge://schemas/native-cell-state-context-profile/v0.1": "native_cell_state_context_profile.schema.json",
+    "bridge://schemas/developmental-compatibility-result/v0.4": "developmental_compatibility_result_v4.schema.json",
+    "bridge://schemas/off-target-control-result/v0.2": "off_target_control_result_v2.schema.json",
     "bridge://schemas/cell-state-development-review/v1.1": "cell_state_development_review_v1_1.schema.json",
     "bridge://schemas/cell-state-development-review/v1.0": "cell_state_development_review.schema.json",
     "bridge://schemas/cell-state-ood-calibration/v1.0": "cell_state_ood_calibration.schema.json",
     "bridge://schemas/cell-state-candidate-runtime/v1.0": "cell_state_candidate_runtime.schema.json",
     "bridge://schemas/cell-state-candidate-profile/v1.0": "cell_state_candidate_profile.schema.json",
     "bridge://schemas/exploratory-process-input/v0.1": "exploratory_process_input.schema.json",
+    "bridge://schemas/exploratory-process-input/v0.2": "exploratory_process_input_v2.schema.json",
+    "bridge://schemas/exploratory-program-profile/v0.1": "exploratory_program_profile.schema.json",
+    "bridge://schemas/proliferation-stress-response-result/v0.2": "proliferation_stress_response_result_v2.schema.json",
     "bridge://schemas/exploratory-process-profile/v0.1": "exploratory_process_profile.schema.json",
     "bridge://schemas/proliferation-stress-response-result/v0.1": "proliferation_stress_response_result.schema.json",
     "bridge://schemas/agent-integration-profile/v0.1": "agent_integration_profile.schema.json",
@@ -27,6 +47,8 @@ SCHEMA_REFS = {
     "bridge://schemas/cell-state-evidence-matrix-data/v0.1": "cell_state_evidence_matrix_data.schema.json",
     "bridge://schemas/cell-state-evidence-matrix-data/v0.2": "cell_state_evidence_matrix_data_v2.schema.json",
     "bridge://schemas/hierarchical-cell-state-visualization-data/v0.1": "hierarchical_cell_state_visualization_data.schema.json",
+    "bridge://schemas/p0-02-visualization-artifact-set/v0.2": "p0_02_visualization_artifact_set_v2.schema.json",
+    "bridge://schemas/expression-plot-data/v0.1": "expression_plot_data.schema.json",
     "bridge://schemas/p0-02-visualization-artifact-set/v0.1": "p0_02_visualization_artifact_set.schema.json",
     "bridge://schemas/hierarchical-cell-state-composition-data/v0.1": "hierarchical_cell_state_composition_data.schema.json",
     "bridge://schemas/cell-state-release-manifest/v0.1": "cell_state_release_manifest.schema.json",
@@ -39,6 +61,10 @@ SCHEMA_REFS = {
     "bridge://schemas/research-analysis-snapshot/v0.2": "research_analysis_snapshot_v2.schema.json",
     "bridge://schemas/research-analysis-snapshot/v0.3": "research_analysis_snapshot_v3.schema.json",
     "bridge://schemas/research-report-context/v0.3": "research_report_context_v3.schema.json",
+    "bridge://schemas/research-report-context/v0.4": "research_report_context_v4.schema.json",
+    "bridge://schemas/research-report-context/v0.5": "research_report_context_v5.schema.json",
+    "bridge://schemas/research-analysis-snapshot/v0.4": "research_analysis_snapshot_v4.schema.json",
+    "bridge://schemas/research-analysis-snapshot/v0.5": "research_analysis_snapshot_v5.schema.json",
     "bridge://schemas/claim-verification-result/v0.1": "claim_verification_result.schema.json",
     "bridge://schemas/claim-verifier-visualization-data/v0.1": "claim_verifier_visualization_data.schema.json",
     "bridge://schemas/comparison-evidence-graph-manifest/v0.1": "comparison_evidence_graph_manifest.schema.json",
@@ -75,6 +101,7 @@ SCHEMA_REFS = {
     "bridge://schemas/evidence-sufficiency-reason-code-catalog/v0.2": "evidence_sufficiency_reason_code_catalog_v2.schema.json",
     "bridge://schemas/evidence-sufficiency-run-result/v0.1": "evidence_sufficiency_run_result.schema.json",
     "bridge://schemas/evidence-sufficiency-run-result/v0.2": "evidence_sufficiency_run_result_v2.schema.json",
+    "bridge://schemas/evidence-sufficiency-run-result/v0.3": "evidence_sufficiency_run_result_v3.schema.json",
     "bridge://schemas/evidence-sufficiency-visualization-data/v0.1": "evidence_sufficiency_visualization_data.schema.json",
     "bridge://schemas/evidence-validation-record/v0.1": "evidence_validation_record.schema.json",
     "bridge://schemas/freeze-gate-spec/v0.2": "freeze_gate_spec.schema.json",
@@ -113,6 +140,7 @@ SCHEMA_REFS = {
     "bridge://schemas/measurement-result/v0.2": "measurement_result_v2.schema.json",
     "bridge://schemas/measurement-spec/v0.1": "measurement_spec.schema.json",
     "bridge://schemas/measurement-spec/v0.2": "measurement_spec_v2.schema.json",
+    "bridge://schemas/measurement-spec/v0.3": "measurement_spec_v3.schema.json",
     "bridge://schemas/off-target-assessment-spec/v0.1": "off_target_assessment_spec.schema.json",
     "bridge://schemas/off-target-control-profile/v0.1": "off_target_control_profile.schema.json",
     "bridge://schemas/off-target-control-profile/v0.2": "off_target_control_profile_v2.schema.json",
@@ -163,6 +191,10 @@ SCHEMA_REFS = {
     "bridge://schemas/target-regional-assessment-spec/v0.1": "target_regional_assessment_spec.schema.json",
     "bridge://schemas/target-regional-evidence-result/v0.1": "target_regional_evidence_result.schema.json",
     "bridge://schemas/target-regional-evidence-result/v0.2": "target_regional_evidence_result_v2.schema.json",
+    "bridge://schemas/saved-target-role-profile/v0.1": "saved_target_role_profile.schema.json",
+    "bridge://schemas/target-regional-result/v0.2": "target_regional_result_v2.schema.json",
+    "bridge://schemas/target-regional-result/v0.1": "target_regional_result.schema.json",
+    "bridge://schemas/reference-similarity-exploratory-input/v0.1": "reference_similarity_exploratory_input.schema.json",
     "bridge://schemas/target-regional-method-bundle/v0.1": "target_regional_method_bundle.schema.json",
     "bridge://schemas/target-regional-method-spec/v0.1": "target_regional_method_spec.schema.json",
     "bridge://schemas/structured-input-ref/v0.1": "structured_input_ref.schema.json",
@@ -178,7 +210,7 @@ SCHEMA_REFS = {
 }
 
 
-def load_schema(schema_ref: str) -> dict:
+def _read_schema(schema_ref: str) -> dict:
     try:
         filename = SCHEMA_REFS[schema_ref]
     except KeyError as exc:
@@ -187,3 +219,49 @@ def load_schema(schema_ref: str) -> dict:
     if not resource.is_file():
         raise FileNotFoundError(f"Packaged schema is missing: {filename}")
     return json.loads(resource.read_text(encoding="utf-8"))
+
+
+def load_schema(schema_ref: str) -> dict:
+    """Bundle referenced package fragments into an offline, standalone schema."""
+    schema = _read_schema(schema_ref)
+    documents = {schema_ref: schema}
+    references, imported = {}, {}
+
+    def bundle(value, base):
+        if isinstance(value, list):
+            return [bundle(item, base) for item in value]
+        if not isinstance(value, dict):
+            return value
+        result = {key: bundle(item, base) for key, item in value.items() if key != "$ref"}
+        if "$ref" in value:
+            uri, _, fragment = value["$ref"].partition("#")
+            uri = uri or base
+            if uri == schema_ref:
+                result["$ref"] = "#" + fragment
+            else:
+                identity = (uri, fragment)
+                if identity not in references:
+                    if uri not in documents:
+                        documents[uri] = _read_schema(uri)  # Registered files only; never fetch URLs.
+                    target = documents[uri]
+                    if fragment:
+                        if not fragment.startswith("/"):
+                            raise ValueError("Packaged schema references must use JSON pointers")
+                        for part in fragment[1:].split("/"):
+                            key = part.replace("~1", "/").replace("~0", "~")
+                            target = target[int(key)] if isinstance(target, list) else target[key]
+                    key = f"linked_schema_{len(references)}"
+                    if key in schema.get("$defs", {}):
+                        raise ValueError(f"Schema definition collision: {key}")
+                    references[identity] = "#/$defs/" + key
+                    # Import only the referenced fragment; resolve its dependencies on demand.
+                    if isinstance(target, dict):
+                        target = {k: v for k, v in target.items() if k not in {"$id", "$defs"}}
+                    imported[key] = bundle(target, uri)
+                result["$ref"] = references[identity]
+        return result
+
+    schema = bundle(schema, schema_ref)
+    if imported:
+        schema.setdefault("$defs", {}).update(imported)
+    return schema

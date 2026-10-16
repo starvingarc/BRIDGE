@@ -1,0 +1,28 @@
+measurement_spec_id: CELLSTATE-scRNA-synthetic-v0.1
+version: 0.1.0
+scientific_question: Exercise the existing cell-state pipeline using entirely synthetic collaboration data; no biological inference is validated.
+assay: scRNA-seq
+status: candidate_shadow
+applicable_product_cards: [PD-hPSC-mDA-draft]
+input_contract:
+  formats: [h5ad]
+  supported_levels: [analysis_ready, count_ready]
+  requires_qc_profile_ref: true
+  required_reference_roles: [primary]
+analysis_unit: cell
+raw_metric_definition:
+  primary: source-specific Spearman support to sample-by-label pseudobulk profiles
+  sensitivity: cosine similarity and marker-program expression evidence
+denominator: all observations in the declared post-QC input view
+direction: descriptive_support_only
+uncertainty_method: descriptive synthetic support; no independent validation or probability calibration
+minimum_data:
+  minimum_shared_genes: 100
+  minimum_marker_genes: 2
+missing_behavior: unavailable; never impute a label or convert missing support to negative evidence
+tool_refs: [P0-02, METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-68029D, METHOD-BRIDGE-INTERNAL-MARKER-PROGRAM-EVIDENCE]
+reference_refs: [REF-SYNTHETIC-COLLAB-v1]
+prior_refs: [BRIDGE-PD-vMB-ANNOTATION-v0.1-draft, BRIDGE-PD-vMB-MARKERS-v0.1-draft]
+validation_ref: null
+exclusion_rules:
+  competitor_source_families: [STUDER, CAPYBARABRAIN, STUDERCAPYBARABRAIN, HDNA, STUDERHDNA, FETALATLAS, STUDERFETALATLAS, EMTAB14729]

@@ -32,7 +32,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.executor import (
 from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DomainGateInput,
     EvidenceSensitivityRecord,
-    EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
+    EvidenceSufficiencyRunResultV3 as EvidenceSufficiencyRunResult,
     EvidenceValidationRecord,
     GateRuleSpecV2 as GateRuleSpec,
     PriorApplicabilityRecord,
@@ -54,6 +54,7 @@ from bridge.toolkit.contracts import (
     FrozenModel,
     MeasurementResultV2 as MeasurementResult,
     MeasurementSpecV2 as MeasurementSpec,
+    MeasurementSpecV3,
     QCReadinessProfileV2 as QCReadinessProfile,
     StructuredInputRef,
     ToolPackageSpecV2,
@@ -63,7 +64,7 @@ from bridge.toolkit.contracts import (
 )
 
 
-RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.2"
+RESULT_SCHEMA_REF = "bridge://schemas/evidence-sufficiency-run-result/v0.3"
 ROLE_SCHEMAS = {
     "product_case": "bridge://schemas/product-case/v0.1",
     "gate_rule_spec": "bridge://schemas/evidence-sufficiency-gate-rule-spec/v0.2",
@@ -343,7 +344,10 @@ class EvidenceSufficiencyAdapter:
             reasons.append("unsupported_object_input_role")
         for ref in request.object_inputs:
             expected = ROLE_SCHEMAS.get(ref.role)
-            if expected is not None and ref.schema_ref != expected:
+            technical_spec = ref.role == "measurement_spec" and ref.schema_ref == (
+                "bridge://schemas/measurement-spec/v0.3"
+            )
+            if expected is not None and ref.schema_ref != expected and not technical_spec:
                 reasons.append("object_input_schema_mismatch")
         input_ids = [item.input_id for item in request.object_inputs]
         if len(input_ids) != len(set(input_ids)):
@@ -387,7 +391,9 @@ def _load_structured_inputs(
 ) -> tuple[LoadedInputs | None, list[str]]:
     return load_structured_inputs(
         refs,
-        model_for=lambda ref: ROLE_MODELS.get(ref.role),
+        model_for=lambda ref: MeasurementSpecV3 if ref.role == "measurement_spec"
+        and ref.schema_ref == "bridge://schemas/measurement-spec/v0.3"
+        else ROLE_MODELS.get(ref.role),
         validate_payload=_validate_input_payload,
         validate_model=_validate_input_model,
         read_verified=_read_verified_input,
@@ -622,6 +628,10 @@ def _binding_reasons(request: ToolRequestV2, loaded: LoadedInputs) -> list[str]:
             ):
                 reasons.append("domain_input_measurement_spec_mismatch")
             if qc_profile is not None:
+                if isinstance(measurement_spec, MeasurementSpecV3) and (
+                    measurement_spec.data_view != qc_profile.selected_data_view
+                ):
+                    reasons.append("domain_input_measurement_spec_mismatch")
                 generic_state = qc_profile.module_eligibility.get(
                     "downstream_scientific_modules", ""
                 )

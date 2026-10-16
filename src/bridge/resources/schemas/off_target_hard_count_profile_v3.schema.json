@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "DataViewBinding": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/$defs/DataViewBinding"
+    },
+    "OffTargetHardCountAccounting": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/$defs/OffTargetHardCountAccounting"
+    }
+  },
+  "$id": "bridge://schemas/off-target-hard-count-profile/v0.3",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/allOf/0"
+    },
+    {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/allOf/1"
+    }
+  ],
+  "description": "Keep count semantics while recording the actual executing producer.",
+  "properties": {
+    "accounting": {
+      "$ref": "#/$defs/OffTargetHardCountAccounting"
+    },
+    "assessment_spec_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/assessment_spec_ref"
+    },
+    "assessment_spec_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/assessment_spec_sha256"
+    },
+    "biological_unit_attestation_receipt_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/biological_unit_attestation_receipt_ref"
+    },
+    "biological_unit_attestation_receipt_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/biological_unit_attestation_receipt_sha256"
+    },
+    "biological_unit_manifest_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/biological_unit_manifest_ref"
+    },
+    "biological_unit_manifest_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/biological_unit_manifest_sha256"
+    },
+    "cell_state_profile_id": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/cell_state_profile_id"
+    },
+    "cell_state_profile_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/cell_state_profile_sha256"
+    },
+    "created_at": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/created_at"
+    },
+    "domain_score": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/domain_score"
+    },
+    "evidence_state": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/evidence_state"
+    },
+    "input_data_view": {
+      "$ref": "#/$defs/DataViewBinding"
+    },
+    "measurement_artifacts": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/measurement_artifacts"
+    },
+    "measurement_projection_state": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/measurement_projection_state"
+    },
+    "measurement_spec_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/measurement_spec_ref"
+    },
+    "measurement_spec_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/measurement_spec_sha256"
+    },
+    "object_version": {
+      "const": "0.3.0",
+      "title": "Object Version",
+      "type": "string"
+    },
+    "open_set_assessment_state": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/open_set_assessment_state"
+    },
+    "product_case_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/product_case_ref"
+    },
+    "product_case_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/product_case_sha256"
+    },
+    "product_definition_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/product_definition_ref"
+    },
+    "product_definition_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/product_definition_sha256"
+    },
+    "profile_id": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/profile_id"
+    },
+    "profile_version": {
+      "const": "0.3.0",
+      "title": "Profile Version",
+      "type": "string"
+    },
+    "rare_detection_state": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/rare_detection_state"
+    },
+    "reason_codes": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/reason_codes"
+    },
+    "score_state": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/score_state"
+    },
+    "state_role_map_ref": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/state_role_map_ref"
+    },
+    "state_role_map_sha256": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/state_role_map_sha256"
+    },
+    "tool_id": {
+      "$ref": "bridge://schemas/off-target-hard-count-profile/v0.2#/properties/tool_id"
+    },
+    "tool_version": {
+      "minLength": 1,
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_version",
+    "profile_id",
+    "profile_version",
+    "tool_id",
+    "tool_version",
+    "product_case_ref",
+    "product_case_sha256",
+    "product_definition_ref",
+    "product_definition_sha256",
+    "state_role_map_ref",
+    "state_role_map_sha256",
+    "assessment_spec_ref",
+    "assessment_spec_sha256",
+    "cell_state_profile_id",
+    "cell_state_profile_sha256",
+    "biological_unit_manifest_ref",
+    "biological_unit_manifest_sha256",
+    "biological_unit_attestation_receipt_ref",
+    "biological_unit_attestation_receipt_sha256",
+    "input_data_view",
+    "accounting",
+    "open_set_assessment_state",
+    "rare_detection_state",
+    "measurement_projection_state",
+    "measurement_artifacts",
+    "evidence_state",
+    "score_state",
+    "reason_codes",
+    "created_at"
+  ],
+  "title": "OffTargetHardCountProfileV3",
+  "type": "object"
+}

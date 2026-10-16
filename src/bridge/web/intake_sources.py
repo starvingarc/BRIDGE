@@ -14,7 +14,7 @@ import time
 import zipfile
 from xml.etree import ElementTree
 
-from .inputs import checked_bytes
+from .inputs import checked_file
 
 TEXT_LIMIT = 128_000
 PROTOCOL_LIMIT = 25 * 1024 * 1024
@@ -65,7 +65,7 @@ def column(group, name):
     return [], False
 
 
-def identity_values(state, aid, data):
+def identity_values(state, aid, source):
     """Build a complete local mask inventory from the checked upload, never cache it."""
     import h5py
     declared = set()
@@ -82,7 +82,7 @@ def identity_values(state, aid, data):
         declared.update(record[field] for field in
                         ("sample_id_column", "capture_id_column", "culture_batch_column") if record.get(field))
     masks = set()
-    with h5py.File(io.BytesIO(data), "r") as handle:
+    with h5py.File(source, "r") as handle:
         obs = handle["obs"]
         index = obs.attrs.get("_index", "_index")
         if isinstance(index, bytes):
@@ -122,7 +122,6 @@ def metadata(service, state, aid):
     import h5py
     upload = state["_uploads"][aid]
     path = service.directory(state["id"]) / "uploads" / (aid + ".h5ad")
-    data = checked_bytes(service, state, path, upload["sha256"], limit=service.settings.upload_limit)
     sources, values, field_sources, samples, masks = [], {}, {}, [], set()
     def add(label, text, **extra):
         source = {"id": f"M{len(sources) + 1}", "kind": "metadata", "label": label,
@@ -132,7 +131,13 @@ def metadata(service, state, aid):
     def fill(field, value, sid):
         values[field] = value
         field_sources[field] = {"kind": "metadata", "source_ids": [sid], "quote": str(value)}
-    with h5py.File(io.BytesIO(data), "r") as handle:
+    with checked_file(
+        service,
+        state,
+        path,
+        upload["sha256"],
+        limit=service.settings.max_upload_bytes,
+    ) as stream, h5py.File(stream, "r") as handle:
         obs, var = handle["obs"], handle["var"]
         cols = {}
         for key in list(obs)[:256]:

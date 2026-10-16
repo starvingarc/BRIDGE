@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from bridge.tool_packages import _saved_cell_state_context as native_context
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -73,7 +74,7 @@ from bridge.toolkit.contracts import (
     ToolRunV2,
 )
 
-RESULT_SCHEMA_REF = "bridge://schemas/developmental-compatibility-result/v0.3"
+RESULT_SCHEMA_REF = "bridge://schemas/developmental-compatibility-result/v0.4"
 ROLE_MODELS: dict[str, tuple[str, type[FrozenModel]]] = {
     "product_case": ("bridge://schemas/product-case/v0.1", ProductCase),
     "product_definition_card": (
@@ -154,6 +155,8 @@ class DevelopmentalCompatibilityAdapter:
                 eligible=False,
                 reason_codes=["tool_request_v2_required"],
             )
+        if any(r.role == native_context.ROLE for r in request.object_inputs):
+            return native_context.eligibility(request, spec)
         reasons = _envelope_reasons(request, spec)
         loaded, loading_reasons = _load_inputs(request.object_inputs)
         reasons.extend(loading_reasons)
@@ -169,6 +172,8 @@ class DevelopmentalCompatibilityAdapter:
     def run(self, request: ToolRequestV2, spec: ToolPackageSpecV2) -> ToolRunV2:
         if not isinstance(request, ToolRequestV2):
             return _failed_v1_request(request, spec)
+        if any(r.role == native_context.ROLE for r in request.object_inputs):
+            return native_context.execute(request, spec)
         eligibility = self.check_eligibility(request, spec)
         if not eligibility.eligible:
             return _failed_run(request, spec, eligibility.reason_codes)

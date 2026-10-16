@@ -7,15 +7,23 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:anatomy": "vite --config vite.anatomy.config.ts",
+    "build:anatomy": "tsc -b && vite build --config vite.anatomy.config.ts",
+    "dev:workbench": "vite --config vite.workbench.config.ts",
+    "build:workbench": "tsc -b && vite build --config vite.workbench.config.ts"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.18",
     "@assistant-ui/react-markdown": "0.14.14",
+    "cytoscape": "3.34.3",
+    "hyparquet": "1.31.2",
     "lucide-react": "1.41.0",
+    "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "remark-gfm": "4.0.1"
+    "remark-gfm": "4.0.1",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "7.0.1",
@@ -23,10 +31,14 @@
     "@testing-library/user-event": "14.6.7",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "@types/three": "0.186.0",
     "@vitejs/plugin-react": "6.1.1",
     "jsdom": "30.0.1",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

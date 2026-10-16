@@ -1,0 +1,12 @@
+{
+  "product-design.csv": "9a7646cc8f91391dad302087cc1d5911b3c7d0021dad7349fff15b67880b1f4a",
+  "product.h5ad": "330a991acddd0915ad29d2634d91aa578daf1f5adbb07b506bc165248d105eec",
+  "reference.h5ad": "ca9c456e31c78f9693f6b8d2c64b734e27ac252d41b405d61e4ef665f19a26c7",
+  "references/REF-SYNTHETIC-COLLAB-v1/annotation_vocabulary.json": "6d90fec3a84029b7749734370cb7f76e231de83be1fa1149fa2dc2b6960ab0ed",
+  "references/REF-SYNTHETIC-COLLAB-v1/marker_programs.json": "2a634090d99e758e26574a319206b2fdc8eedbfa150f66719522f5d138478e90",
+  "references/REF-SYNTHETIC-COLLAB-v1/profiles/PROFILE-SYNTHETIC-L1.json": "74dfea3652a4ef5328111324bc31e9265b559dac4b2360e69714b90847b5e22c",
+  "references/REF-SYNTHETIC-COLLAB-v1/profiles/PROFILE-SYNTHETIC-L1.npy": "8e3dcdbc1e06063508174b7a8f30dba1d2cb4f9630570c0e75b811d6b3eebeae",
+  "references/REF-SYNTHETIC-COLLAB-v1/profiles/PROFILE-SYNTHETIC-L2.json": "208100bacb1138caaa902ae071e0a18bb1855d6d9bef524155da831183ec6a60",
+  "references/REF-SYNTHETIC-COLLAB-v1/profiles/PROFILE-SYNTHETIC-L2.npy": "071adef635aafcf62deead42421758eecb035d1543faebd76332de6fad5dfb90",
+  "references/REF-SYNTHETIC-COLLAB-v1/reference_manifest.json": "36b09c08b79098cd54ee67b41c822d0ac67bc1ecf6a800652b140a4330d8620a"
+}

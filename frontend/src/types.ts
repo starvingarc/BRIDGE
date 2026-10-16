@@ -6,7 +6,12 @@ export type SessionStatus =
   | "stopping"
   | "failed";
 
+export type InterpretationRef = { scope_digest: string; version: number; content_sha256: string };
+
 export type Message = {
+  provenance_warning?: "legacy_unclassified";
+  qualification?: "proposed_explanation";
+  interpretation_ref?: InterpretationRef;
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -14,6 +19,7 @@ export type Message = {
 };
 
 export type Upload = {
+  material_id?: string;
   id: string;
   name: string;
   kind: string;
@@ -48,6 +54,12 @@ export type Plan = {
 export type ArtifactKind = "figure" | "table" | "evidence" | "download";
 
 export type Artifact = {
+  content_class?: "research_report" | "user_result" | "developer_diagnostic";
+  access_state?: "available" | "current" | "historical_unreviewed" | "denied";
+  acknowledged?: boolean;
+  acknowledgement_required?: boolean;
+  acknowledgement_url?: string;
+  warning?: string;
   research_report?: { input_revision: string; graph_version: number; snapshot_sha256: string };
   id: string;
   name: string;
@@ -99,12 +111,20 @@ export type AnalysisInputContract = {
   object_input_modes: AnalysisInputModeContract[];
 };
 
+export type ExpressionAnalysis = {
+  exploration?: {group_key?: string | null; color_keys?: string[]; genes?: string[];
+    embedding_key?: string | null; normalized_scale?: "log1p" | null};
+  contrast?: {group_key: string; group: string; sample_key: string; condition_key: string;
+    reference: string; comparison: string; batch_key?: string | null; independent_samples_confirmed?: boolean} | null;
+};
+
 export type AnalysisSelection = {
   tool_id: string;
   mode_id: string | null;
   asset_ids: string[];
   object_inputs: Array<{ role: string; input_id: string }>;
   measurement_spec_ref: string | null;
+  expression_analysis?: ExpressionAnalysis | null;
 };
 
 export type AnalysisInputObject = {
@@ -210,7 +230,9 @@ export type ScientificDraft = {
   attestation_state: string; object_ids: Record<string, string>;
   sources: Array<{ source_id: string; version: string; state_id: string; label_level: string;
     definition: string; anatomy_scope: string; developmental_scope: string; derivation: string;
-    review_status: string; limitations: string[]; source_refs: string[] }>;
+    review_status: string; limitations: string[]; source_refs: string[];
+    decision?: "evaluate" | "parent_only" | "unavailable";
+    parent_state_id?: string | null }>;
   stages: Array<{ tool_id: string; state: string; reason_codes: string[] }>;
 };
 
@@ -218,8 +240,14 @@ export type ScientificDraft = {
 export type AssessmentMode = { tool_id: string; mode_id: string | null };
 export type AssessmentCandidate = AssessmentMode & {
   runnable: boolean; already_admitted?: boolean; blockers: string[]; gaps: string[];
+  source_gene_set?: string;
+  source_resource_sha256?: string;
 };
 export type AssessmentEvidence = {
+  navigation?: { tool_run_ref: {object_id: string; object_version: string};
+    measurements: Record<string, {object_id: string; object_version: string}>;
+    measurement_artifacts?: Record<string, {object_id: string; object_version: string}>;
+    graph_nodes: Record<string, string> };
   alias: string; state: "available" | "unavailable"; tool_id: string;
   tool_version?: string; execution_state?: string; score_state?: string;
   domain_score?: null; reason_code?: string; interpretation_scope?: string;
@@ -231,36 +259,66 @@ export type AssessmentEvidence = {
 export type AssessmentAxis = {
   id: string; title: string; state: "available" | "measured" | "missing" | "unavailable";
   reason_codes: string[]; evidence_aliases: string[]; summary: Record<string, JsonValue>;
+  context_evidence_aliases?: string[];
   families?: AssessmentAxis[];
 };
+export type LiteratureSource = {
+  source_ref: string; url: string; retrieved_at: string;
+  content_level: "abstract" | "metadata_only"; abstract: string | null;
+  abstract_sha256: string | null; content_sha256: string;
+  metadata: { title: string; pmid: string; doi: string | null; year: string | null;
+    authors: string | null; journal: string | null;
+    publication_status: "unknown" | "no_flag_reported" | "correction_reported" | "retraction_or_concern_reported";
+    publication_types: string[] | null;
+    corrections: { type:string; id:string|null; source:string|null; reference:string|null; note:string|null }[] | null };
+};
+export type AssessmentLiterature = {
+  enabled: boolean; concept_refs: string[]; max_searches: number; max_reads: number;
+  searches_used: number; reads_used: number; state: string;
+  sources: LiteratureSource[];
+};
+export type AssessmentContinuation = { scope_id: string; scope_digest: string; pending_revision_sha256: string };
 export type Assessment = {
+  continuation?: AssessmentContinuation | null;
+  continuation_proposal?: AssessmentProposal | null;
   scope_id: string; scope_digest: string; question: string; upload_id: string;
   input_revision: number; allowed_modes: AssessmentMode[];
-  max_tool_runs: number; max_model_turns: number; tool_runs_used: number; model_turns_used: number;
-  status: "proposed" | "running" | "stopped" | "blocked" | "interrupted"; stop_reason: string | null;
+  report_after_explanation: boolean;
+  literature?: AssessmentLiterature;
+  max_tool_runs: number; max_model_turns: number; tool_runs_used?: number; model_turns_used?: number;
+  status: "proposed" | "running" | "stopped" | "blocked" | "interrupted"; stop_reason?: string | null;
   stop_events?: Array<{ reason: string; status: string; stopped_at: string | null;
     tool_runs_used: number; model_turns_used: number }>;
   blockers: Array<AssessmentMode & { reason_codes: string[] }>;
   candidates: AssessmentCandidate[]; evidence: AssessmentEvidence[]; portrait: AssessmentAxis[];
   hypotheses: Array<{ statement: string; evidence_aliases: string[];
+    literature_support?: Array<{ source_ref: string; rationale: string; species: string;
+      lineage: string; stage: string; experimental_context: string; qualification: "unverified_applicability" }>;
+    provenance_warning?: "legacy_unclassified"; qualification?: "proposed_explanation";
+    interpretation_ref?: InterpretationRef;
     opposing_evidence_aliases?: string[]; missing_evidence_aliases?: string[]; expected_observation?: string | null;
-    competing_explanation: string; discriminating_check: string }>;
+    competing_explanation: string; discriminating_check: string | null }>;
   interpretation_versions?: Array<{ version: number; content_sha256: string;
     predecessor_sha256: string | null; input_revision: number; created_at: string;
     qualification: "proposed_explanation"; hypotheses: Assessment["hypotheses"];
     scope_digest: string; evidence_snapshot_sha256: string }>;
-  freshness: { state: "current" | "historical" | "review_pending"; reason_code: string | null;
+  freshness: { state: "current" | "historical" | "review_pending"; reason_code?: string | null;
     current_input_revision: number; scope_input_revision: number; pending_review: boolean };
   data_view: Record<string, JsonValue>;
   resources: Array<{ alias: string; schema_ref: string | null; resource_ref?: string;
     object_version: string; sha256: string; source: string }>;
-  stop_conditions: string[]; question_sent_to_model: boolean; result_summaries_enabled: boolean;
+  // Legacy diagnostic fields are absent from the researcher projection.
+  stop_conditions?: string[]; question_sent_to_model?: boolean; result_summaries_enabled?: boolean;
   scope_authorized: boolean; scope_grants_scientific_approval: false;
-  history: Array<{ scope_id: string; question: string; input_revision: number; status: string; stop_reason: string | null;
+  history: Array<{ scope_id: string; question: string; input_revision: number; status: string; stop_reason?: string | null;
     stop_events?: Assessment["stop_events"] }>;
 };
 export type AssessmentProposal = {
+  continuation?: AssessmentContinuation | null;
   question: string; upload_id: string; allowed_modes: AssessmentMode[];
+  report_after_explanation?: boolean;
+  literature_enabled?: boolean; literature_concept_refs?: string[];
+  max_literature_searches?: number; max_literature_reads?: number;
   max_tool_runs: number; max_model_turns: number;
 };
 
@@ -279,7 +337,25 @@ export type ConditionalDirectory = {
   selections: ConditionalDraft[];
 };
 
+export type SessionPresentation = {
+  stage: "needs_input" | "needs_confirmation" | "needs_approval" | "working" | "results_ready" | "partially_complete" | "blocked" | "idle";
+  stage_label: string;
+  summary: string;
+  issue: { error_version: 1; error_id: string; user_message: string; details?: string[];
+    results_state: "preserved" | "not_available" | "unknown" } | null;
+  next_actions: Array<{ id: "provide_input" | "review_inputs" | "approve_plan" | "approve_assessment" | "stop" | "resume_assessment" | "view_results" | "download_report"; label: string }>;
+  diagnostics_available: boolean;
+};
+
 export type Session = {
+  research_id?: string | null;
+  run_id?: string | null;
+  conversation_kind?: "research" | "run" | null;
+  model_configuration?: {model: string; base_url: string; version: string} | null;
+  /** Next-task model choice of this conversation (GET/PUT …/model-selection holds the full view). */
+  model_selection?: {provider_id: string; model: string; effort: import("./api").Effort | null} | null;
+  archived?: boolean;
+  presentation?: SessionPresentation;
   conditional_inputs?: ConditionalDirectory;
   assessment?: Assessment | null;
   scientific_drafts?: ScientificDraft[];
@@ -299,7 +375,7 @@ export type Session = {
   pending_input_change: PendingInputChange | null;
 };
 
-export type SessionSummary = Pick<Session, "id" | "title" | "updated_at">;
+export type SessionSummary = Pick<Session, "id" | "title" | "updated_at" | "archived" | "research_id" | "run_id" | "conversation_kind"> & { status?: SessionStatus };
 
 export type SessionsResponse = {
   sessions: SessionSummary[];
@@ -425,3 +501,14 @@ export function normalizeSession(session: Session): NormalizedSession {
     pending_input_change: session.pending_input_change ?? null,
   };
 }
+
+export type ResearchMaterial = {
+  id: string; name: string; kind: "h5ad" | "protocol" | "metadata"; size: number; created_at: string;
+  /** Matrices found in an H5AD at upload (X, layers/…); absent when the server does not report them. */
+  locations?: string[];
+};
+export type ResearchSummary = {
+  id: string; name: string; description: string; created_at: string; updated_at: string;
+  session_count: number; material_count: number;
+};
+export type Research = ResearchSummary & {materials: ResearchMaterial[]};

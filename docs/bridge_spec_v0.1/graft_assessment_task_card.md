@@ -2,6 +2,7 @@
 
 | 字段 | 内容 |
 | --- | --- |
+| Current result schema | See [Tool Card contract](../../src/bridge/tool_packages/cards/P0-12.md#contract) |
 | Task ID | `TASK-GRAFT-ASSESSMENT-v0.1` |
 | 文档版本 | `0.4-candidate` |
 | 日期 | 2026-09-04 |

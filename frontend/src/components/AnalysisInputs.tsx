@@ -1,3 +1,4 @@
+import { toolName, modeLabel, inputRoles, stateName, reasonLabel, researcherText } from "../researcherLabels";
 import {
   useEffect,
   useRef,
@@ -19,6 +20,8 @@ import type {
   ToolCapability,
   Upload,
 } from "../types";
+
+import ExpressionOptions from "./ExpressionOptions";
 
 const OBJECT_FILE_LIMIT = 2 * 1024 * 1024;
 const METADATA_FILE_LIMIT = 32 * 1024;
@@ -54,7 +57,7 @@ const displayName = (value: string) => value.replaceAll("_", " ");
 
 const sourceLabel = (object: AnalysisInputObject) =>
   object.source === "tool_output" && object.producer_tool_id
-    ? `${SOURCE_LABELS[object.source]} · ${object.producer_tool_id}`
+    ? `${SOURCE_LABELS[object.source]} · ${toolName(object.producer_tool_id)}`
     : SOURCE_LABELS[object.source];
 
 const publicError = (error: unknown) => {
@@ -222,14 +225,14 @@ function RolePicker({
   return (
     <fieldset className="analysis-role" disabled={disabled}>
       <legend>
-        {displayName(role.role)}
+        {(inputRoles[role.role] ?? "科学输入")}
         <span>
           {role.min_count ? `required ${role.min_count}` : "optional"} ·{" "}
           {role.max_count === null ? "multiple" : `up to ${role.max_count}`}
         </span>
       </legend>
       <select
-        aria-label={`${displayName(role.role)} object`}
+        aria-label={`${(inputRoles[role.role] ?? "科学输入")} object`}
         multiple={role.max_count !== 1}
         size={role.max_count === 1 ? undefined : Math.min(4, Math.max(2, options.length))}
         value={role.max_count === 1 ? selected[0] ?? "" : selected}
@@ -245,7 +248,7 @@ function RolePicker({
             value={object.id}
             disabled={usedElsewhere.has(object.id) || (full && !selected.includes(object.id))}
           >
-            {object.label} · {sourceLabel(object)}
+            {researcherText(object.label)} · {sourceLabel(object)}
           </option>
         ))}
       </select>
@@ -291,7 +294,7 @@ function RolePicker({
           accept=".json,application/json"
           disabled={disabled || role.max_count === 0}
           onChange={(event) => void onUpload(event, role)}
-          aria-label={`Register JSON for ${displayName(role.role)}`}
+          aria-label={`Register JSON for ${(inputRoles[role.role] ?? "科学输入")}`}
         />
       </label>
       <small>One JSON object, up to 2 MiB. The server verifies its schema and version.</small>
@@ -523,7 +526,7 @@ export function AnalysisInputs({
       undefined,
       (next) => next.status === "awaiting_approval" && next.plan?.status === "proposed"
         ? "Plan prepared. It has not been approved or run."
-        : `Plan not prepared: ${displayName(
+        : `Plan not prepared: ${researcherText(
             next.error ?? "required inputs remain unresolved",
           ).replaceAll(":", " ")}.`,
     );
@@ -612,7 +615,7 @@ export function AnalysisInputs({
       const missing = role.min_count - count;
       if (missing > 0) {
         missingReasons.push(
-          `${displayName(role.role)} needs ${missing} more input${missing === 1 ? "" : "s"}.`,
+          `${(inputRoles[role.role] ?? "科学输入")} needs ${missing} more input${missing === 1 ? "" : "s"}.`,
         );
       }
     }
@@ -650,12 +653,12 @@ export function AnalysisInputs({
           <ul className="capability-list" aria-label="Tool-chain status">
             {capabilities.map((item) => (
               <li key={item.tool_id}>
-                <span><strong>{item.tool_id}</strong> {item.label}</span>
+                <span><strong>{toolName(item.tool_id)}</strong></span>
                 <span className={`capability-state capability-state--${item.state}`}>
-                  {displayName(item.state)}
+                  {stateName(item.state)}
                 </span>
                 {item.reason_codes.length ? (
-                  <small>{item.reason_codes.map(displayName).join(" · ")}</small>
+                  <small>{item.reason_codes.map(reasonLabel).join(" · ")}</small>
                 ) : null}
               </li>
             ))}
@@ -688,7 +691,7 @@ export function AnalysisInputs({
               onChange={selectTool}
               options={data.tools.map((item) => ({
                 value: item.tool_id,
-                label: `${item.tool_id} · ${item.label}`,
+                label: toolName(item.tool_id),
               }))}
             />
             {tool && draft ? (
@@ -703,12 +706,12 @@ export function AnalysisInputs({
                     onChange={changeMode}
                     options={tool.input_contract.object_input_modes.map((item) => ({
                       value: item.mode_id,
-                      label: displayName(item.mode_id),
+                      label: modeLabel(item.mode_id),
                     }))}
                   />
                 ) : null}
                 <p className="selected-mode">
-                  Exact selected mode: <code>{draft.mode_id ?? "none"}</code>
+                  已选择：{draft.mode_id ? modeLabel(draft.mode_id) : "尚未选择分析方式"}
                 </p>
 
                 {(mode?.roles ?? []).map((role) => (
@@ -836,18 +839,22 @@ export function AnalysisInputs({
                 {tool.input_contract.measurement_spec_ref_policy !== "forbidden" ? (
                   <SelectField
                     className="analysis-input-field"
-                    label={`Measurement specification (${tool.input_contract.measurement_spec_ref_policy})`}
+                    label="分析内容"
                     value={draft.measurement_spec_ref ?? ""}
                     emptyLabel="No measurement specification"
                     disabled={panelDisabled}
                     onChange={(value) =>
-                      setDraft({ ...draft, measurement_spec_ref: value || null })}
-                    options={data.measurement_specs.map((item) => ({
+                      setDraft({ ...draft, measurement_spec_ref: value || null, expression_analysis: null })}
+                    options={(tool.tool_id === "P0-02" ? data.measurement_specs : []).map((item) => ({
                       value: item.id,
                       label: item.label,
                     }))}
                   />
                 ) : null}
+
+                {tool.tool_id === "P0-02" && draft.measurement_spec_ref === "EXPRESSION-exploration-v0.1" &&
+                  <ExpressionOptions value={draft.expression_analysis ?? {}} disabled={panelDisabled}
+                    onChange={value => setDraft({...draft, expression_analysis: value})} />}
 
                 {missingReasons.length || capability?.reason_codes.length ? (
                   <div className="analysis-missing">
@@ -855,7 +862,7 @@ export function AnalysisInputs({
                     <ul>
                       {missingReasons.map((reason) => <li key={reason}>{reason}</li>)}
                       {capability?.reason_codes.map((reason) => (
-                        <li key={reason}>Server: {displayName(reason)}</li>
+                        <li key={reason}>Server: {reasonLabel(reason)}</li>
                       ))}
                     </ul>
                   </div>

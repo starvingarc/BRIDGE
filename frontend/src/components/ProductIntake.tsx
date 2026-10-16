@@ -9,6 +9,7 @@ import { intakeLabels, intakeValue, intakeValues } from "./intakeLabels";
 type Props = {
   session: Session;
   busy: boolean;
+  onOpenMaterials?: (uploadId?: string) => void;
   onSession: (session: Session) => void;
   onError: (error: unknown) => void;
   onConfirm: () => void;
@@ -50,15 +51,15 @@ export function ProductIntake(props: Props) {
     <section className="product-intake intake-start" aria-label="产品资料">
       <p className="intake-eyebrow">移植前 · 研究性评估</p>
       <h2>先认识这批细胞</h2>
-      <p>在对话框上传 H5AD 后，这里会展示文件结构、产品资料和下一阶段计划。</p>
+      <p>{props.onOpenMaterials ? "从研究资料选择 H5AD 后，这里会展示文件结构与待核对的实验信息。" : "在对话框上传 H5AD 后，这里会展示文件结构与待核对的实验信息。"}</p>
       <p>先看数据是否可分析，再梳理细胞组成、目标特征、发育阶段及非目标群体等证据。</p>
       <small>比较数据与移植后数据不是开始评估的必要条件。</small>
     </section>
   );
   return (
     <section className="product-intake" aria-label="产品资料">
-      <p className="intake-eyebrow">1 确认资料 → 2 查看计划 → 3 批准运行</p>
-      <h2>产品资料</h2>
+      <details open={!props.session.assessment || props.session.input_review_required}>
+      <summary>产品资料</summary>
       {uploads.length > 1 ? (
         <label className="intake-field">本次评估文件
           <select value={aid} onChange={(event) => setSelected(event.target.value)} disabled={props.busy || reviewUpload !== null}>
@@ -67,6 +68,7 @@ export function ProductIntake(props: Props) {
         </label>
       ) : <p className="intake-filename">{uploads[0].name}</p>}
       <IntakeFile key={props.session.id + ":" + aid} {...props} aid={aid} />
+      </details>
     </section>
   );
 }
@@ -103,7 +105,7 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
     });
     return () => { active = false; controller.abort(); };
   }, [session.id, aid, session.pending_input_change?.id, session.input_review_required,
-      session.status, session.plan?.id, retry, props.onError]);
+      session.status, session.plan?.id, session.updated_at, retry, props.onError]);
 
   const perform = async (operation: () => Promise<Session>, closeEditing = true) => {
     setWorking(true);
@@ -183,7 +185,7 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
       <div className="intake-observed">
         <strong>文件中检测到</strong>
         <p>{data.observed.n_observations ?? "未知数量"} 个观测 · {data.observed.n_genes ?? "未知数量"} 个基因</p>
-        <small>{data.autofill ? "先读取文件中的实验元数据，再补充缺失或冲突的信息。" : "仅文件结构。实验类型、原始计数语义与产品目标需要您确认。"}</small>
+        {data.state !== "confirmed" && <small>核对文件资料，补充缺失项。</small>}
       </div>
       {error ? <p className="intake-error" role="alert">{error}</p> : null}
       {data.state === "stale" ? <p className="intake-error">高级输入已修改；请核对最新声明并重新确认产品资料。</p> : null}
@@ -197,6 +199,7 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
           {data.autofill ? <button disabled={busy} onClick={() => setCompleteFacts(value => !value)}>
             {completeFacts ? "返回引导核对" : "补充或修改完整资料"}</button> : null}
           {data.autofill && !completeFacts ? <IntakeWizard data={data} busy={busy} onAnswer={answer} protocolReview={protocolPanel}
+            onOpenMaterials={props.onOpenMaterials ? () => props.onOpenMaterials!(aid) : undefined}
             onProtocol={file => void perform(() => api.uploadProtocol(session.id, aid, file), false)}
             onParse={() => void parse()}
             onStage={facts => void perform(() => api.stageIntake(session.id, aid, facts))} />
@@ -206,16 +209,18 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
       ) : (
         <div className="intake-confirmed">
           <header><strong>研究者已确认</strong><button onClick={() => setEditing(true)} disabled={busy}>修改资料</button></header>
-          <dl>{Object.entries(data.facts).map(([key, value]) => (
-            <div key={key}><dt>{intakeLabels[key]}</dt><dd>{intakeValue(value)}</dd></div>
-          ))}</dl>
-          <small>这份声明不是正式产品定义，也不证明细胞身份或生物学独立性。</small>
+          <p className="intake-product-name">{data.facts.product_name ?? "未命名产品"}</p>
+          <details className="intake-facts"><summary>查看已确认资料</summary>
+            <dl>{Object.entries(data.facts).map(([key, value]) => (
+              <div key={key}><dt>{intakeLabels[key]}</dt><dd>{intakeValue(value)}</dd></div>
+            ))}</dl>
+            <small>研究者声明，不等于科学验证。</small>
+          </details>
         </div>
       )}
       {pending || data.state === "confirmed" && !editing ? protocolPanel : null}
       <div className="intake-roadmap">
-        <h3>这次评估将回答什么？</h3>
-        <p>以下是证据路线，不是已完成的结论，也不是一次批准所有分析。</p>
+        <details open={Boolean(data.next_tool && data.state === "confirmed")}><summary>评估路线与科学输入</summary>
         <ol>{data.roadmap.map((row) => <li key={row.question}>
           <span>{row.question}</span><small>{stateLabels[row.state] ?? "待补充输入"}</small>
         </li>)}</ol>
@@ -242,7 +247,8 @@ function IntakeFile({ aid, ...props }: Props & { aid: string }) {
             ) : data.qc_state === "not_run" && !session.input_review_required ? <p>开始 QC 还需确认实验类型、原始计数语义和计数位置。不确定时请保留未知。</p> : null}
           </>
         ) : <p>先核对并确认资料，再生成可执行的下一阶段计划。</p>}
-        <small>缺少比较组或移植后数据不会阻止移植前评估；结果不作临床或放行判断。</small>
+        <small>研究用途，不作临床或放行判断。</small>
+        </details>
       </div>
     </>
   );

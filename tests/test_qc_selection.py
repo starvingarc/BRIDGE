@@ -15,7 +15,7 @@ from bridge.tool_packages.p0_01_input_qc.io import sha256_path
 from bridge.toolkit.contracts import ExecutionState, InputAsset, ToolRequest
 from bridge.toolkit.registry import ToolRegistry
 from test_cell_state import GENES, _build_snapshot
-from test_web_service import client
+from web_support import client
 
 
 class _ControlledScrublet:
@@ -149,7 +149,7 @@ def test_qc_selection_without_rules_cannot_silently_become_audit_only(tmp_path, 
 def test_web_selected_handoff_materializes_filtered_input_and_rejects_tampering(
         client, tmp_path, monkeypatch):
     from bridge.domain.models import CaseInputAsset, CaseInputBundle
-    from test_web_service import new_session, confirm_change, declare_source
+    from web_support import new_session, confirm_change, declare_source
     from test_web_inputs import approve, choice
 
     request = _request(tmp_path, monkeypatch)
@@ -178,13 +178,21 @@ def test_web_selected_handoff_materializes_filtered_input_and_rejects_tampering(
     service.propose_request(state, bundle, request, "Explicit candidate QC selection")
     assert approve(client, sid, state["plan"])["plan"]["status"] == "completed"
     state = service.load(sid)
-    selected = service.effective_qc_asset(state, aid, register=False)
+    selected = service.qc.asset(state, aid, register=False)
     assert selected.asset_id != aid, "Web handoff must replace the parent matrix, not just its metadata"
     assert selected.path.name == "qc_selected_view.h5ad"
     assert ad.read_h5ad(selected.path).n_obs == 252
     assert selected.checksum == sha256_path(selected.path)
     assert selected.metadata["parent_asset_sha256"] == asset.checksum
     assert state["_asset_declarations"] == original_declarations
+    figure_set = next(a for a in state["artifacts"] if a["name"].startswith("qc_visualization_artifact_set."))
+    preview = client.get(figure_set["url"] + "/preview")
+    assert preview.status_code == 200, preview.text
+    for figure in preview.json()["figures"]:
+        note = figure["contract"]["accessibility"]["long_description"]
+        assert "已生成候选标记" in note
+        assert "已按明确请求生成筛选后数据视图" in note
+        assert "未删除细胞" not in note
     _build_snapshot(tmp_path, monkeypatch)
     from dataclasses import replace
     service.settings = replace(service.settings,
@@ -199,7 +207,7 @@ def test_web_selected_handoff_materializes_filtered_input_and_rejects_tampering(
     assert planned["assets"][0]["checksum"] == selected.checksum
     selected.path.write_bytes(selected.path.read_bytes() + b"tamper")
     with pytest.raises(ValueError, match="qc_artifact_integrity_mismatch"):
-        service.effective_qc_asset(service.load(sid), aid, register=False)
+        service.qc.asset(service.load(sid), aid, register=False)
 
 
 def test_robust_rules_use_each_capture_and_keep_exact_boundary_cells():

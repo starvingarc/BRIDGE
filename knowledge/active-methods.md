@@ -21,6 +21,8 @@ This generated shortlist mirrors methods selected from the global knowledge cata
 
 ## P0-02: Cell-State Evidence
 
+- `METHOD-SCANPY-EXPRESSION-EXPLORATION` — Scanpy expression exploration ([catalog record](bridge://knowledge/methods/METHOD-SCANPY-EXPRESSION-EXPLORATION))
+- `METHOD-PYDESEQ2` — PyDESeq2 ([catalog record](bridge://knowledge/methods/METHOD-PYDESEQ2))
 - `METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-68029D` — BRIDGE pseudobulk/reference correlation ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-PSEUDOBULK-REFERENCE-CORRELATION-68029D))
 - `METHOD-BRIDGE-INTERNAL-MARKER-PROGRAM-EVIDENCE` — BRIDGE internal marker/program evidence ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-INTERNAL-MARKER-PROGRAM-EVIDENCE))
 - `METHOD-CELLTYPIST-CUSTOM-CLASSIFIER` — CellTypist custom classifier ([catalog record](bridge://knowledge/methods/METHOD-CELLTYPIST-CUSTOM-CLASSIFIER))
@@ -74,6 +76,7 @@ This generated shortlist mirrors methods selected from the global knowledge cata
 
 ## P0-07: Product Comparison & Stability
 
+- `METHOD-PYDESEQ2` — PyDESeq2 ([catalog record](bridge://knowledge/methods/METHOD-PYDESEQ2))
 - `METHOD-BRIDGE-COMPARABILITY-GATE` — BRIDGE Comparability Gate ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-COMPARABILITY-GATE))
 - `METHOD-BRIDGE-DESIGN-AND-CONFOUNDING-CHECK` — BRIDGE Design and Confounding Check ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-DESIGN-AND-CONFOUNDING-CHECK))
 - `METHOD-BRIDGE-RAW-METRIC-DELTA` — BRIDGE raw-metric delta ([catalog record](bridge://knowledge/methods/METHOD-BRIDGE-RAW-METRIC-DELTA))

@@ -3,26 +3,39 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from types import SimpleNamespace
 
 import pytest
 httpx = pytest.importorskip("httpx")
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from bridge.web.app import Settings, create_app
+from bridge.web.app import Settings
+from account_support import create_test_app as create_app, LOGIN
 from bridge.web.provider import parse_action
+from web_support import (
+    confirm_change,
+    declare_counts,
+    declare_source,
+    client as client,
+    login,
+    new_session,
+    settle,
+    h5ad,
+)
 
 
-
-
-
-def confirm_change(client, sid, state):
-    change = state["pending_input_change"]
-    response = client.post(f"/api/sessions/{sid}/input-change/confirm",
-        json={"change_id": change["id"], "change_digest": change["digest"]})
-    assert response.status_code == 200, response.json()
-    return response.json()
+def test_session_store_round_trip_without_application(tmp_path):
+    from bridge.web.sessions import SessionStore
+    from bridge.storage.private_paths import ensure_private_directory
+    store = SessionStore(tmp_path / "sessions", "acceptance")
+    sid = "a" * 32
+    ensure_private_directory(store.root / sid)
+    store.save({"id": sid, "status": "idle", "messages": []})
+    loaded = store.load(sid)
+    assert loaded["id"] == sid
+    assert loaded["status"] == "idle"
+    assert loaded["messages"] == []
+    assert loaded["updated_at"]
 
 
 def test_exact_source_change_is_pending_and_session_revision_bound(client, tmp_path):
@@ -52,18 +65,22 @@ def test_review_inputs_blocks_plans_until_exact_confirmation_or_keep(client, tmp
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
     aid = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))}).json()["uploads"][0]["id"]
-    monkeypatch.setattr("bridge.web.app.converse", lambda *a: parse_action({"content": '{"action":"review_inputs","text":"Review the existing input panel."}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *a: parse_action({"content": '{"action":"review_inputs","text":"Review the existing input panel."}'}))
     client.post(url + "/messages", json={"text": "Please correct the assay."})
     reviewed = settle(client, sid)
     assert reviewed["input_review_required"] is True
-    assert client.post(url + "/prepare-analysis", json={"tool_id": "P0-02"}).json()["detail"] == "input_review_required"
-    assert client.post(url + "/approve", json={"plan_id": "old", "plan_digest": "0"*64}).json()["detail"] == "input_review_required"
+    for response in (
+        client.post(url + "/prepare-analysis", json={"tool_id": "P0-02"}),
+        client.post(url + "/approve", json={"plan_id": "old", "plan_digest": "0"*64}),
+    ):
+        assert response.json()["error_id"] == "confirmation_required"
+        assert "detail" not in response.json()
     staged = client.post(url + "/inputs", json={"upload_id": aid, "source_family_id": "private-source"}).json()
     assert client.post(url + "/input-review/keep", json={}).status_code == 409
     pending = staged["pending_input_change"]
     discarded = client.post(url + "/input-change/discard", json={"change_id": pending["id"], "change_digest": pending["digest"]}).json()
     assert discarded["input_review_required"] is True
-    monkeypatch.setattr("bridge.web.app.converse", lambda *a: parse_action({"content": '{"action":"reply","text":"OK"}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *a: parse_action({"content": '{"action":"reply","text":"OK"}'}))
     client.post(url + "/messages", json={"text": "Thanks"})
     assert settle(client, sid)["input_review_required"] is True
     kept = client.post(url + "/input-review/keep", json={}).json()
@@ -81,7 +98,7 @@ def test_stop_returns_before_provider_settles_and_fences_late_result(client, mon
         if late_error:
             raise RuntimeError("late provider error")
         return parse_action({"content": '{"action":"review_inputs","text":"late correction"}'})
-    monkeypatch.setattr("bridge.web.app.converse", blocked)
+    monkeypatch.setattr("bridge.web.service.converse", blocked)
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
     client.post(url + "/messages", json={"text": "Discuss"})
@@ -104,11 +121,11 @@ def test_initial_qc_wait_is_provider_gated_and_needs_separate_approval(client, t
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
     aid = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))}).json()["uploads"][0]["id"]
-    monkeypatch.setattr("bridge.web.app.converse", lambda *a: parse_action({"content": '{"action":"reply","text":"Waiting."}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *a: parse_action({"content": '{"action":"reply","text":"Waiting."}'}))
     declare_counts(client, sid, aid, location="X")
     client.post(url + "/messages", json={"text": "scRNA-seq, X contains raw counts; please wait before preparing QC."})
     assert settle(client, sid)["plan"] is None
-    monkeypatch.setattr("bridge.web.app.converse", lambda *a: parse_action({"content": json.dumps({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *a: parse_action({"content": json.dumps({
         "action": "prepare_qc", "upload_id": aid, "matrix_location": "X"})}))
     client.post(url + "/messages", json={"text": "scRNA-seq, use X raw counts for QC"})
     proposed = settle(client, sid)
@@ -132,7 +149,7 @@ def test_stop_during_real_execution_retains_inflight_receipt(client, tmp_path, m
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
     aid = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))}).json()["uploads"][0]["id"]
-    monkeypatch.setattr("bridge.web.app.converse", lambda *a: parse_action({"content": json.dumps({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *a: parse_action({"content": json.dumps({
         "action": "prepare_qc", "upload_id": aid, "matrix_location": "X"})}))
     declare_counts(client, sid, aid, location="X")
     client.post(url + "/messages", json={"text": "scRNA-seq, use X raw counts for QC"})
@@ -152,7 +169,7 @@ def test_stop_during_real_execution_retains_inflight_receipt(client, tmp_path, m
     state["plan"].update(id=batch.plan_id, digest=batch.approval_sha256(), steps=[
         {"id": step.step_id, "tool_id": step.tool_id, "label": "QC", "status": "pending", "reason": None}
         for step in batch.steps])
-    service.save(state)
+    service.sessions.save(state)
     plan = state["plan"]
     original_revision = state["_uploads"][aid]["declaration_start"]
     monkeypatch.setattr(ToolExecutionPipeline, "execute_step", blocked)
@@ -187,25 +204,6 @@ def test_stop_during_real_execution_retains_inflight_receipt(client, tmp_path, m
     assert final["artifacts"]
 
 
-
-def declare_counts(client, sid, aid, *, location="X", assay="scRNA-seq"):
-    """Test setup uses the same explicit stage-and-confirm contract as the UI."""
-    staged = client.post(f"/api/sessions/{sid}/analysis-inputs/assets", json={
-        "upload_id": aid, "assay": assay, "matrix_location": location,
-        "matrix_semantics": "raw_counts", "input_level": "count_ready", "metadata": {},
-    })
-    assert staged.status_code == 200, staged.json()
-    return confirm_change(client, sid, staged.json())
-
-
-def declare_source(client, sid, aid, source):
-    staged = client.post(f"/api/sessions/{sid}/inputs",
-        json={"upload_id": aid, "source_family_id": source})
-    assert staged.status_code == 200, staged.json()
-    return confirm_change(client, sid, staged.json())
-
-
-
 def test_legacy_committed_bundle_does_not_reinterpret_new_chat(client, tmp_path):
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
@@ -217,8 +215,8 @@ def test_legacy_committed_bundle_does_not_reinterpret_new_chat(client, tmp_path)
     state = service.load(sid)
     state["_asset_declarations"] = {}
     del state["_qc_declarations"]
-    service.message(state, "user", "snRNA-seq")
-    service.save(state)
+    service.message(state, "user", "snRNA-seq", source="user_input")
+    service.sessions.save(state)
     loaded = service.load(sid)
     assert service.assay(loaded, aid) == "scRNA-seq"
     assert loaded["input_review_required"]
@@ -242,17 +240,16 @@ def test_legacy_qc_receipt_proof_controls_review_without_rewriting_receipts(clie
     state["_tool_runs"][0].pop("plan_id", None)
     if mismatch:
         state["_bundle"]["assets"][0]["assay"] = "snRNA-seq"
-    service.save(state)
+    service.sessions.save(state)
     loaded = service.load(sid)
     assert loaded["input_review_required"] is mismatch
     assert loaded["_tool_runs"] == receipts
     client.post(url + "/input-review/keep", json={})
     if mismatch:
         with pytest.raises(ValueError, match="qc_declaration_retracted"):
-            service.qc_asset(service.load(sid), aid, register=False)
+            service.qc.asset(service.load(sid), aid, register=False, enrich=False)
     else:
-        assert service.qc_asset(service.load(sid), aid, register=False).assay == "scRNA-seq"
-
+        assert service.qc.asset(service.load(sid), aid, register=False, enrich=False).assay == "scRNA-seq"
 
 
 @pytest.mark.parametrize("metadata", [
@@ -276,13 +273,13 @@ def test_legacy_metadata_mismatch_requires_review_and_fresh_qc(client, tmp_path,
     state["_asset_declarations"] = {}
     del state["_qc_declarations"]
     state["_bundle"]["assets"][0]["metadata"] = metadata
-    service.save(state)
+    service.sessions.save(state)
     migrated = service.load(sid)
     assert migrated["input_review_required"]
     assert migrated["_tool_runs"] == receipts
     client.post(url + "/input-review/keep", json={})
     with pytest.raises(ValueError, match="qc_declaration_retracted"):
-        service.qc_asset(service.load(sid), aid, register=False)
+        service.qc.asset(service.load(sid), aid, register=False, enrich=False)
 
 
 @pytest.mark.parametrize("tampered", [False, True])
@@ -298,21 +295,20 @@ def test_legacy_verified_qc_enrichment_and_source_only_edit_preserve_qc(client, 
     declare_source(client, sid, aid, "original-source")
     service = client.app.state.service
     state = service.load(sid)
-    enriched = service.qc_asset(state, aid).model_dump(mode="json")
+    enriched = service.qc.asset(state, aid).model_dump(mode="json")
     if tampered:
         enriched["metadata"]["qc_profile_ref"] = "unproven-profile"
     state["_bundle"]["assets"] = [enriched]
     state["_asset_declarations"] = {}
     del state["_qc_declarations"]
-    service.save(state)
+    service.sessions.save(state)
     migrated = service.load(sid)
     assert migrated["input_review_required"] is tampered
     if not tampered:
         declare_source(client, sid, aid, "changed-source-only")
         current = service.load(sid)
         assert current["input_review_required"] is False
-        assert service.qc_asset(current, aid).metadata["source_family_id"] == "changed-source-only"
-
+        assert service.qc.asset(current, aid).metadata["source_family_id"] == "changed-source-only"
 
 
 def test_legacy_qc_enrichment_cannot_erase_original_caller_reserved_metadata(client, tmp_path):
@@ -333,17 +329,17 @@ def test_legacy_qc_enrichment_cannot_erase_original_caller_reserved_metadata(cli
     declare_source(client, sid, aid, "original-source")
     service = client.app.state.service
     state = service.load(sid)
-    assert service.qc_asset(state, aid, register=False).metadata["data_view_id"] == "caller-before-qc"
-    enriched = service.qc_asset(state, aid).model_dump(mode="json")
+    assert service.qc.asset(state, aid, register=False, enrich=False).metadata["data_view_id"] == "caller-before-qc"
+    enriched = service.qc.asset(state, aid).model_dump(mode="json")
     assert enriched["metadata"]["data_view_id"] != "caller-before-qc"
     state["_bundle"]["assets"] = [enriched]
     state["_asset_declarations"] = {}
     del state["_qc_declarations"]
-    service.save(state)
+    service.sessions.save(state)
     assert service.load(sid)["input_review_required"]
     client.post(url + "/input-review/keep", json={})
     with pytest.raises(ValueError, match="qc_declaration_retracted"):
-        service.qc_asset(service.load(sid), aid, register=False)
+        service.qc.asset(service.load(sid), aid, register=False, enrich=False)
 
 
 def test_exact_stop_command_cannot_bypass_conversation_bound(client):
@@ -351,7 +347,7 @@ def test_exact_stop_command_cannot_bypass_conversation_bound(client):
     service = client.app.state.service
     state = service.load(sid)
     state["messages"] *= 100
-    service.save(state)
+    service.sessions.save(state)
     assert client.post(f"/api/sessions/{sid}/messages", json={"text": "stop"}).status_code == 400
     assert client.post(f"/api/sessions/{sid}/stop", json={}).status_code == 200
 
@@ -379,12 +375,12 @@ def test_asset_edit_stays_private_pending_then_invalidates_qc_only_on_confirm(cl
     ]
     pending = service.load(sid)
     assert pending["_qc_declarations"] == before["_qc_declarations"]
-    service.qc_asset(pending, aid, register=False)
+    service.qc.asset(pending, aid, register=False, enrich=False)
     captured = []
     def reply(settings, messages, context):
         captured.append(context)
         return parse_action({"content": '{"action":"reply","text":"Use the panel."}'})
-    monkeypatch.setattr("bridge.web.app.converse", reply)
+    monkeypatch.setattr("bridge.web.service.converse", reply)
     client.post(url + "/messages", json={"text": "Tell me how to review"})
     assert settle(client, sid)["input_review_required"]
     assert "private-sample-correction" not in json.dumps(captured)
@@ -395,8 +391,8 @@ def test_asset_edit_stays_private_pending_then_invalidates_qc_only_on_confirm(cl
     assert committed["_asset_declarations"][aid]["metadata"] == {"sample_id": "private-sample-correction"}
     assert committed["_tool_runs"] == before["_tool_runs"]
     assert committed["artifacts"] == before["artifacts"]
-    with pytest.raises(ValueError, match="qc_declaration_retracted"):
-        service.qc_asset(committed, aid, register=False)
+    with pytest.raises(ValueError, match="completed_qc_required"):
+        service.qc.asset(committed, aid, register=False, enrich=False)
 
 
 def test_input_revision_and_digest_changes_fail_closed(client, tmp_path):
@@ -413,11 +409,10 @@ def test_input_revision_and_digest_changes_fail_closed(client, tmp_path):
     assert client.get(url).json()["uploads"][0].get("source_family_id") is None
 
 
-
 def test_other_session_planning_cannot_block_stop_on_catalog_lock(client, tmp_path):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event, Thread
-    from bridge.web.app import CATALOG_LOCK
+    from bridge.web.service import CATALOG_LOCK
     entered, release = Event(), Event()
     def tool_catalog_owner():
         with CATALOG_LOCK:
@@ -439,12 +434,12 @@ def test_other_session_planning_cannot_block_stop_on_catalog_lock(client, tmp_pa
         try:
             response = future.result(timeout=1)
             assert response.status_code == 409
-            assert response.json()["detail"] == "worker_busy"
+            assert response.json()["error_id"] == "execution_incomplete"
+            assert "detail" not in response.json()
             assert client.post(url + "/stop", json={}).status_code == 200
         finally:
             release.set()
             holder.join()
-
 
 
 def test_confirmed_asset_metadata_is_used_by_provider_qc_plan(client, tmp_path, monkeypatch):
@@ -459,7 +454,7 @@ def test_confirmed_asset_metadata_is_used_by_provider_qc_plan(client, tmp_path, 
     def prepare(settings, messages, context):
         assert "declared-sample" not in json.dumps(context)
         return parse_action({"content": json.dumps({"action": "prepare_qc", "upload_id": aid, "matrix_location": "X"})})
-    monkeypatch.setattr("bridge.web.app.converse", prepare)
+    monkeypatch.setattr("bridge.web.service.converse", prepare)
     client.post(url + "/messages", json={"text": "Prepare QC for the confirmed input"})
     assert settle(client, sid)["status"] == "awaiting_approval"
     state = client.app.state.service.load(sid)
@@ -468,7 +463,6 @@ def test_confirmed_asset_metadata_is_used_by_provider_qc_plan(client, tmp_path, 
     assert request["assets"][0]["assay"] == "snRNA-seq"
     assert request["assets"][0]["metadata"] == metadata
     assert state["_tool_runs"] == []
-
 
 
 def test_restart_settles_stopping_step_without_reviving_work(client):
@@ -480,7 +474,7 @@ def test_restart_settles_stopping_step_without_reviving_work(client):
             {"id": "done", "status": "succeeded", "reason": None},
             {"id": "in-flight", "status": "running", "reason": None},
             {"id": "queued", "status": "cancelled", "reason": "stopped"}]})
-    service.save(state)
+    service.sessions.save(state)
     restarted = create_app(service.settings).state.service
     try:
         loaded = restarted.load(sid)
@@ -490,7 +484,7 @@ def test_restart_settles_stopping_step_without_reviving_work(client):
         assert loaded["plan"]["steps"][1]["status"] == "cancelled"
         assert loaded["_tool_runs"] == []
     finally:
-        restarted.pool.shutdown(wait=True)
+        restarted.execution.pool.shutdown(wait=True)
 
 
 def test_prepare_analysis_accepts_registered_tool_actions():
@@ -528,7 +522,7 @@ def test_real_qc_then_no_graft_has_new_approval_and_canonical_receipts(client, t
     done = settle(client, sid)
     service = client.app.state.service
     assert service.load(sid)["_tool_runs"]
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
     client.post(url + "/messages", json={"text": declaration})
     proposed = settle(client, sid)
     assert proposed["status"] == "awaiting_approval", proposed
@@ -577,19 +571,20 @@ def test_provider_correction_pauses_before_neutral_cell_state_request(
     declare_source(client, sid, aid, "source-family:unit-test")
     monkeypatch.setattr(client.app.state.service, "cell_state_config_reasons", lambda: [])
     before = client.app.state.service.load(sid)
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"review_inputs","text":"Please review the input panel."}',
     }))
     client.post(url + "/messages", json={"text": retraction})
     assert settle(client, sid)["input_review_required"] is True
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"prepare_analysis","tool_id":"P0-02"}',
     }))
     client.post(url + "/messages", json={"text": "Continue cell-state analysis."})
     value = settle(client, sid)
     assert value["plan"]["status"] == "completed"
-    assert value["error"] == "input_review_required"
+    assert value["presentation"]["issue"]["error_id"] == "confirmation_required"
     after = client.app.state.service.load(sid)
+    assert after["error"] == "input_review_required"
     assert after["_uploads"] == before["_uploads"]
     assert after["_tool_runs"] == before["_tool_runs"]
 
@@ -629,9 +624,9 @@ def test_completed_qc_plan_complaint_preserves_declaration_for_p002(
     baseline = service.load(sid)
     declaration_start = baseline["_uploads"][aid]["declaration_start"]
     receipts = list(baseline["_tool_runs"])
-    service.qc_asset(baseline, aid, register=False)
+    service.qc.asset(baseline, aid, register=False, enrich=False)
     monkeypatch.setattr(
-        "bridge.web.app.converse",
+        "bridge.web.service.converse",
         lambda *args: parse_action(
             {
                 "content": json.dumps(
@@ -660,9 +655,9 @@ def test_completed_qc_plan_complaint_preserves_declaration_for_p002(
         current = service.load(sid)
         assert current["_uploads"][aid]["declaration_start"] == declaration_start
         assert current["_tool_runs"] == receipts
-        service.qc_asset(current, aid, register=False)
+        service.qc.asset(current, aid, register=False, enrich=False)
 
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"review_inputs","text":"请检查输入面板。"}',
     }))
     client.post(
@@ -705,8 +700,8 @@ def test_unrelated_missing_metadata_preserves_declared_assay_and_canonical_qc(
     monkeypatch.setattr(service, "cell_state_config_reasons", lambda: [])
     before = service.load(sid)
     assert next(item for item in service.capabilities(before) if item["tool_id"] == "P0-02")["state"] == "ready"
-    asset = service.qc_asset(before, aid, register=False)
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    asset = service.qc.asset(before, aid, register=False, enrich=False)
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"reply","text":"Please supply missing inputs privately."}',
     }))
 
@@ -715,7 +710,7 @@ def test_unrelated_missing_metadata_preserves_declared_assay_and_canonical_qc(
     state = service.load(sid)
     assert state["_uploads"][aid]["declaration_start"] == before["_uploads"][aid]["declaration_start"]
     assert service.assay(state, aid) == "scRNA-seq"
-    assert service.qc_asset(state, aid, register=False) == asset
+    assert service.qc.asset(state, aid, register=False, enrich=False) == asset
     assert after["plan"] == done["plan"]
     assert after["artifacts"] == done["artifacts"]
     assert state["_tool_runs"] == before["_tool_runs"]
@@ -741,13 +736,12 @@ def test_no_graft_cannot_be_inferred_by_provider(client, tmp_path, monkeypatch):
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
     client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path))})
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
     client.post(url + "/messages", json={"text": "What is graft assessment?"})
     value = settle(client, sid)
     assert value["plan"] is None
-    assert value["error"] == "no_graft_declaration_required"
-
-
+    assert value["presentation"]["issue"]["error_id"] == "request_failed"
+    assert client.app.state.service.load(sid)["error"] == "no_graft_declaration_required"
 
 
 def test_selected_p002_reuses_verified_qc_without_redeclaring_chat_asset(
@@ -790,7 +784,7 @@ def test_selected_p002_reuses_verified_qc_without_redeclaring_chat_asset(
     # Simulate a saved pre-panel session: only its exact QC declaration remains.
     legacy = service.load(sid)
     legacy["_asset_declarations"] = {}
-    service.save(legacy)
+    service.sessions.save(legacy)
     before = service.load(sid)
     assert aid not in before["_asset_declarations"]
     before_declarations = json.loads(json.dumps({
@@ -854,7 +848,7 @@ def test_selected_p002_reuses_verified_qc_without_redeclaring_chat_asset(
     assert asset["input_level"] == "count_ready"
     assert asset["metadata"]["source_family_id"] == "source-family:selected-unit-test"
     assert asset["metadata"]["parent_asset_sha256"] == asset["checksum"]
-    with service.qc_catalog():
+    with service.qc.catalog():
         upstream = validate_upstream_qc_bundle(InputAsset.model_validate(asset))
     assert upstream.profile.profile_id == asset["metadata"]["qc_profile_ref"]
     assert (
@@ -924,16 +918,19 @@ def test_real_qc_cell_state_stage_binds_canonical_data_and_new_approval(client, 
     def action(settings, messages, context):
         captured.append(context)
         return parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-02"}'})
-    monkeypatch.setattr("bridge.web.app.converse", action)
+    monkeypatch.setattr("bridge.web.service.converse", action)
     def propose():
         client.post(url + "/messages", json={"text": "继续细胞状态分析"})
         return settle(client, sid)
-    assert propose()["error"] == "measurement_spec_not_configured"
+    assert propose()["presentation"]["issue"]["error_id"] == "request_failed"
+    assert service.load(sid)["error"] == "measurement_spec_not_configured"
     service.settings = replace(service.settings, cell_state_measurement_spec_ref="CELLSTATE-scRNA-shadow-v0.1")
     monkeypatch.delenv("BRIDGE_REFERENCE_ROOT", raising=False)
-    assert propose()["error"] == "reference_root_not_configured"
+    assert propose()["presentation"]["issue"]["error_id"] == "request_failed"
+    assert service.load(sid)["error"] == "reference_root_not_configured"
     _build_snapshot(tmp_path, monkeypatch)
-    assert propose()["error"] == "source_family_id_required"
+    assert propose()["presentation"]["issue"]["error_id"] == "request_failed"
+    assert service.load(sid)["error"] == "source_family_id_required"
     declare_source(client, sid, aid, "PRIVATE-UNIT-TEST-SOURCE")
     proposed = propose()
     assert proposed["status"] == "awaiting_approval", proposed
@@ -948,12 +945,12 @@ def test_real_qc_cell_state_stage_binds_canonical_data_and_new_approval(client, 
     assert asset["metadata"]["parent_asset_sha256"] == asset["checksum"]
     assert ".display-redacted" not in json.dumps(request)
     monkeypatch.setenv("BRIDGE_QC_PROFILE_CATALOG", "original-catalog-sentinel")
-    with service.qc_catalog():
+    with service.qc.catalog():
         upstream = validate_upstream_qc_bundle(InputAsset.model_validate(asset))
         assert upstream.profile.profile_id == asset["metadata"]["qc_profile_ref"]
         assert upstream.profile_v2.selected_data_view.view_id == asset["metadata"]["data_view_id"]
     assert os.environ["BRIDGE_QC_PROFILE_CATALOG"] == "original-catalog-sentinel"
-    with pytest.raises(RuntimeError), service.qc_catalog():
+    with pytest.raises(RuntimeError), service.qc.catalog():
         raise RuntimeError("intentional")
     assert os.environ["BRIDGE_QC_PROFILE_CATALOG"] == "original-catalog-sentinel"
     # Fact edits invalidate only mutable proposals, and historical approvals survive.
@@ -970,7 +967,7 @@ def test_real_qc_cell_state_stage_binds_canonical_data_and_new_approval(client, 
     assert any(item["tool_id"] == "P0-02" for item in done["artifacts"])
     assert os.environ["BRIDGE_QC_PROFILE_CATALOG"] == "original-catalog-sentinel"
     # A provider review pauses future analysis without rewriting completed evidence.
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"review_inputs","text":"Review the assay in the input panel."}',
     }))
     client.post(url + "/messages", json={"text": "This is not scRNA-seq"})
@@ -978,17 +975,17 @@ def test_real_qc_cell_state_stage_binds_canonical_data_and_new_approval(client, 
     assert reviewed["input_review_required"]
     assert reviewed["plan"]["status"] == "completed"
     assert client.post(url + "/input-review/keep", json={}).status_code == 200
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({
         "content": '{"action":"prepare_analysis","tool_id":"P0-02"}',
     }))
     # Downstream construction must not fall back to display copies after deletion.
     upstream.profile_path.unlink()
-    assert propose()["error"] == "qc_artifacts_missing"
+    assert propose()["presentation"]["issue"]["error_id"] == "request_failed"
+    assert service.load(sid)["error"] == "qc_artifacts_missing"
 
     capability = next(item for item in client.get(url).json()["capabilities"] if item["tool_id"] == "P0-02")
     assert capability["state"] == "needs_input"
     assert "qc_artifacts_missing" in capability["reason_codes"]
-
 
 
 def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_private_values(
@@ -1015,7 +1012,7 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     def action(settings, messages, context):
         captured.append(context)
         return parse_action({"content": '{"action":"reply","text":"bounded"}'})
-    monkeypatch.setattr("bridge.web.app.converse", action)
+    monkeypatch.setattr("bridge.web.service.converse", action)
 
     client.post(url + "/messages", json={
         "text": "来源信息已在数据表单填写。请继续细胞状态分析。",
@@ -1027,7 +1024,7 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     assert set(context) == {
         "status", "upload_ids", "plan_status", "capabilities",
         "tool_execution_history", "results_sent_to_model", "input_contracts", "input_review_required",
-        "intake_context", "clarification_context",
+        "intake_context", "clarification_context", "research_context",
     }
     assert context["clarification_context"] == []
     assert context["intake_context"] == [{
@@ -1042,6 +1039,15 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
     assert context["tool_execution_history"] == [{
         "tool_id": "P0-01", "state": "succeeded",
     }]
+    assert context["research_context"] == {
+        "current_question": "来源信息已在数据表单填写。请继续细胞状态分析。",
+        "confirmed_input_state": context["intake_context"],
+        "analyses_attempted": context["tool_execution_history"],
+        "admitted_results": {"state": "not_available", "evidence_refs": []},
+        "limitations": [{"field": "state", "state": "not_available"}],
+        "unresolved_reason": "results_not_available",
+        "user_correction_state": "current",
+    }
     p002 = next(item for item in context["capabilities"] if item["tool_id"] == "P0-02")
     assert p002["state"] == "ready" and p002["reason_codes"] == []
     contracts = context["input_contracts"]
@@ -1057,7 +1063,7 @@ def test_provider_context_reports_ready_stage_and_bounded_tool_history_without_p
         ]},
     ]
     assert {mode["mode_id"] for mode in contracts["P0-05"]} == {
-        "legacy_aggregation", "method_runtime", "hard_count_accounting",
+        "legacy_aggregation", "method_runtime", "hard_count_accounting", "saved_cell_state_context",
     }
     assert contracts["P0-12"][0] == {"mode_id": "not_provided", "required_roles": []}
     for modes in contracts.values():
@@ -1083,7 +1089,7 @@ def test_legacy_sessions_default_history_and_unconnected_capabilities(client):
     state = service.load(sid)
     for key in ("plan_history", "_plan_history", "_tool_runs"):
         state.pop(key)
-    service.save(state)
+    service.sessions.save(state)
     value = client.get(f"/api/sessions/{sid}").json()
     assert value["plan_history"] == []
     caps = {item["tool_id"]: item for item in value["capabilities"]}
@@ -1113,8 +1119,6 @@ def test_partial_run_keeps_real_state_and_artifacts(client, tmp_path, monkeypatc
     assert done["artifacts"]
 
 
-
-
 @pytest.mark.parametrize("text", ["No graft data, do not run analysis", "没有移植数据，不要分析", "假设没有移植数据", "If there is no graft data"])
 def test_no_graft_negative_or_hypothetical_intent_never_plans(client, tmp_path, monkeypatch, text):
     sid = new_session(client)["id"]
@@ -1123,12 +1127,12 @@ def test_no_graft_negative_or_hypothetical_intent_never_plans(client, tmp_path, 
     declare_counts(client, sid, client.get(url).json()["uploads"][0]["id"], location="X")
     client.post(url + "/messages", json={"text": "scRNA-seq，X 是原始计数，进行 QC"})
     assert settle(client, sid)["status"] == "awaiting_approval"
-    monkeypatch.setattr("bridge.web.app.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *args: parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-12"}'}))
     client.post(url + "/messages", json={"text": text})
     value = settle(client, sid)
     assert value["plan"] is None
-    assert value["error"] == "no_graft_declaration_required"
-
+    assert value["presentation"]["issue"]["error_id"] == "request_failed"
+    assert client.app.state.service.load(sid)["error"] == "no_graft_declaration_required"
 
 
 def test_restart_preserves_completed_plan_during_interrupted_conversation(client):
@@ -1137,178 +1141,15 @@ def test_restart_preserves_completed_plan_during_interrupted_conversation(client
     state = store.load(sid)
     state["status"] = "thinking"
     state["plan"] = {"id": "completed", "status": "completed", "steps": []}
-    store.save(state)
+    store.sessions.save(state)
     other = create_app(store.settings)
-    other.state.service.pool.shutdown()
+    other.state.service.execution.pool.shutdown()
     assert other.state.service.load(sid)["plan"]["status"] == "completed"
-
-
-def test_provider_accepts_only_complete_typed_json_actions():
-    qc = {"action": "prepare_qc", "upload_id": "a" * 32, "matrix_location": "X"}
-    assert parse_action({"content": json.dumps(qc)}).action == "prepare_qc"
-    assert parse_action({"content": '{"action":"reply","text":"Please upload a file."}'}).text == "Please upload a file."
-    assert parse_action({"content": '{"action":"prepare_analysis","tool_id":"P0-02"}'}).tool_id == "P0-02"
-    invalid = [
-        {"content": "Please upload a file."},
-        {"content": '<｜DSML｜function_calls><｜DSML｜invoke name="prepare_analysis">P0-02</｜DSML｜invoke>'},
-        {"content": '{"action":"reply"}'},
-        {"content": '{"action":"prepare_qc","upload_id":"a"}'},
-        {"content": '{"action":"prepare_analysis"}'},
-        {"content": '{"action":"shell","command":"ls"}'},
-        {"content": '{"action":"prepare_qc","upload_id":"abc","matrix_location":"../../secret"}'},
-        {"content": json.dumps(qc), "tool_calls": [{"function": {"name": "prepare_qc", "arguments": "{}"}}]},
-    ]
-    for message in invalid:
-        with pytest.raises(ValueError):
-            parse_action(message)
-
-
-@pytest.mark.parametrize(("message", "expected"), [
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "reply", "arguments": '{"text":"Ready."}'},
-        }]},
-        {"action": "reply", "text": "Ready."},
-    ),
-    (
-        {"content": " \n\t", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "review_inputs", "arguments": '{"text":"Review the panel."}'},
-        }]},
-        {"action": "review_inputs", "text": "Review the panel."},
-    ),
-    (
-        {"content": None, "tool_calls": [{
-            "type": "function",
-            "function": {
-                "name": "prepare_qc",
-                "arguments": '{"upload_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","matrix_location":"layers/counts"}',
-            },
-        }]},
-        {
-            "action": "prepare_qc",
-            "upload_id": "a" * 32,
-            "matrix_location": "layers/counts",
-        },
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "prepare_analysis", "arguments": '{"tool_id":"P0-02"}'},
-        }]},
-        {"action": "prepare_analysis", "tool_id": "P0-02"},
-    ),
-])
-def test_provider_accepts_each_complete_native_action(message, expected):
-    action = parse_action(message, protocol="deepseek_tools")
-    assert action.model_dump(exclude_none=True) == expected
-
-
-@pytest.mark.parametrize(("message", "error"), [
-    ({"content": ""}, "invalid_model_tool_call_count"),
-    ({"content": "plain prose"}, "unexpected_model_content"),
-    (
-        {"content": "", "tool_calls": [
-            {
-                "type": "function",
-                "function": {"name": "reply", "arguments": '{"text":"one"}'},
-            },
-            {
-                "type": "function",
-                "function": {"name": "reply", "arguments": '{"text":"two"}'},
-            },
-        ]},
-        "invalid_model_tool_call_count",
-    ),
-    (
-        {"content": "outside", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "reply", "arguments": '{"text":"inside"}'},
-        }]},
-        "unexpected_model_content",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "shell", "arguments": '{"command":"ls"}'},
-        }]},
-        "unknown_model_action",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "reply", "arguments": {"text": "not a string"}},
-        }]},
-        "invalid_model_action_arguments",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "reply", "arguments": '"not an object"'},
-        }]},
-        "invalid_model_action_arguments",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {
-                "name": "prepare_analysis",
-                "arguments": '{"action":"prepare_analysis","tool_id":"P0-02"}',
-            },
-        }]},
-        "invalid_model_action_fields",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "prepare_analysis", "arguments": '{"tool_id":"P0-02","text":null}'},
-        }]},
-        "invalid_model_action_fields",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "prepare_analysis", "arguments": '{"tool_id":"P0-13"}'},
-        }]},
-        "invalid_model_action",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "reply", "arguments": '{}'},
-        }]},
-        "invalid_model_action_fields",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "function",
-            "function": {"name": "reply", "arguments": "{"},
-        }]},
-        "invalid_model_action_arguments",
-    ),
-    (
-        {"content": "", "tool_calls": [{
-            "type": "custom",
-            "function": {"name": "reply", "arguments": '{"text":"Ready."}'},
-        }]},
-        "invalid_model_tool_call",
-    ),
-])
-def test_provider_rejects_invalid_native_action_shapes_with_stable_codes(message, error):
-    with pytest.raises(ValueError, match=f"^{error}$"):
-        parse_action(message, protocol="deepseek_tools")
-
-
-def test_provider_rejects_unknown_action_protocol():
-    with pytest.raises(ValueError, match="^invalid_model_action_protocol$"):
-        parse_action({"content": '{"action":"reply","text":"Ready."}'}, protocol="automatic")
 
 
 def test_settings_default_and_native_action_protocol_validation(tmp_path):
     values = dict(
         storage_root=tmp_path / "private",
-        token="t" * 32,
         model_base_url="https://provider.invalid/v1",
         model="test-model",
         model_api_key="private-key",
@@ -1325,13 +1166,13 @@ def test_settings_default_and_native_action_protocol_validation(tmp_path):
     ("json", "json"),
     ("deepseek_tools", "deepseek_tools"),
 ])
-def test_main_reads_only_explicit_action_protocol_startup_values(
+def test_settings_reads_only_explicit_action_protocol_startup_values(
     tmp_path, monkeypatch, configured, expected
 ):
-    from bridge.web import __main__ as web_main
+    from bridge.web.runtime import settings_from_environment
     environment = {
         "BRIDGE_WEB_STORAGE": str(tmp_path / "startup-private"),
-        "BRIDGE_WEB_TOKEN": "t" * 32,
+
         "BRIDGE_WEB_MODEL_BASE_URL": "https://provider.invalid/v1",
         "BRIDGE_WEB_MODEL": "test-model",
         "BRIDGE_WEB_MODEL_API_KEY": "private-key",
@@ -1345,27 +1186,14 @@ def test_main_reads_only_explicit_action_protocol_startup_values(
         monkeypatch.delenv("BRIDGE_WEB_MODEL_ACTION_PROTOCOL", raising=False)
     else:
         monkeypatch.setenv("BRIDGE_WEB_MODEL_ACTION_PROTOCOL", configured)
-    captured = {}
-    monkeypatch.setattr(
-        web_main.uvicorn,
-        "run",
-        lambda app, **kwargs: captured.update(app=app),
-    )
-
-    web_main.main()
-
-    service = captured["app"].state.service
-    try:
-        assert service.settings.model_action_protocol == expected
-    finally:
-        service.pool.shutdown()
+    assert settings_from_environment().model_action_protocol == expected
 
 
-def test_main_rejects_unknown_action_protocol_startup_value(tmp_path, monkeypatch):
-    from bridge.web import __main__ as web_main
+def test_settings_rejects_unknown_action_protocol_startup_value(tmp_path, monkeypatch):
+    from bridge.web.runtime import settings_from_environment
     environment = {
         "BRIDGE_WEB_STORAGE": str(tmp_path / "startup-private"),
-        "BRIDGE_WEB_TOKEN": "t" * 32,
+
         "BRIDGE_WEB_MODEL_BASE_URL": "https://provider.invalid/v1",
         "BRIDGE_WEB_MODEL": "test-model",
         "BRIDGE_WEB_MODEL_API_KEY": "private-key",
@@ -1375,120 +1203,18 @@ def test_main_rejects_unknown_action_protocol_startup_value(tmp_path, monkeypatc
     for key, value in environment.items():
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("BRIDGE_WEB_TRUSTED_ANCESTORS", raising=False)
-    monkeypatch.setattr(
-        web_main.uvicorn,
-        "run",
-        lambda *args, **kwargs: pytest.fail("server started"),
-    )
 
     with pytest.raises(ValueError, match="^invalid_server_configuration$"):
-        web_main.main()
-
-
-@pytest.fixture
-def client(tmp_path, monkeypatch):
-    # Replace only the external provider HTTP boundary. Plans and tools stay real.
-    original_client = httpx.Client
-    def provider_response(request):
-        payload = json.loads(request.content)
-        context = json.loads(payload["messages"][0]["content"].split("Safe execution context: ", 1)[1])
-        text = payload["messages"][-1]["content"]
-        action = {"action": "reply", "text": "Please clarify the next input."}
-        if context["upload_ids"] and any(word in text for word in ("counts", "计数", "scRNA-seq", "snRNA-seq")):
-            history = " ".join(item["content"] for item in payload["messages"][1:])
-            action = {"action": "prepare_qc", "upload_id": context["upload_ids"][-1],
-                      "matrix_location": "layers/counts" if ("counts 层" in history or "layers/counts" in history) else "X"}
-        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(action)}}]})
-    monkeypatch.setattr("bridge.web.provider.httpx.Client",
-        lambda **kwargs: original_client(**({"transport": httpx.MockTransport(provider_response)} | kwargs)))
-    config = Settings(storage_root=tmp_path / "private", token="t" * 32,
-                      model_base_url="https://provider.invalid/v1", model="test-model",
-                      model_api_key="private-key", origin="http://testserver")
-    app = create_app(config)
-    with TestClient(app) as client:
-        client.headers["Origin"] = "http://testserver"
-        yield client
-
-
-def login(client):
-    assert client.post("/api/login", json={"token": "t" * 32}).status_code == 200
-
-
-def new_session(client):
-    login(client)
-    return client.post("/api/sessions").json()
-
-
-def settle(client, sid, timeout=90):
-    until = time.monotonic() + timeout
-    while time.monotonic() < until:
-        value = client.get(f"/api/sessions/{sid}").json()
-        if value["status"] not in {"thinking", "running", "stopping"}:
-            return value
-        time.sleep(.05)
-    pytest.fail("worker did not finish")
-
-
-def h5ad(tmp_path, *, layer=False):
-    import anndata as ad
-    import numpy as np
-    import pandas as pd
-    from scipy import sparse
-    data = ad.AnnData(sparse.csr_matrix(np.array([[1, 2, 0], [2, 0, 1], [0, 3, 1], [2, 1, 1]], dtype=np.int64)),
-                      obs=pd.DataFrame(index=["private-cell-a", "b", "c", "d"]),
-                      var=pd.DataFrame(index=["MT-ND1", "SOX2", "FOXA2"]))
-    if layer:
-        data.layers["counts"] = data.X.copy()
-    path = tmp_path / "synthetic.h5ad"
-    data.write_h5ad(path)
-    return path.read_bytes()
-
-
-def registered_artifact(client, sid, name, data):
-    from bridge.storage.private_paths import ensure_private_directory
-    from bridge.toolkit.contracts import ArtifactManifest
-    from bridge.web.app import write_file
-
-    service = client.app.state.service
-    source_root = service.directory(sid) / "runs" / "preview-test"
-    ensure_private_directory(source_root)
-    source = source_root / name
-    write_file(source, data)
-    sha256 = hashlib.sha256(data).hexdigest()
-    state = service.load(sid)
-    state["_tool_runs"].append({"file": "preview-test-receipt.json", "sha256": "0" * 64})
-    service.register_artifacts(
-        state,
-        SimpleNamespace(
-            artifacts=[ArtifactManifest(
-                artifact_id="preview-test:" + name,
-                kind="table",
-                path=source,
-                media_type="application/octet-stream",
-                sha256=sha256,
-            )],
-            request=SimpleNamespace(tool_id="P0-test"),
-        ),
-    )
-    return service.load(sid)["artifacts"][-1]
-
-
-def parquet_bytes(tmp_path, name, columns, **write_options):
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    path = tmp_path / name
-    pq.write_table(pa.table(columns), path, **write_options)
-    return path.read_bytes()
+        settings_from_environment()
 
 
 def test_auth_origin_logout_and_path_boundaries(client):
     assert client.get("/api/health").json() == {"status": "ok"}
     assert client.get("/api/sessions").status_code == 401
-    assert client.post("/api/login", json={"token": "wrong"}).status_code == 401
-    assert client.post("/api/login", json={"token": "t" * 32}, headers={"Origin": "https://evil.invalid"}).status_code == 403
+    assert client.post("/api/login", json={"username": "operator", "password": "wrong"}).status_code == 401
+    assert client.post("/api/login", json=LOGIN, headers={"Origin": "https://evil.invalid"}).status_code == 403
     login(client)
-    cookie = client.cookies.get("bridge_session")
+    cookie = client.cookies.get("bridge_production_accounts_session")
     assert cookie and cookie != "t" * 32
     assert client.get("/api/sessions/" + "a" * 32).status_code == 404
     assert client.get("/api/sessions/%2e%2e%2fsecret").status_code == 404
@@ -1516,13 +1242,17 @@ def test_upload_validation_and_private_state(client, tmp_path):
 
 
 def test_model_context_and_real_http_error(client, monkeypatch):
+    from web_support import skill_read_response
     sid = new_session(client)["id"]
     def response(request):
         payload = json.loads(request.content)
+        read = skill_read_response(payload)
+        if read is not None:
+            return read
         assert "tools" not in payload and "tool_choice" not in payload
         assert "thinking" not in payload
         assert payload["response_format"] == {"type": "json_object"}
-        assert payload["max_tokens"] == 1800
+        assert payload["max_tokens"] == 3000
         assert [item["role"] for item in payload["messages"]].count("system") == 1
         assert payload["messages"][0]["role"] == "system"
         system = payload["messages"][0]["content"]
@@ -1546,9 +1276,11 @@ def test_model_context_and_real_http_error(client, monkeypatch):
         ) in system
         assert "The context does not certify individual QC metrics" not in system
         assert (
-            "When results_sent_to_model is false, describe only the reported tool "
-            "ID/execution state and ask the user to inspect tool-owned results."
+            "When results_sent_to_model is false, make no scientific result assertions. "
+            "You may still answer method,"
         ) in system
+        assert "ordinary method explanations or clarification" in system
+        assert "research_context keeps the current question" in system
         assert (
             "When results_sent_to_model is true, use the supplied result_summary to "
             "answer the requested result question; do not replace its numerical "
@@ -1567,7 +1299,7 @@ def test_model_context_and_real_http_error(client, monkeypatch):
             "request for a new plan."
         ) in system
         assert (
-            "Do not prepare a plan when the user asks to wait, stop, or not prepare "
+            "Do not prepare a plan when the user asks to stop or not prepare "
             "a new plan."
         ) in system
         assert "You receive conversation and minimal execution status only" not in system
@@ -1587,20 +1319,26 @@ def test_model_context_and_real_http_error(client, monkeypatch):
     client.post(f"/api/sessions/{sid}/messages", json={"text": "What can you do?"})
     value = settle(client, sid)
     assert value["messages"][-1]["content"] == "I can help prepare QC."
+    assert value["messages"][-1]["source"] == "provider_admitted"
     monkeypatch.setattr("bridge.web.provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(lambda request: httpx.Response(502, text="/private/provider/key")), **kwargs))
     client.post(f"/api/sessions/{sid}/messages", json={"text": "Continue"})
     failed = settle(client, sid)
     assert failed["status"] == "failed"
-    assert failed["error"] == "provider_unavailable"
+    assert failed["presentation"]["issue"]["error_id"] == "request_failed"
+    assert client.app.state.service.load(sid)["error"] == "provider_unavailable"
     assert "/private/provider/key" not in json.dumps(failed)
 
 
 def test_native_protocol_wire_and_service_proposal_never_executes(
     tmp_path, monkeypatch
 ):
+    from web_support import skill_read_response
     captured = {}
     def response(request):
         payload = json.loads(request.content)
+        read = skill_read_response(payload, "product-assessment")
+        if read is not None:
+            return read
         captured["payload"] = payload
         return httpx.Response(200, json={"choices": [{"message": {
             "content": "",
@@ -1624,7 +1362,6 @@ def test_native_protocol_wire_and_service_proposal_never_executes(
     )
     config = Settings(
         storage_root=tmp_path / "native-private",
-        token="t" * 32,
         model_base_url="https://provider.invalid/v1",
         model="test-model",
         model_api_key="private-key",
@@ -1671,9 +1408,11 @@ def test_native_protocol_wire_and_service_proposal_never_executes(
 
     payload = captured["payload"]
     assert "response_format" not in payload
-    assert payload["tool_choice"] == "required"
-    assert payload["thinking"] == {"type": "disabled"}
-    assert payload["max_tokens"] == 1800
+    assert "tool_choice" not in payload
+    assert "thinking" not in payload
+    assert "reasoning_effort" not in payload
+    # Unspecified effort preserves the provider default, which may reason.
+    assert payload["max_tokens"] == 32768
     tools = {
         item["function"]["name"]: item["function"]["parameters"]
         for item in payload["tools"]
@@ -1690,7 +1429,9 @@ def test_native_protocol_wire_and_service_proposal_never_executes(
     ]
     assert tools["reply"] == {
         "type": "object",
-        "properties": {"text": {"type": "string", "maxLength": 12000}},
+        "properties": {"text": {"type": "string", "maxLength": 12000},
+            "observation_aliases": {"type": "array", "items": {"type": "string"},
+                "title": "Observation Aliases", "maxItems": 0}},
         "required": ["text"],
         "additionalProperties": False,
     }
@@ -1747,9 +1488,11 @@ def test_native_protocol_wire_and_service_proposal_never_executes(
     ) in system
     assert "The context does not certify individual QC metrics" not in system
     assert (
-        "When results_sent_to_model is false, describe only the reported tool "
-        "ID/execution state and ask the user to inspect tool-owned results."
+        "When results_sent_to_model is false, make no scientific result assertions. "
+        "You may still answer method,"
     ) in system
+    assert "ordinary method explanations or clarification" in system
+    assert "research_context keeps the current question" in system
     assert (
         "When results_sent_to_model is true, use the supplied result_summary to "
         "answer the requested result question; do not replace its numerical "
@@ -1768,7 +1511,7 @@ def test_native_protocol_wire_and_service_proposal_never_executes(
         "request for a new plan."
     ) in system
     assert (
-        "Do not prepare a plan when the user asks to wait, stop, or not prepare "
+        "Do not prepare a plan when the user asks to stop or not prepare "
         "a new plan."
     ) in system
     assert "You receive conversation and minimal execution status only" not in system
@@ -1817,356 +1560,26 @@ def test_real_qc_exact_approval_and_artifacts(client, tmp_path):
     assert client.post(f"/api/sessions/{sid}/approve", json={"plan_id": plan["id"], "plan_digest": plan["digest"]}).status_code == 409
 
 
-def test_registered_parquet_preview_is_literal_bounded_and_preserves_download(client, tmp_path):
-    sid = new_session(client)["id"]
-    original = parquet_bytes(
-        tmp_path,
-        "literal.parquet",
-        {"metric": ["observed", "missing"], "value": [7, None]},
-    )
-    artifact = registered_artifact(client, sid, "literal.parquet", original)
-
-    response = client.get(artifact["url"] + "/preview")
-
-    assert response.status_code == 200
-    assert response.json()["columns"] == ["metric", "value"]
-    assert response.json()["rows"] == [["observed", 7], ["missing", None]]
-    assert response.json()["total_rows"] == 2
-    assert response.json()["total_columns"] == 2
-    assert response.json()["truncated"] is False
-    downloaded = client.get(artifact["url"])
-    assert downloaded.content == original
-    assert hashlib.sha256(downloaded.content).hexdigest() == hashlib.sha256(original).hexdigest()
-    assert downloaded.headers["content-disposition"].startswith("attachment")
-
-
-def test_parquet_preview_represents_an_empty_valid_table(client, tmp_path):
-    import pyarrow as pa
-
-    sid = new_session(client)["id"]
-    artifact = registered_artifact(
-        client,
-        sid,
-        "empty.parquet",
-        parquet_bytes(
-            tmp_path,
-            "empty-source.parquet",
-            {"metric": pa.array([], type=pa.string())},
-        ),
-    )
-    response = client.get(artifact["url"] + "/preview")
-    assert response.status_code == 200
-    assert response.json() == {
-        "columns": ["metric"],
-        "rows": [],
-        "total_rows": 0,
-        "total_columns": 1,
-        "truncated": False,
-    }
-
-
-def test_parquet_preview_keeps_scope_integrity_and_fixed_safe_errors(client, tmp_path):
-    from bridge.web.app import write_file
-
-    first = new_session(client)["id"]
-    artifact = registered_artifact(
-        client,
-        first,
-        "scoped.parquet",
-        parquet_bytes(tmp_path, "scoped-source.parquet", {"value": [1]}),
-    )
-    second = client.post("/api/sessions").json()["id"]
-    assert client.get(f"/api/sessions/{second}/artifacts/{artifact['id']}/preview").status_code == 404
-    assert client.get(f"/api/sessions/{first}/artifacts/" + "a" * 32 + "/preview").status_code == 404
-
-    service = client.app.state.service
-    record = service.load(first)["_artifacts"][artifact["id"]]
-    write_file(service.directory(first) / "artifacts" / record["file"], b"changed")
-    drift = client.get(artifact["url"] + "/preview")
-    assert drift.status_code == 409
-    assert drift.json() == {"detail": "artifact_integrity_mismatch"}
-
-    unsupported = registered_artifact(client, first, "values.csv", b"metric,value\nobserved,7\n")
-    unsupported_response = client.get(unsupported["url"] + "/preview")
-    assert unsupported_response.status_code == 415
-    assert unsupported_response.json() == {"detail": "artifact_preview_unsupported"}
-
-    invalid = registered_artifact(client, first, "invalid.parquet", b"not a parquet or private path")
-    invalid_response = client.get(invalid["url"] + "/preview")
-    assert invalid_response.status_code == 422
-    assert invalid_response.json() == {"detail": "artifact_preview_unavailable"}
-    assert str(tmp_path) not in invalid_response.text
-
-
-def test_parquet_preview_reports_row_column_and_cell_truncation(client, tmp_path):
-    sid = new_session(client)["id"]
-    wide = registered_artifact(
-        client,
-        sid,
-        "wide.parquet",
-        parquet_bytes(
-            tmp_path,
-            "wide-source.parquet",
-            {f"column_{index}": list(range(101)) for index in range(25)},
-        ),
-    )
-    response = client.get(wide["url"] + "/preview")
-    assert response.status_code == 200
-    assert response.json()["total_rows"] == 101
-    assert response.json()["total_columns"] == 25
-    assert len(response.json()["columns"]) == 24
-    assert len(response.json()["rows"]) == 100
-    assert response.json()["rows"][0] == [0] * 24
-    assert response.json()["rows"][-1] == [99] * 24
-    assert response.json()["truncated"] is True
-
-    long_text = "x" * 1_050
-    text_artifact = registered_artifact(
-        client,
-        sid,
-        "long-text.parquet",
-        parquet_bytes(tmp_path, "long-text-source.parquet", {"note": [long_text]}),
-    )
-    text_response = client.get(text_artifact["url"] + "/preview")
-    displayed = text_response.json()["rows"][0][0]
-    assert text_response.status_code == 200
-    assert len(displayed) == 1_000
-    assert displayed.endswith("… [truncated]")
-    assert text_response.json()["truncated"] is True
-
-
-def test_parquet_preview_preserves_scalars_and_rejects_binary_cells(client, tmp_path):
-    import pyarrow as pa
-
-    sid = new_session(client)["id"]
-    scalar = registered_artifact(
-        client,
-        sid,
-        "scalars.parquet",
-        parquet_bytes(
-            tmp_path,
-            "scalars-source.parquet",
-            {
-                "number": [float("nan"), float("inf"), float("-inf")],
-                "flag": [True, False, None],
-            },
-        ),
-    )
-    response = client.get(scalar["url"] + "/preview")
-    assert response.status_code == 200
-    assert response.json()["rows"] == [
-        ["NaN", True],
-        ["Infinity", False],
-        ["-Infinity", None],
-    ]
-
-    binary = registered_artifact(
-        client,
-        sid,
-        "binary.parquet",
-        parquet_bytes(
-            tmp_path,
-            "binary-source.parquet",
-            {"payload": pa.array([b"private bytes"], type=pa.binary())},
-        ),
-    )
-    binary_response = client.get(binary["url"] + "/preview")
-    assert binary_response.status_code == 422
-    assert binary_response.json() == {"detail": "artifact_preview_unavailable"}
-
-
-def test_parquet_preview_preserves_safe_boundaries_and_large_integers(client, tmp_path):
-    import pyarrow as pa
-
-    sid = new_session(client)["id"]
-    artifact = registered_artifact(
-        client,
-        sid,
-        "integers.parquet",
-        parquet_bytes(
-            tmp_path,
-            "integers-source.parquet",
-            {
-                "signed": pa.array([
-                    -9_007_199_254_740_991,
-                    -9_007_199_254_740_992,
-                    9_007_199_254_740_991,
-                    9_007_199_254_740_993,
-                ], type=pa.int64()),
-                "unsigned": pa.array([
-                    0,
-                    9_007_199_254_740_991,
-                    9_007_199_254_740_992,
-                    18_446_744_073_709_551_615,
-                ], type=pa.uint64()),
-            },
-        ),
-    )
-
-    response = client.get(artifact["url"] + "/preview")
-
-    assert response.status_code == 200
-    assert response.json()["rows"] == [
-        [-9_007_199_254_740_991, 0],
-        ["-9007199254740992", 9_007_199_254_740_991],
-        [9_007_199_254_740_991, "9007199254740992"],
-        ["9007199254740993", "18446744073709551615"],
-    ]
-
-
-def test_parquet_preview_preserves_large_integral_float64(client, tmp_path):
-    import pyarrow as pa
-
-    sid = new_session(client)["id"]
-    artifact = registered_artifact(
-        client,
-        sid,
-        "large-floats.parquet",
-        parquet_bytes(
-            tmp_path,
-            "large-floats-source.parquet",
-            {
-                "float64": pa.array(
-                    [1e20, -1e20, 1.25],
-                    type=pa.float64(),
-                ),
-            },
-        ),
-    )
-
-    response = client.get(artifact["url"] + "/preview")
-
-    assert response.status_code == 200
-    assert response.json()["rows"] == [
-        ["1e+20"],
-        ["-1e+20"],
-        [1.25],
-    ]
-
-
-def test_parquet_decode_releases_service_lock_before_batch_parsing(client, tmp_path, monkeypatch):
-    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
-    from threading import Event
-    from bridge.web import app as web_app
-
-    preview_sid = new_session(client)["id"]
-    control_sid = client.post("/api/sessions").json()["id"]
-    artifact = registered_artifact(
-        client,
-        preview_sid,
-        "paused.parquet",
-        parquet_bytes(tmp_path, "paused-source.parquet", {"value": [1]}),
-    )
-    real_preview = web_app.parquet_preview
-    entered, release = Event(), Event()
-
-    def paused_preview(data):
-        entered.set()
-        assert release.wait(10)
-        return real_preview(data)
-
-    monkeypatch.setattr(web_app, "parquet_preview", paused_preview)
-    control_finished_before_release = False
-    control_future = None
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        preview_future = pool.submit(client.get, artifact["url"] + "/preview")
-        try:
-            if not entered.wait(5):
-                pytest.fail("preview decoder was not entered")
-            control_future = pool.submit(client.post, f"/api/sessions/{control_sid}/stop", json={})
-            try:
-                control_response = control_future.result(timeout=1)
-                control_finished_before_release = True
-            except FutureTimeout:
-                control_response = None
-        finally:
-            release.set()
-        preview_response = preview_future.result(timeout=5)
-        if control_future is not None and control_response is None:
-            control_response = control_future.result(timeout=5)
-
-    assert control_finished_before_release is True
-    assert control_response.status_code == 200
-    assert control_response.json()["id"] == control_sid
-    assert preview_response.status_code == 200
-    assert preview_response.json()["rows"] == [[1]]
-
-
-def test_parquet_preview_rejects_stored_row_group_and_response_limits(client, tmp_path):
-    sid = new_session(client)["id"]
-    oversized = registered_artifact(
-        client,
-        sid,
-        "oversized.parquet",
-        b"PAR1" + b"0" * (8 * 1024 * 1024) + b"PAR1",
-    )
-    oversized_response = client.get(oversized["url"] + "/preview")
-    assert oversized_response.status_code == 413
-    assert oversized_response.json() == {"detail": "artifact_preview_too_large"}
-
-    large_group = registered_artifact(
-        client,
-        sid,
-        "large-group.parquet",
-        parquet_bytes(
-            tmp_path,
-            "large-group-source.parquet",
-            {"text": ["x" * (33 * 1024 * 1024)]},
-            compression="gzip",
-            use_dictionary=False,
-        ),
-    )
-    assert len(client.get(large_group["url"]).content) < 8 * 1024 * 1024
-    large_group_response = client.get(large_group["url"] + "/preview")
-    assert large_group_response.status_code == 413
-    assert large_group_response.json() == {"detail": "artifact_preview_too_large"}
-
-    response_heavy = registered_artifact(
-        client,
-        sid,
-        "response-heavy.parquet",
-        parquet_bytes(
-            tmp_path,
-            "response-heavy-source.parquet",
-            {
-                "first": [("a" * 998) + f"{index:02d}" for index in range(100)],
-                "second": [("b" * 998) + f"{index:02d}" for index in range(100)],
-                "third": [("c" * 998) + f"{index:02d}" for index in range(100)],
-            },
-            compression="gzip",
-            use_dictionary=False,
-        ),
-    )
-    response_heavy_response = client.get(response_heavy["url"] + "/preview")
-    assert response_heavy_response.status_code == 413
-    assert response_heavy_response.json() == {"detail": "artifact_preview_too_large"}
-
-
 def test_restart_interrupts_never_reexecutes(client):
     sid = new_session(client)["id"]
     store = client.app.state.service
     state = store.load(sid)
     state["status"] = "running"
-    store.save(state)
+    store.sessions.save(state)
     other = create_app(store.settings)
     with TestClient(other) as restarted:
         restarted.headers["Origin"] = "http://testserver"
         login(restarted)
         value = restarted.get(f"/api/sessions/{sid}").json()
         assert value["status"] == "failed"
-        assert value["error"] == "interrupted"
-
-def test_unknown_artifacts_are_session_scoped(client, tmp_path):
-    first = new_session(client)["id"]
-    second = client.post("/api/sessions").json()["id"]
-    assert client.get(f"/api/sessions/{second}/artifacts/{first}").status_code == 404
-    assert client.get(f"/api/sessions/{first}/artifacts/%2e%2e%2fprivate").status_code == 404
+        assert value["presentation"]["issue"]["error_id"] == "request_failed"
+        assert restarted.app.state.service.load(sid)["error"] == "interrupted"
 
 
 def test_expired_cookie_and_oversized_body_are_rejected(client):
     new_session(client)
-    for key in client.app.state.service.cookies:
-        client.app.state.service.cookies[key] = 0
+    with client.app.state.service.accounts.connect() as db:
+        db.execute("UPDATE logins SET expires = 0")
     assert client.get("/api/sessions").status_code == 401
     login(client)
     assert client.post("/api/sessions", content=b"x" * 40000).status_code == 413
@@ -2201,7 +1614,8 @@ def test_changed_upload_never_executes_and_error_is_safe(client, tmp_path):
     client.post(url + "/approve", json={"plan_id": proposal["id"], "plan_digest": proposal["digest"]})
     result = settle(client, sid)
     assert result["status"] == "failed"
-    assert result["error"] == "execution_failed"
+    assert result["presentation"]["issue"]["error_id"] == "execution_incomplete"
+    assert store.load(sid)["error"] == "execution_failed"
     assert result["artifacts"] == []
     assert str(tmp_path) not in json.dumps(result)
 
@@ -2234,6 +1648,7 @@ def test_hdf5_external_links_rejected(client, tmp_path):
 
 
 def test_provider_cannot_prepare_without_explicit_declaration(client, monkeypatch, tmp_path):
+    from web_support import skill_read_response
     sid = new_session(client)["id"]
     url = f"/api/sessions/{sid}"
     response = client.post(url + "/uploads", files={"file": ("synthetic.h5ad", h5ad(tmp_path, layer=True))})
@@ -2241,6 +1656,9 @@ def test_provider_cannot_prepare_without_explicit_declaration(client, monkeypatc
     original = httpx.Client
     def provider(request):
         payload = json.loads(request.content)
+        read = skill_read_response(payload)
+        if read is not None:
+            return read
         encoded = json.dumps(payload)
         assert "private-cell-a" not in encoded
         assert str(tmp_path) not in encoded
@@ -2324,7 +1742,7 @@ def test_ordinary_followup_cannot_change_committed_qc(client, tmp_path, monkeypa
     client.post(url + "/messages", json={"text": "scRNA-seq，使用 counts 层进行 QC"})
     assert settle(client, sid)["status"] == "awaiting_approval"
     before = client.app.state.service.load(sid)
-    monkeypatch.setattr("bridge.web.app.converse", lambda *a: parse_action({"content": '{"action":"reply","text":"Discussed."}'}))
+    monkeypatch.setattr("bridge.web.service.converse", lambda *a: parse_action({"content": '{"action":"reply","text":"Discussed."}'}))
     client.post(url + "/messages", json={"text": statement})
     assert settle(client, sid)["status"] == "idle"
     after = client.app.state.service.load(sid)
@@ -2350,3 +1768,228 @@ def test_provider_failure_preserves_pending_fact_confirmation(client, tmp_path, 
     assert failed["status"] == "failed"
     assert failed["pending_input_change"] == staged["pending_input_change"]
     assert aid not in client.app.state.service.load(sid)["_qc_declarations"]
+
+
+def test_graph_composition_preview_preserves_download_and_rejects_bad_bindings(client):
+    from copy import deepcopy
+    from test_p0_09_evidence_compiler import _run
+    from bridge.web.sessions import write_file
+    service = client.app.state.service
+    sid = new_session(client)["id"]
+    root = service.directory(sid)
+    run = _run(root / "runs" / "graph-preview")
+    assert run.execution_state.value == "succeeded", run.reason_codes
+    receipt_bytes = run.model_dump_json().encode()
+    receipt = {"file": "graph-preview.json", "sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+        "tool_id": "P0-09", "state": "succeeded", "plan_id": "preview-test"}
+    write_file(root / "receipts" / receipt["file"], receipt_bytes)
+    state = service.load(sid)
+    state["_tool_runs"].append(receipt)
+    service.inputs.register_outputs(state, run, receipt)
+    service.artifacts.register(state, run)
+    artifact = next(a for a in state["artifacts"] if a["name"].startswith("cytoscape_elements."))
+    url = artifact["url"]
+    before = (root / "session.json").read_bytes()
+    raw = client.get(url).content
+    response = client.get(url + "/preview")
+    assert response.status_code == 200, response.text
+    assert response.json()["composition_mapping"] == []
+    assert response.json()["graph_version"] == 1
+    assert (root / "session.json").read_bytes() == before
+    assert client.get(url).content == raw
+    original = deepcopy(service.load(sid))
+    for failure in ("source_sha", "duplicate_manifest", "denied", "unacknowledged", "receipt_tamper", "canonical_tamper"):
+        state = deepcopy(original)
+        if failure == "source_sha":
+            state["_artifacts"][artifact["id"]]["source_sha256"] = "0" * 64
+        elif failure == "duplicate_manifest":
+            manifest = next(r for r in state["_input_objects"].values() if r["schema_ref"].endswith("case-evidence-graph-manifest/v0.1"))
+            state["_input_objects"]["duplicate"] = deepcopy(manifest)
+        elif failure == "denied":
+            state["_artifacts"][artifact["id"]]["content_class"] = "developer_diagnostic"
+            state["_artifacts"][artifact["id"]]["source_kind"] = "provider_log"
+        elif failure == "unacknowledged":
+            state["_artifacts"][artifact["id"]]["content_class"] = "research_report"
+        elif failure == "receipt_tamper":
+            write_file(root / "receipts" / receipt["file"], b"{}")
+        elif failure == "canonical_tamper":
+            source = next(a for a in run.artifacts if a.kind == "cytoscape_elements")
+            saved = source.path.read_bytes()
+            write_file(source.path, b"{}")
+        service.sessions.save(state)
+        response = client.get(url + "/preview")
+        assert response.status_code == (404 if failure == "denied" else 409 if failure == "unacknowledged" else 422), (failure, response.text)
+        assert str(root) not in response.text
+        if failure not in {"denied", "unacknowledged"}:
+            assert client.get(url).content == raw
+        write_file(root / "receipts" / receipt["file"], receipt_bytes)
+        if failure == "canonical_tamper":
+            write_file(source.path, saved)
+    service.sessions.save(original)
+
+
+@pytest.mark.parametrize(("semantics", "assay", "spec", "expected"), [
+    ("raw_counts", "scRNA-seq", None, ("基础 QC 指标已计算", "未生成候选标记", "measurement_spec_not_selected", "维护者", "不代表零个异常")),
+    ("raw_counts", "scRNA-seq", "QC-scRNA-candidate-v0.1", ("基础 QC 指标已计算", "已生成候选标记", "QC-scRNA-candidate-v0.1", "未删除细胞")),
+    ("raw_counts", "snRNA-seq", "QC-snRNA-candidate-v0.1", ("基础 QC 指标已计算", "已生成候选标记", "QC-snRNA-candidate-v0.1", "未删除细胞")),
+    ("normalized_expression", "scRNA-seq", None, ("仅完成结构审计", "原始计数", "未生成候选标记", "不代表零个异常")),
+])
+def test_typed_figure_preview_binds_saved_renders_and_tables_without_writes(
+    client, tmp_path, semantics, assay, spec, expected,
+):
+    from copy import deepcopy
+    from test_input_qc import _write_h5ad, _request
+    from bridge.toolkit.registry import ToolRegistry
+    from bridge.web.sessions import write_file
+    service = client.app.state.service
+    sid = new_session(client)["id"]
+    root = service.directory(sid)
+    work = root / "runs" / "typed-preview"
+    work.mkdir(parents=True)
+    run = ToolRegistry.load_default().run(_request(
+        work, _write_h5ad(work / "synthetic.h5ad", counts=semantics == "raw_counts"),
+        semantics=semantics, assay=assay, spec=spec,
+    ))
+    assert run.execution_state.value in {"succeeded", "partial"}, run.reason_codes
+    receipt_bytes = run.model_dump_json().encode()
+    receipt = {"file": "typed-preview.json", "sha256": hashlib.sha256(receipt_bytes).hexdigest(),
+        "tool_id": "P0-01", "state": run.execution_state.value, "plan_id": "preview-test"}
+    write_file(root / "receipts" / receipt["file"], receipt_bytes)
+    state = service.load(sid)
+    state["_tool_runs"].append(receipt)
+    service.inputs.register_outputs(state, run, receipt)
+    service.artifacts.register(state, run)
+    artifact = next(a for a in state["artifacts"] if a["name"].startswith("qc_visualization_artifact_set."))
+    url = artifact["url"]
+    before = (root / "session.json").read_bytes()
+    original_download = client.get(url).content
+    response = client.get(url + "/preview")
+    assert response.status_code == 200, response.text
+    projection = response.json()
+    assert projection["kind"] == "typed_figures"
+    assert len(projection["figures"]) == 4
+    assert (root / "session.json").read_bytes() == before
+    assert str(root) not in response.text
+    for figure in projection["figures"]:
+        contract = figure["contract"]
+        description = contract["accessibility"]["long_description"]
+        assert all(text in description for text in expected), description
+        if spec is None:
+            assert "候选规则：未选择" in description
+            assert "已生成候选标记" not in description
+        else:
+            assert "候选规则：未选择" not in description
+        table_binding = state["_canonical_artifacts"][figure["table"]["id"]]
+        assert table_binding["artifact_id"] == contract["accessibility"]["table_artifact_id"]
+        assert state["_canonical_artifacts"][figure["data"]["id"]]["sha256"] == contract["data_binding"]["sha256"]
+        assert {a["media_type"] for a in figure["renders"]} == {"image/svg+xml", "image/png"}
+    # Reading the explanatory projection must not rewrite historical artifacts.
+    assert client.get(url).content == original_download
+    assert run.request.measurement_spec_ref == spec
+    original = deepcopy(service.load(sid))
+    table_id = projection["figures"][0]["table"]["id"]
+    for failure in ("source_sha", "table_sha", "duplicate_table", "denied_table", "unacknowledged_table", "duplicate_receipt", "receipt_tamper"):
+        state = deepcopy(original)
+        if failure == "source_sha":
+            state["_artifacts"][artifact["id"]]["source_sha256"] = "0" * 64
+        elif failure == "table_sha":
+            state["_artifacts"][table_id]["source_sha256"] = "0" * 64
+        elif failure == "duplicate_table":
+            duplicate = deepcopy(next(a for a in state["artifacts"] if a["id"] == table_id))
+            duplicate["id"] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            state["artifacts"].append(duplicate)
+            state["_artifacts"]["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"] = deepcopy(state["_artifacts"][table_id])
+            state["_canonical_artifacts"]["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"] = deepcopy(state["_canonical_artifacts"][table_id])
+        elif failure == "denied_table":
+            state["_artifacts"][table_id]["content_class"] = "developer_diagnostic"
+            state["_artifacts"][table_id]["source_kind"] = "provider_log"
+        elif failure == "unacknowledged_table":
+            state["_artifacts"][table_id]["content_class"] = "research_report"
+        elif failure == "duplicate_receipt":
+            state["_tool_runs"].append(deepcopy(receipt))
+        else:
+            write_file(root / "receipts" / receipt["file"], b"{}")
+        service.sessions.save(state)
+        response = client.get(url + "/preview")
+        assert response.status_code == 422, (failure, response.text)
+        assert str(root) not in response.text
+        assert client.get(url).content == original_download
+        write_file(root / "receipts" / receipt["file"], receipt_bytes)
+    service.sessions.save(original)
+
+
+def test_oversized_session_write_preserves_previous_readable_file(tmp_path):
+    from bridge.web.sessions import SessionStore
+    from bridge.storage.private_paths import ensure_private_directory
+    store = SessionStore(tmp_path / "sessions", "acceptance")
+    sid = "b" * 32
+    ensure_private_directory(store.root / sid)
+    store.save({"id": sid, "status": "idle", "messages": []})
+    path = store.root / sid / "session.json"
+    before = path.read_bytes()
+    state = store.load(sid)
+    state["messages"].append({"content": "x" * (8 * 1024 * 1024)})
+    with pytest.raises(ValueError, match="private_file_too_large"):
+        store.save(state)
+    assert path.read_bytes() == before
+    assert store.load(sid)["status"] == "idle"
+    assert store.load(sid)["messages"] == []
+
+
+def test_large_assessment_bindings_roundtrip_outside_session_limit_without_losing_history(tmp_path, monkeypatch):
+    from bridge.web import sessions
+    from bridge.storage.private_paths import ensure_private_directory
+    store = sessions.SessionStore(tmp_path / "sessions", "acceptance")
+    sid = "c" * 32
+    ensure_private_directory(store.root / sid)
+    monkeypatch.setattr(sessions, "SESSION_BYTES_LIMIT", 64 * 1024)
+    bindings = {"E-one": {"receipt_file": "private-record-" + "x" * 70000}}
+    state = {"id": sid, "status": "idle", "messages": [],
+        "_assessment": {"model_turns": [{"number": 2, "evidence_bindings": bindings,
+            "provider_bindings": {"evidence": {"E-current": "canonical-record"}}}]},
+        "_assessment_history": [{"model_turns": [{"number": 1, "evidence_bindings": bindings}]}]}
+    store.save(state)
+    assert (store.root / sid / "session.json").stat().st_size < 64 * 1024
+    loaded = store.load(sid)
+    assert loaded["_assessment"] == state["_assessment"]
+    assert loaded["_assessment_history"] == state["_assessment_history"]
+    loaded["_assessment"]["model_turns"][0]["state"] = "received"
+    store.save(loaded)
+    assert store.load(sid)["_assessment_history"] == state["_assessment_history"]
+
+
+@pytest.mark.parametrize("damage", ["changed", "missing", "symlink"])
+def test_archived_assessment_binding_integrity_is_required(tmp_path, damage):
+    from bridge.web import sessions
+    from bridge.storage.private_paths import ensure_private_directory
+    store = sessions.SessionStore(tmp_path / "sessions", "acceptance")
+    sid = "d" * 32
+    ensure_private_directory(store.root / sid)
+    state = {"id": sid, "_assessment": {"model_turns": [{
+        "provider_bindings": {"evidence": {"E-old": "x" * 9000}}}]}}
+    store.save(state)
+    path, = (store.root / sid / "assessment-bindings").glob("*.json")
+    if damage == "changed":
+        path.write_text('{"altered":true}')
+    elif damage == "missing":
+        path.unlink()
+    else:
+        target = tmp_path / "outside.json"
+        target.write_bytes(path.read_bytes())
+        path.unlink()
+        path.symlink_to(target)
+    with pytest.raises((ValueError, OSError)):
+        store.load(sid)
+
+
+def test_archived_binding_reference_cannot_escape_session_directory(tmp_path):
+    from bridge.web.sessions import SessionStore
+    from bridge.storage.private_paths import ensure_private_directory
+    store = SessionStore(tmp_path / "sessions", "acceptance")
+    sid = "e" * 32
+    ensure_private_directory(store.root / sid)
+    path = store.root / sid / "session.json"
+    path.write_text(json.dumps({"id": sid, "_assessment": {"model_turns": [{
+        "_binding_files": {"provider_bindings": "../../outside"}}]}}))
+    with pytest.raises(ValueError, match="private_binding_invalid"):
+        store.load(sid)

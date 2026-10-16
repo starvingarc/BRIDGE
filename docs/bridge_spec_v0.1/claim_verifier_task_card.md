@@ -2,6 +2,7 @@
 
 | 字段 | 内容 |
 | --- | --- |
+| Current result schema | See [Tool Card contract](../../src/bridge/tool_packages/cards/P0-10.md#contract) |
 | Task ID | `TASK-CLAIM-VERIFIER` |
 | Version | `v0.4-candidate` |
 | Date | 2026-09-02 |

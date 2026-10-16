@@ -2,6 +2,7 @@
 
 | 字段 | 内容 |
 | --- | --- |
+| Current result schema | See [Tool Card contract](../../src/bridge/tool_packages/cards/P0-01.md#contract) |
 | Task ID | `TASK-INTAKE-QC-v0.1` |
 | 文档版本 | `0.1` |
 | 日期 | 2026-08-06 |

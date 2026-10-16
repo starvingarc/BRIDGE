@@ -1029,6 +1029,7 @@ def write_hierarchical_composition_table(
         if record.state_id is not None
     }
     rows: list[dict[str, object]] = []
+    included_ids = {row.record_id for row in profile.whole_product_records}
     for record in sorted(profile.composition_records, key=lambda item: item.order):
         rows.append(
             {
@@ -1038,6 +1039,9 @@ def write_hierarchical_composition_table(
                 "group_display_name": None,
                 "record_id": record.record_id,
                 "partition_id": record.partition_id,
+                # Parent totals remain available for context, but are not
+                # added again alongside their children and unresolved rows.
+                "included_in_whole_product_total": record.record_id in included_ids,
                 "state_id": record.state_id,
                 "display_name": record.display_name,
                 "reference_level": record.level,
@@ -1069,6 +1073,7 @@ def write_hierarchical_composition_table(
             {
                 **base,
                 "scope": "product_group",
+                "included_in_whole_product_total": False,
                 "group_id": record.group_id,
                 "group_display_name": group.display_name,
                 "record_id": record.record_id,

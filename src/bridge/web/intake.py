@@ -1,12 +1,11 @@
 """Private intake: researcher statements are not scientific product definitions."""
 from __future__ import annotations
 from copy import deepcopy
-import io
 import json
 from typing import Literal
 from fastapi import HTTPException
 from pydantic import Field, field_validator
-from .inputs import AssetDeclaration, InputBody, Selection, checked_bytes
+from .inputs import AssetDeclaration, InputBody, Selection, checked_bytes, checked_file
 
 
 class IntakeFacts(InputBody):
@@ -52,26 +51,68 @@ class Intake:
     def __init__(self, service):
         self.service = service
 
+
+    def feature_coverage(self, state, scope, hypotheses):
+        from bridge.toolkit.interpretation import FeatureCoverageSnapshot
+        from .intake_sources import column
+        service = self.service
+        queries = sorted({q for row in hypotheses for q in row.get("feature_queries", [])})
+        if not queries:
+            return None
+        facts = scope.binding["intake"]["facts"]
+        matrix = facts.get("matrix_location")
+        upload = state["_uploads"][scope.upload_id]
+        payload = dict(upload_sha256=upload["sha256"], input_revision=scope.input_revision,
+            matrix_location=matrix, identifier_column=None, complete=False, feature_count=None,
+            results=[dict(identifier=q, state="unknown") for q in queries])
+        if not matrix:
+            return FeatureCoverageSnapshot.model_validate(payload).model_dump(mode="json")
+        import h5py
+        path = service.directory(state["id"]) / "uploads" / (scope.upload_id + ".h5ad")
+        with checked_file(service, state, path, upload["sha256"], limit=service.settings.max_upload_bytes) as stream:
+            with h5py.File(stream, "r") as handle:
+                axis = "raw/var" if matrix == "raw.X" else "var"
+                if axis not in handle:
+                    return FeatureCoverageSnapshot.model_validate(payload).model_dump(mode="json")
+                group = handle[axis]
+                key = facts.get("gene_symbol_column") or group.attrs.get("_index", "_index")
+                if isinstance(key, bytes):
+                    key = key.decode()
+                payload["identifier_column"] = axis + "/" + key
+                if key in group:
+                    values, complete = column(group, key)
+                    identifiers = {v for v in values if isinstance(v, str)}
+                    payload.update(complete=complete, feature_count=len(values) if complete else None,
+                        results=[dict(identifier=q, state="present" if q in identifiers else
+                            "not_found" if complete else "unknown") for q in queries])
+        return FeatureCoverageSnapshot.model_validate(payload).model_dump(mode="json")
+
     def observed(self, state, aid):
         import h5py
         upload = state["_uploads"].get(aid)
         if upload is None:
             raise HTTPException(404, "upload_not_found")
         path = self.service.directory(state["id"]) / "uploads" / (aid + ".h5ad")
-        data = checked_bytes(self.service, state, path, upload["sha256"], limit=self.service.settings.upload_limit)
-        with h5py.File(io.BytesIO(data), "r") as handle:
-            def axis(name):
-                group = handle[name]
-                index = group.attrs.get("_index", "_index")
-                if isinstance(index, bytes):
-                    index = index.decode()
-                dataset = group.get(index)
-                size = dataset.shape[0] if isinstance(dataset, h5py.Dataset) and dataset.ndim == 1 else None
-                # Names only, never row identifiers, gene values or expression.
-                columns = [key for key in group if key != index and len(key) <= 160][:256]
-                return size, columns
-            n_obs, obs_columns = axis("obs")
-            n_var, var_columns = axis("var")
+        with checked_file(
+            self.service,
+            state,
+            path,
+            upload["sha256"],
+            limit=self.service.settings.max_upload_bytes,
+        ) as stream:
+            with h5py.File(stream, "r") as handle:
+                def axis(name):
+                    group = handle[name]
+                    index = group.attrs.get("_index", "_index")
+                    if isinstance(index, bytes):
+                        index = index.decode()
+                    dataset = group.get(index)
+                    size = dataset.shape[0] if isinstance(dataset, h5py.Dataset) and dataset.ndim == 1 else None
+                    # Names only, never row identifiers, gene values or expression.
+                    columns = [key for key in group if key != index and len(key) <= 160][:256]
+                    return size, columns
+                n_obs, obs_columns = axis("obs")
+                n_var, var_columns = axis("var")
         return {"n_observations": n_obs, "n_genes": n_var, "matrix_locations": upload["locations"],
                 "obs_columns": obs_columns, "var_columns": var_columns}
 
@@ -200,6 +241,7 @@ class Intake:
         draft["conflicts"] = []
         draft["revision"] += 1
         records[aid] = {"upload_id": aid, "facts": confirmed_values,
+                       "field_sources": deepcopy(draft["field_sources"]),
                        "signature": self.signature(state, aid), "input_revision": state["_input_revision"] + 1,
                        "protocol_ids": [p["id"] for p in state.get("_intake_autofill", {}).get(aid, {}).get("protocols", [])],
                        "source_facts": self.confirmation_sources(state, aid)}
@@ -218,7 +260,7 @@ class Intake:
         next_tool, qc_state, blockers = None, ("not_run" if status == "confirmed" else "needs_confirmation"), []
         if status == "confirmed" and facts.assay != "unknown" and facts.count_semantics == "raw_counts" and facts.matrix_location:
             try:
-                self.service.qc_asset(state, aid, register=False)
+                self.service.qc.asset(state, aid, register=False, enrich=False)
                 qc_state = "available"
             except (ValueError, OSError, KeyError) as exc:
                 if str(exc) in {"completed_qc_required", "qc_declaration_retracted"}:

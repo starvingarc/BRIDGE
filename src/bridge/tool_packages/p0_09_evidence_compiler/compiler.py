@@ -457,6 +457,7 @@ EXPECTED_CATALOG_SCHEMAS: dict[GraphNodeType, tuple[str, ...]] = {
     GraphNodeType.MEASUREMENT_SPEC: (
         "bridge://schemas/measurement-spec/v0.1",
         "bridge://schemas/measurement-spec/v0.2",
+        "bridge://schemas/measurement-spec/v0.3",
     ),
     GraphNodeType.SCORE_CONTRACT: ("bridge://schemas/score-contract/v0.1",),
     GraphNodeType.TOOL_RUN: (

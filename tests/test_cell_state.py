@@ -14,6 +14,11 @@ from pydantic import ValidationError
 from scipy import sparse
 
 from bridge.tool_packages._configurable_contracts import observation_ids_sha256
+from bridge.tool_packages.p0_02_cell_state.grouping import GroupingOutcome
+from bridge.tool_packages.p0_02_cell_state.hierarchical_composition import (
+    HierarchicalCellStateCompositionDataV1,
+    build_hierarchical_composition,
+)
 from bridge.tool_packages.p0_02_cell_state import executor as cell_state_executor
 from bridge.tool_packages.p0_02_cell_state.metrics import marker_program_evidence
 from bridge.tool_packages.p0_02_cell_state.measurement_specs import (
@@ -492,6 +497,14 @@ def test_source_aware_run_emits_shadow_support_and_preserves_input(tmp_path: Pat
     )
     profile_v3 = json.loads(profile_v3_artifact.path.read_text(encoding="utf-8"))
     input_view = profile_v3["input_data_view"]
+    hierarchy = json.loads(next(
+        item.path for item in run.artifacts
+        if item.kind == "hierarchical_cell_state_composition"
+    ).read_text(encoding="utf-8"))
+    assert hierarchy["input_view_ref"] == input_view["view_id"]
+    assert hierarchy["input_view_sha256"] == input_view["sha256"]
+    assert hierarchy["whole_product_denominator"] == input_view["n_observations"]
+    assert hierarchy["scientific_status"] == "candidate"
     assert input_view["view_kind"] == "all_observations"
     assert input_view["artifact_id"] == "input-asset:query-product"
     assert input_view["sha256"] == _sha256(query)
@@ -832,6 +845,76 @@ def test_missing_qc_v2_keeps_v01_run_and_reports_handoff_unavailable(
         in run.warnings
     )
     assert run.result["measurement_spec_id"] == "CELLSTATE-scRNA-shadow-v0.1"
+
+
+def _hierarchy_with_refinement():
+    return build_hierarchical_composition(
+        evidence=pd.DataFrame({
+            "observation_id": ["a", "b", "c", "d"],
+            "prediction_set": [
+                ["L1:Radial_Glia"], ["L1:Radial_Glia"], ["L1:Neuron_DA"], [],
+            ],
+            "l2_prediction_set": [["L2:RG_mFP"], [], [], []],
+        }),
+        vocabulary=load_packaged_vocabulary(),
+        grouping=GroupingOutcome(
+            state="not_generated", source="whole_product", labels=None,
+            grouping_key=None, grouping_hash=None,
+            reason_codes=("too_few_observations_for_exploratory_grouping",), method={},
+        ),
+        run_id="test-hierarchy", input_view_ref="view:test-selected",
+        input_view_sha256="a" * 64, annotation_vocabulary_sha256="b" * 64,
+        observation_unit="cells", evidence_ids=["evidence:test-hierarchy"],
+        source_conflict_assessed=True,
+    )
+
+
+@pytest.mark.parametrize("mismatch", ["whole_denominator", "parent_count", "parent_id", "root_level"])
+def test_hierarchy_rejects_cross_partition_mismatch(mismatch):
+    payload = _hierarchy_with_refinement().model_dump(mode="json")
+    rows = payload["composition_records"]
+    children = [row for row in rows if row["partition_id"] == "L1:Radial_Glia"]
+    if mismatch == "whole_denominator":
+        for row in rows:
+            if row["count"] is not None:
+                row["whole_product_denominator"] = 8
+                row["whole_product_fraction"] = row["count"] / 8
+    elif mismatch == "parent_count":
+        for row in children:
+            row["parent_denominator"] = 3
+            if row["resolution_state"] == "unavailable":
+                row["count"] += 1
+            row["parent_fraction"] = row["count"] / 3
+            row["whole_product_fraction"] = row["count"] / 4
+    elif mismatch == "parent_id":
+        for row in children:
+            row["parent_state_id"] = "L1:Neuron_DA"
+    else:
+        row = next(row for row in rows if row["state_id"] == "L1:Radial_Glia")
+        row["level"] = "L2"
+        row["parent_state_id"] = "L1:Neuron_DA"
+    with pytest.raises(ValidationError):
+        HierarchicalCellStateCompositionDataV1.model_validate(payload)
+
+
+def test_hierarchy_preserves_parent_and_unresolved_counts(tmp_path):
+    profile = _hierarchy_with_refinement()
+    roots = [row for row in profile.composition_records if row.partition_id == "root"]
+    children = [row for row in profile.composition_records if row.partition_id == "L1:Radial_Glia"]
+    assert sum(row.count for row in roots) == 4
+    assert sum(row.count for row in children) == 2
+    child = next(row for row in children if row.state_id == "L2:RG_mFP")
+    assert (child.count, child.parent_fraction, child.whole_product_fraction) == (1, 0.5, 0.25)
+    assert next(row.count for row in children if row.resolution_state == "unavailable") == 1
+    assert next(row.count for row in roots if row.resolution_state == "unavailable") == 1
+    assert profile.scientific_status == "candidate"
+    from bridge.tool_packages.p0_02_cell_state.visualization import write_hierarchical_composition_table
+    table = pd.read_csv(write_hierarchical_composition_table(profile, tmp_path / "composition.tsv"), sep="\t")
+    selected = table.loc[table["included_in_whole_product_total"]]
+    assert selected["count"].sum() == 4
+    assert selected["whole_product_fraction"].sum() == pytest.approx(1.0)
+    assert "L1:Radial_Glia" not in selected["state_id"].values
+    assert selected.loc[selected["resolution_state"] == "unavailable", "count"].sum() == 2
 
 
 def test_v3_sidecar_creates_a_new_immutable_publication(
@@ -1241,3 +1324,16 @@ def test_exploratory_grouping_scientific_metadata_ignores_runtime_telemetry(
         second.method, sort_keys=True
     )
     assert first.method["runtime"] == {"threads": 2}
+
+
+def test_whole_product_records_replace_refined_parent_without_losing_unknowns():
+    profile = _hierarchy_with_refinement()
+    rows = profile.whole_product_records
+    assert sum(row.count for row in rows) == 4
+    assert sum(row.whole_product_fraction for row in rows) == pytest.approx(1.0)
+    assert all(row.whole_product_denominator == 4 for row in rows)
+    assert 'L1:Radial_Glia' not in {row.state_id for row in rows}
+    child = next(row for row in rows if row.state_id == 'L2:RG_mFP')
+    assert child.count == 1 and child.parent_fraction == 0.5
+    assert child.whole_product_fraction == 0.25
+    assert sum(row.count for row in rows if row.resolution_state == 'unavailable') == 2

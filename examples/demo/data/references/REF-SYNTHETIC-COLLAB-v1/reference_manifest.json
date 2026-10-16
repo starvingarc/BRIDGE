@@ -1,0 +1,90 @@
+{
+  "marker_program_file": "marker_programs.json",
+  "marker_program_sha256": "2a634090d99e758e26574a319206b2fdc8eedbfa150f66719522f5d138478e90",
+  "measurement_spec_ids": [
+    "CELLSTATE-scRNA-synthetic-v0.1"
+  ],
+  "profiles": [
+    {
+      "anatomy": "synthetic midbrain-like expression patterns; not tissue",
+      "assay": "scRNA-seq",
+      "developmental_time": "synthetic stage labels; not measured time",
+      "evidence_family_id": "EF-SYNTHETIC-COLLAB",
+      "exclusions": {},
+      "feature_selection": {
+        "max_variance_features": 2000,
+        "method": "between_label_variance_plus_marker_union",
+        "query_independent": true,
+        "selected_gene_count": 1024
+      },
+      "label_level": "L1",
+      "labels": [
+        "L1:Astrocyte",
+        "L1:Neuroblast",
+        "L1:Neuron_DA",
+        "L1:Radial_Glia"
+      ],
+      "matrix_file": "profiles/PROFILE-SYNTHETIC-L1.npy",
+      "matrix_sha256": "8e3dcdbc1e06063508174b7a8f30dba1d2cb4f9630570c0e75b811d6b3eebeae",
+      "metadata_file": "profiles/PROFILE-SYNTHETIC-L1.json",
+      "metadata_sha256": "74dfea3652a4ef5328111324bc31e9265b559dac4b2360e69714b90847b5e22c",
+      "n_genes": 1024,
+      "n_observations": 384,
+      "n_samples": 2,
+      "profile_id": "PROFILE-SYNTHETIC-L1",
+      "role": "primary",
+      "source_family_id": "SYNTHETIC-COLLAB",
+      "source_id": "SYNTHETIC-L1",
+      "source_sha256": "ca9c456e31c78f9693f6b8d2c64b734e27ac252d41b405d61e4ef665f19a26c7",
+      "status": "candidate"
+    },
+    {
+      "anatomy": "synthetic midbrain-like expression patterns; not tissue",
+      "assay": "scRNA-seq",
+      "developmental_time": "synthetic stage labels; not measured time",
+      "evidence_family_id": "EF-SYNTHETIC-COLLAB",
+      "exclusions": {},
+      "feature_selection": {
+        "max_variance_features": 2000,
+        "method": "between_label_variance_plus_marker_union",
+        "query_independent": true,
+        "selected_gene_count": 1024
+      },
+      "label_level": "L2",
+      "labels": [
+        "L2:Nb_mBMP",
+        "L2:Nb_mFP",
+        "L2:RG_mBMP",
+        "L2:RG_mFP"
+      ],
+      "matrix_file": "profiles/PROFILE-SYNTHETIC-L2.npy",
+      "matrix_sha256": "071adef635aafcf62deead42421758eecb035d1543faebd76332de6fad5dfb90",
+      "metadata_file": "profiles/PROFILE-SYNTHETIC-L2.json",
+      "metadata_sha256": "208100bacb1138caaa902ae071e0a18bb1855d6d9bef524155da831183ec6a60",
+      "n_genes": 1024,
+      "n_observations": 256,
+      "n_samples": 2,
+      "profile_id": "PROFILE-SYNTHETIC-L2",
+      "role": "refinement",
+      "source_family_id": "SYNTHETIC-COLLAB",
+      "source_id": "SYNTHETIC-L2",
+      "source_sha256": "ca9c456e31c78f9693f6b8d2c64b734e27ac252d41b405d61e4ef665f19a26c7",
+      "status": "candidate"
+    }
+  ],
+  "prohibited_source_families": [
+    "CAPYBARABRAIN",
+    "EMTAB14729",
+    "FETALATLAS",
+    "HDNA",
+    "STUDER",
+    "STUDERCAPYBARABRAIN",
+    "STUDERFETALATLAS",
+    "STUDERHDNA"
+  ],
+  "snapshot_id": "REF-SYNTHETIC-COLLAB-v1",
+  "status": "candidate",
+  "version": "1.0.0",
+  "vocabulary_file": "annotation_vocabulary.json",
+  "vocabulary_sha256": "6d90fec3a84029b7749734370cb7f76e231de83be1fa1149fa2dc2b6960ab0ed"
+}

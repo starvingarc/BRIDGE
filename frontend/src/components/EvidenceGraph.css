@@ -1,0 +1,21 @@
+.evidence-graph{color:var(--text);min-width:0;line-height:1.55;container-type:inline-size}
+.evidence-graph h2{font-size:1.25rem;margin:.4rem 0}
+.evidence-graph p{margin:.65rem 0}
+.evidence-graph label{display:flex;gap:.4rem;flex-direction:column;min-width:0}
+.evidence-graph select,.evidence-graph input{max-width:100%;min-height:40px;padding:.45rem;border:1px solid var(--border-strong);border-radius:6px;background:white;color:var(--text)}
+.evidence-graph-notice{border-left:3px solid #9d741d;background:#fff8e9;padding:.65rem}
+.evidence-graph-controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:end}
+.evidence-graph button{min-height:40px;border:1px solid var(--border-strong);border-radius:5px;background:#fff;color:var(--body);padding:.4rem .65rem;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.evidence-graph button:focus-visible,.evidence-graph summary:focus-visible,.evidence-graph input:focus-visible,.evidence-graph select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.evidence-graph button[aria-pressed=true]{background:var(--soft);border-color:var(--accent)}
+.evidence-graph-workspace{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(240px,1fr);gap:1rem;margin-top:.8rem}
+.evidence-graph-canvas{height:490px;width:100%;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.evidence-graph-list{margin-top:.75rem}.evidence-graph-list ul{max-height:240px;overflow:auto;padding-left:0;list-style:none}
+.evidence-graph-list li{margin:.3rem 0}.evidence-graph-list small{display:block;overflow-wrap:anywhere;font-size:.7rem}
+.evidence-graph-detail{border-left:1px solid var(--border);padding-left:1rem;min-width:0;overflow-wrap:anywhere}
+.evidence-graph dt{font-weight:600;margin-top:.5rem}.evidence-graph dd{margin:0}
+.evidence-graph details{margin:.6rem 0}.evidence-graph summary{cursor:pointer;min-height:32px}
+.evidence-graph-detail button{display:block;margin:.35rem 0;max-width:100%}
+@media(max-width:900px){.evidence-graph-workspace{grid-template-columns:minmax(0,1fr)}.evidence-graph-detail{border-left:0;border-top:1px solid var(--border);padding:.8rem 0}.evidence-graph-canvas{height:340px}}
+
+@container(max-width:700px){.evidence-graph-workspace{grid-template-columns:minmax(0,1fr)}.evidence-graph-detail{border-left:0;border-top:1px solid var(--border);padding:.8rem 0}.evidence-graph-canvas{height:340px}}

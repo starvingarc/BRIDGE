@@ -25,7 +25,7 @@ from bridge.tool_packages.p0_08_evidence_sufficiency.models import (
     DomainGateInput,
     EvidenceSufficiencyProfile,
     EvidenceSufficiencyProfileV2,
-    EvidenceSufficiencyRunResultV2 as EvidenceSufficiencyRunResult,
+    EvidenceSufficiencyRunResultV3 as EvidenceSufficiencyRunResult,
     GateRuleSpec,
     GateRuleSpecV2,
     ReasonCodeCatalog,
@@ -457,7 +457,7 @@ def _fixture_request(
     return ToolRequestV2(
         request_id=request_id,
         tool_id="P0-08",
-        tool_version="0.5.1",
+        tool_version="0.6.0",
         output_dir=(tmp_path / output_name).resolve(),
         assets=[],
         measurement_spec_ref=None,
@@ -2172,7 +2172,7 @@ def test_v1_invocation_and_forbidden_expression_channel_fail_eligibility(
     v1 = ToolRequest(
         request_id="v1",
         tool_id="P0-08",
-        tool_version="0.5.1",
+        tool_version="0.6.0",
         output_dir=(tmp_path / "out-v1").resolve(),
     )
     v1_eligibility = adapter.check_eligibility(v1, spec)  # type: ignore[arg-type]

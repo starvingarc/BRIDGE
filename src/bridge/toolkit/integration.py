@@ -423,6 +423,7 @@ def validate_agent_integration_profile(
 
     active_registry = registry or _default_registry()
     slots = {item.slot_id: item for item in profile.resource_slots}
+    bindings = {item.binding_id: item for item in profile.request_bindings}
     for slot in profile.resource_slots:
         if slot.resource_type == "structured_object":
             assert slot.schema_ref is not None
@@ -434,6 +435,17 @@ def validate_agent_integration_profile(
                 ) from exc
         if slot.source == "derived_output":
             assert slot.producer_binding_id is not None
+            # This artifact is the complete P0-08 result. Other derived slots
+            # may be sub-artifacts and must not be equated with ToolRun.result.
+            if slot.artifact_kind == "evidence_sufficiency_run_result":
+                producer = active_registry.describe(bindings[slot.producer_binding_id].tool_id)
+                if producer.tool_id != "P0-08":
+                    raise ValueError("profile contract mismatch: sufficiency artifact producer mismatch")
+                if slot.schema_ref != producer.result_schema_ref:
+                    raise ValueError("profile contract mismatch: sufficiency artifact Schema mismatch")
+                result_schema = active_registry.resolve_schema(producer.result_schema_ref)
+                if slot.object_version != result_schema["properties"]["result_version"]["const"]:
+                    raise ValueError("profile contract mismatch: sufficiency artifact version mismatch")
             if slot.artifact_kind == "measurement_result_v2" and (
                 slot.schema_ref != "bridge://schemas/measurement-result/v0.2"
             ):
