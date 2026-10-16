@@ -11,7 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="#get-started"><strong>Get started</strong></a> &nbsp;·&nbsp;
+  <a href="#latest-progress"><strong>Latest progress</strong></a> &nbsp;·&nbsp;
+  <a href="#get-started">Get started</a> &nbsp;·&nbsp;
   <a href="examples/README.md#synthetic-scrna-upload-demo">Try the sample data</a> &nbsp;·&nbsp;
   <a href="docs/README.md">Documentation</a> &nbsp;·&nbsp;
   <a href="docs/validation/README.md">Validation</a>
@@ -23,17 +24,80 @@ BRIDGE helps researchers explore cell states in cell-therapy products using
 single-cell data. The first use case is **hPSC-derived midbrain dopaminergic
 products for Parkinson's disease research**.
 
-<p align="center">
-  <a href="docs/assets/bridge-biological-workflow.svg"><img src="docs/assets/bridge-biological-workflow.svg" width="100%" alt="Conceptual evidence map: developmental references and a cell product inform identity, regional fidelity, development, composition, and proliferation and stress response, with traceable evidence outputs."></a>
-</p>
+## Latest progress
 
-<p align="center">
-  <em>Conceptual overview of the research workflow.</em>
-</p>
+### Workbench update · 2026-10-15
+
+**Development preview.** This update shows the current development build. These
+features are ahead of the public source snapshot; the installation instructions
+below describe the code currently available in this repository.
+
+The workbench brings protocols, experiment batches, samples and analysis history
+into one research space. The screenshots are actual browser captures in the
+**light theme**, using a demo account, illustrative protocols and a public
+single-cell sample. [Screenshot sources and scope](docs/assets/progress-2026-10-15/README.md).
+
+**A clearer daily workflow**
+
+The incubator shows differentiation, expansion, frozen and grafted batches,
+together with their day, stage and scheduled operations. Login returns to the
+recent research space. Confirming a protocol records an experiment; “run another
+batch” reuses the same version, while a new draft preserves earlier experiments.
+
+**Edit protocols on the timeline**
+
+- Drag reagent timing, search the molecule library and add reagents to the
+  diagram. Dose changes for the same factor share one lane.
+- Imported protocols retain source references and fields that need review.
+  Original text opens on demand from reagent details or review items.
+
+![Light-theme protocol editor and molecule library](docs/assets/progress-2026-10-15/protocol-library.jpg)
+
+*An illustrative protocol in the actual editor. Displayed doses and schedules
+are demonstration content, not recommended experimental procedures.*
+
+**Explore samples against the reference developmental tree**
+
+- Sampling points open a side panel with **Mapping, QC and Records**. Same-day
+  samples can be grouped and switched without leaving the protocol.
+- Reference mapping shows where query cells project onto the configured tree;
+  stored marker expression can be used to inspect the projection.
+- Sample-level UMAP and cell-cycle exploration sit alongside reference mapping.
+  These remain descriptive analyses rather than validated cell identities.
+
+![Light-theme reference developmental tree with a public sample projection](docs/assets/progress-2026-10-15/sample-mapping.jpg)
+
+*Reference-tree view with public sample
+[GSM6194010 (GSE204796)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM6194010).
+The projection is a research preview, not independent biological validation.*
+
+**QC and previous results stay with the sample**
+
+- Cell and gene counts, mitochondrial content, doublet candidates and cell-cycle
+  views are now collected under QC. Missing inputs and unassessed checks remain
+  explicit; missing evidence is not a passing result.
+- Records retain earlier analyses and their outputs, so a newer result does not
+  silently replace the previous evidence.
+
+![Light-theme sample QC panel](docs/assets/progress-2026-10-15/sample-qc.jpg)
+
+*QC of the same public demonstration sample. Candidate calls and unavailable
+checks retain their stated limitations.*
+
+**Account and model controls**
+
+The development build adds account-based sign-in and provider/model settings.
+Model and thinking-effort selection sit beside the conversation input and apply
+to the next question.
+
+**Still in progress:** broader reference coverage, calibrated lineage indicators
+and independent biological validation. Atlas projections and QC do not establish
+cell function, clinical efficacy, safety or manufacturing release readiness.
 
 ## Get started
 
-Run BRIDGE as a **private, self-hosted Web application for one operator**.
+The current public source snapshot runs as a **private, self-hosted Web application
+for one operator**.
 Requires **Python 3.12** and **Node.js 22.12+**.
 
 ### 1. Install and build
@@ -73,6 +137,7 @@ for your own files before running.
 ## Explore & contribute
 
 [Documentation](docs/README.md) ·
+[Research workflow](docs/assets/bridge-biological-workflow.svg) ·
 [Scientific principles](docs/product-principles.md) ·
 [Privacy & provenance](docs/privacy-and-provenance.md) ·
 [Contributing](CONTRIBUTING.md) ·
@@ -84,3 +149,9 @@ for your own files before running.
   <sub>Brain-Referenced In vivo-to-in vitro Developmental Guidance and Evaluation</sub><br>
   <sub>Open source under the <a href="LICENSE">MIT License</a>.</sub>
 </p>
+
+## Interested in trying BRIDGE?
+
+We plan to offer limited early access after publication of the accompanying paper.
+For research inquiries or to express interest in early access, contact the author
+at [yxw391588@gmail.com](mailto:yxw391588@gmail.com).
