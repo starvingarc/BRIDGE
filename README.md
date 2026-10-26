@@ -24,6 +24,11 @@ BRIDGE helps researchers explore cell states in cell-therapy products using
 single-cell data. The first use case is **hPSC-derived midbrain dopaminergic
 products for Parkinson's disease research**.
 
+> [!NOTE]
+> **Why I’m Building BRIDGE**
+>
+> BRIDGE stands for *Brain-Referenced In vivo–to–in vitro Developmental Guidance and Evaluation*. It started with a simple idea—use how cells develop in the body to better understand and improve the cells we grow in the lab. Along the way, I realized there’s a gap between AI and cutting-edge research that we can’t close just by talking or writing more. A lot of scientific know-how lives in the work itself, in everyday experiments, discussions, and decisions. So I’m taking BRIDGE a step further, building it into a Sci Agent that works alongside researchers and turns those experiences, with their context, evidence, and outcomes, into material for training and evaluating models. The goal is for AI to learn from real research, then bring what it learns back into the lab.
+
 ## Latest progress
 
 ### Workbench update · 2026-10-15
