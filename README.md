@@ -31,6 +31,20 @@ products for Parkinson's disease research**.
 
 ## Latest progress
 
+### Workbench and agent update · 2026-10-21
+
+The [October 21 update report (中文)](docs/updates/2026-10-21.zh-CN.md)
+covers the evaluation workflow, linked cell/developmental-tree/embryo views,
+shared conclusions, public-protocol comparisons, and the agent’s evidence lookup,
+literature search and conversation context. It includes five screenshots and the
+limitations recorded at the time.
+
+![Linked research views in the October 21 trial build](docs/assets/progress-2026-10-21/03-linked-views.jpg)
+
+*Historical trial-build snapshot. The report does not establish that all shown
+features are included in this public source version; mapped labels and the embryo
+view are not independent biological validation or true spatial localization.*
+
 ### Workbench update · 2026-10-15
 
 **Source update.** The workbench implementation, backend services, tests and

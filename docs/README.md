@@ -16,6 +16,10 @@
 - [Validation records](validation/README.md)
 - [Unfinished scientific and implementation work](../plans/README.md)
 
+## Update reports
+
+- [2026-10-21 工作台与 Agent 更新说明](updates/2026-10-21.zh-CN.md)：历史版本记录，含五张实拍、Agent 能力与当时限制。
+
 ## Scientific and interface references
 
 - [Product and scientific principles](product-principles.md)
